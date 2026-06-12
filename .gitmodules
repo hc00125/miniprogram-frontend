@@ -1,0 +1,4 @@
+[submodule ".claude/skills/code-review-skill"]
+	path = .claude/skills/code-review-skill
+	url = https://github.com/awesome-skills/code-review-skill.git
+	branch = main
