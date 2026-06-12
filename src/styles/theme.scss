@@ -1,0 +1,206 @@
+$green: #2f9b63;
+$green-soft: #eef9ef;
+$green-deep: #1f7c4b;
+$gold: #d8a144;
+$gold-soft: #fff7df;
+$bg: #f7f3ea;
+$bg-mint: #edf7ee;
+$card: rgba(255, 255, 255, 0.94);
+$text: #172116;
+$muted: #687665;
+$subtle: #94a08d;
+$line: rgba(36, 55, 39, 0.09);
+$shadow: 0 18rpx 46rpx rgba(39, 61, 42, 0.10);
+$shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
+
+.club-page {
+  min-height: 100vh;
+  padding: 24rpx;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(216, 161, 68, 0.14), transparent 34%),
+    radial-gradient(circle at 92% 18%, rgba(94, 178, 122, 0.13), transparent 30%),
+    linear-gradient(180deg, #fbf7ef 0%, #eef7ee 54%, #f6f8f3 100%);
+  color: $text;
+}
+
+.club-card {
+  background: $card;
+  border: 1px solid $line;
+  border-radius: 28rpx;
+  box-shadow: $shadow-soft;
+  overflow: hidden;
+}
+
+.club-card + .club-card {
+  margin-top: 24rpx;
+}
+
+.club-card__hd {
+  padding: 26rpx 28rpx 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  border-bottom: 1px solid $line;
+}
+
+.club-card__title {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: $text;
+}
+
+.club-card__bd {
+  padding: 24rpx 28rpx 28rpx;
+}
+
+.club-eyebrow {
+  color: #a87520;
+  font-size: 22rpx;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.club-title {
+  color: $text;
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.18;
+}
+
+.club-sub {
+  color: $muted;
+  font-size: 25rpx;
+  line-height: 1.48;
+}
+
+.club-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+  color: $green-deep;
+  background: rgba(47, 155, 99, 0.10);
+  border: 1px solid rgba(47, 155, 99, 0.16);
+}
+
+.club-pill--gold {
+  color: #a87520;
+  background: rgba(216, 161, 68, 0.14);
+  border-color: rgba(216, 161, 68, 0.20);
+}
+
+.club-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 82rpx;
+  padding: 0 30rpx;
+  border-radius: 24rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(135deg, #65c980, $green-deep);
+  box-shadow: 0 16rpx 30rpx rgba(31, 124, 75, 0.20);
+}
+
+.club-btn[disabled] {
+  opacity: 0.56;
+}
+
+.club-btn--ghost {
+  color: $text;
+  background: #fff;
+  border: 1px solid $line;
+  box-shadow: none;
+}
+
+.club-btn--warn {
+  background: linear-gradient(135deg, #e4b355, #c8821a);
+  box-shadow: 0 16rpx 30rpx rgba(200, 130, 26, 0.18);
+}
+
+.club-input,
+.club-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid $line;
+  border-radius: 22rpx;
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 28rpx;
+  color: $text;
+}
+
+.club-input {
+  height: 96rpx;
+  min-height: 96rpx;
+  padding: 0 24rpx;
+  line-height: normal;
+}
+
+.club-textarea {
+  min-height: 210rpx;
+  padding: 22rpx 22rpx;
+  line-height: 1.45;
+}
+
+.club-section-title {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: $muted;
+  margin-bottom: 14rpx;
+}
+
+.club-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 7rpx 16rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.club-status--wait { background: rgba(216, 161, 68, 0.15); color: #9a6a16; }
+.club-status--run { background: rgba(47, 155, 99, 0.13); color: #1f7c4b; }
+.club-status--pay { background: rgba(230, 130, 46, 0.14); color: #c46b16; }
+.club-status--done { background: rgba(63, 153, 103, 0.12); color: #26753a; }
+.club-status--cancel { background: rgba(0, 0, 0, 0.06); color: #555; }
+
+.club-empty {
+  padding: 80rpx 20rpx;
+  text-align: center;
+  color: $muted;
+  font-size: 26rpx;
+}
+
+.brand-poster {
+  position: relative;
+  min-height: 330rpx;
+  padding: 36rpx;
+  border-radius: 34rpx;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(239, 249, 239, 0.86)),
+    radial-gradient(circle at 82% 28%, rgba(216, 161, 68, 0.28), transparent 28%),
+    linear-gradient(135deg, #fffaf0 0%, #e9f6ec 58%, #f8fbf6 100%);
+  border: 1px solid rgba(216, 161, 68, 0.18);
+  box-shadow: $shadow;
+}
+
+.brand-poster::after {
+  content: '';
+  position: absolute;
+  right: -52rpx;
+  bottom: -82rpx;
+  width: 300rpx;
+  height: 300rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(47, 155, 99, 0.20), rgba(216, 161, 68, 0.20));
+}
+
+.bottom-safe {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}

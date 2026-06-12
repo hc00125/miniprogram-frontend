@@ -1,0 +1,97 @@
+{
+  "pages": [
+    {
+      "path": "pages/boss/home/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "偷吃电竞",
+        "navigationBarBackgroundColor": "#fbf7ef",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/boss/waiting/index",
+      "style": {
+        "navigationBarTitleText": "等待接单"
+      }
+    },
+    {
+      "path": "pages/boss/in-progress/index",
+      "style": {
+        "navigationBarTitleText": "服务进行中"
+      }
+    },
+    {
+      "path": "pages/boss/payment/index",
+      "style": {
+        "navigationBarTitleText": "订单支付"
+      }
+    },
+    {
+      "path": "pages/boss/query/index",
+      "style": {
+        "navigationBarTitleText": "订单查询"
+      }
+    },
+    {
+      "path": "pages/client/login/index",
+      "style": {
+        "navigationBarTitleText": "微信登录"
+      }
+    },
+    {
+      "path": "pages/client/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
+      "path": "pages/client/account/index",
+      "style": {
+        "navigationBarTitleText": "账号信息"
+      }
+    },
+    {
+      "path": "pages/player/apply/index",
+      "style": {
+        "navigationBarTitleText": "申请陪玩师"
+      }
+    },
+    {
+      "path": "pages/player/login/index",
+      "style": {
+        "navigationBarTitleText": "打手登录"
+      }
+    },
+    {
+      "path": "pages/player/grab/index",
+      "style": {
+        "navigationBarTitleText": "抢单大厅"
+      }
+    },
+    {
+      "path": "pages/player/list/index",
+      "style": {
+        "navigationBarTitleText": "已入驻陪玩"
+      }
+    },
+    {
+      "path": "pages/player/my-orders/index",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/player/order-detail/index",
+      "style": {
+        "navigationBarTitleText": "订单详情"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "偷吃电竞",
+    "navigationBarBackgroundColor": "#fbf7ef",
+    "backgroundColor": "#fbf7ef"
+  }
+}
