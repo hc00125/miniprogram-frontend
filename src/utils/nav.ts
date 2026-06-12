@@ -9,62 +9,100 @@ export function toPageUrl(path: string, params: Record<string, string | number |
   return `${path}${toQueryString(params)}`
 }
 
-export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
+/**
+ * 打开二级页面并保留当前页面。
+ * 适用于订单详情、账号信息、陪玩申请等需要返回的页面。
+ */
+export function openPage(path: string, params: Record<string, string | number | undefined | null> = {}) {
   uni.navigateTo({ url: toPageUrl(path, params) })
 }
 
-export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
+/**
+ * 替换当前流程页面。
+ * 适用于登录完成、提交成功、下单成功等不应返回旧表单的场景。
+ */
+export function replacePage(path: string, params: Record<string, string | number | undefined | null> = {}) {
   uni.redirectTo({ url: toPageUrl(path, params) })
 }
 
+/**
+ * 清空页面栈并进入指定页面。
+ */
 export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
   uni.reLaunch({ url: toPageUrl(path, params) })
 }
 
 /**
- * 5 个底部 tab 的目标值。
- * home 内部 swiper 索引与之一致。
+ * 兼容旧调用：go 仅用于普通二级页面。
+ * 新代码应优先使用 openPage，使跳转语义更清楚。
  */
-export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
-
-const tabParam: Record<MainTab, string> = {
-  home: 'home',
-  order: 'order',
-  query: 'query',
-  players: 'players',
-  profile: 'profile'
-}
-
-export function goMain(tab: MainTab = 'home') {
-  // query / players / profile 改用 navigateTo，让 navbar 显示返回箭头
-  // 而不是 reLaunch 默认的"首页"图标
-  if (tab === 'home' || tab === 'order') {
-    relaunch('/pages/boss/home/index', { tab: tabParam[tab] })
-    return
-  }
-  if (tab === 'query') {
-    uni.navigateTo({ url: '/pages/boss/query/index' })
-    return
-  }
-  if (tab === 'players') {
-    uni.navigateTo({ url: '/pages/player/list/index' })
-    return
-  }
-  uni.navigateTo({ url: '/pages/client/profile/index' })
+export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  openPage(path, params)
 }
 
 /**
- * 用于 query / players / profile 页面之间切换 tab。
- * 使用 navigateTo 让 navbar 显示返回箭头，避免微信原生的"首页"图标。
- * 目标页面在 onLoad 中通过 tab 参数自动跳转 swiper/状态。
+ * 兼容旧调用：新代码应优先使用 replacePage。
+ */
+export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  replacePage(path, params)
+}
+
+/**
+ * 5 个底部主导航目标。
+ * home 和 order 共用首页页面，通过 tab 参数切换内部 swiper。
+ */
+export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
+
+interface MainRoute {
+  path: string
+  params?: Record<string, string>
+}
+
+const MAIN_ROUTES: Record<MainTab, MainRoute> = {
+  home: {
+    path: '/pages/boss/home/index',
+    params: { tab: 'home' }
+  },
+  order: {
+    path: '/pages/boss/home/index',
+    params: { tab: 'order' }
+  },
+  query: {
+    path: '/pages/boss/query/index'
+  },
+  players: {
+    path: '/pages/player/list/index'
+  },
+  profile: {
+    path: '/pages/client/profile/index'
+  }
+}
+
+/**
+ * 切换底部一级主页面。
+ *
+ * 一级页面之间不应该使用 navigateTo，否则每次点击底部导航都会
+ * 向微信小程序页面栈压入一个新页面。这里统一使用 reLaunch，确保
+ * 主导航切换后页面栈始终只有一个根页面。
+ */
+export function switchMainTab(tab: MainTab) {
+  const route = MAIN_ROUTES[tab]
+  relaunch(route.path, route.params)
+}
+
+/**
+ * 兼容旧调用。新代码统一使用 switchMainTab。
+ */
+export function goMain(tab: MainTab = 'home') {
+  switchMainTab(tab)
+}
+
+/**
+ * 兼容现有页面代码。
+ * 此函数虽然保留旧名称，但不再使用 navigateTo，避免主页面反复堆栈。
  */
 export function navigateToTab(tab: 'query' | 'players' | 'profile') {
-  const pathMap: Record<string, string> = {
-    query: '/pages/boss/query/index',
-    players: '/pages/player/list/index',
-    profile: '/pages/client/profile/index'
-  }
-  uni.navigateTo({ url: pathMap[tab] })
+  switchMainTab(tab)
 }
 
 export function back(delta = 1) {
