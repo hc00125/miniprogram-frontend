@@ -2653,7 +2653,7 @@ onUnmounted(() => {
 
 .order-panel {
   min-height: 100vh;
-  padding: 0 18rpx 356rpx;
+  padding: 0 18rpx calc(356rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   color: #202422;
   background: #faf8f2;
