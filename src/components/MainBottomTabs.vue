@@ -5,7 +5,7 @@
       :key="item.key"
       class="main-bottom-tabs__item"
       :class="{ active: active === item.key }"
-      @tap="emit('select', item.key)"
+      @tap="handleSelect(item.key)"
     >
       <text class="main-bottom-tabs__icon">{{ item.icon }}</text>
       <text class="main-bottom-tabs__label">{{ item.label }}</text>
@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import type { MainTab } from '@/utils/nav'
 
-defineProps<{
+const props = defineProps<{
   active: MainTab
 }>()
 
@@ -31,6 +31,11 @@ const tabs: { key: MainTab; label: string; icon: string }[] = [
   { key: 'players', label: '陪玩', icon: '◇' },
   { key: 'profile', label: '我的', icon: '○' }
 ]
+
+function handleSelect(tab: MainTab) {
+  if (tab === props.active) return
+  emit('select', tab)
+}
 </script>
 
 <style lang="scss">
