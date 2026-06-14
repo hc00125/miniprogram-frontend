@@ -108,3 +108,21 @@ export function navigateToTab(tab: 'query' | 'players' | 'profile') {
 export function back(delta = 1) {
   uni.navigateBack({ delta })
 }
+
+/**
+ * Navigate back to the nearest page matching routePath in the stack.
+ * If not found, navigate back to the first page (stack bottom).
+ * Avoids page accumulation from repeated replace() calls in workspace pages.
+ */
+export function backToRoute(routePath: string) {
+  const pages = getCurrentPages()
+  const currentRoutes = pages.map((p) => (p as any).route || '')
+  for (let i = currentRoutes.length - 2; i >= 0; i--) {
+    if (currentRoutes[i] === routePath.replace(/^\//, '')) {
+      const delta = currentRoutes.length - 1 - i
+      uni.navigateBack({ delta })
+      return
+    }
+  }
+  uni.navigateBack({ delta: pages.length - 1 })
+}

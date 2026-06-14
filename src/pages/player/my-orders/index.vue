@@ -31,7 +31,7 @@
     </view>
 
     <view class="footer-actions">
-      <button class="club-btn club-btn--ghost" @tap="replace('/pages/player/grab/index')">抢单大厅</button>
+      <button class="club-btn club-btn--ghost" @tap="backToRoute('/pages/player/grab/index')">抢单大厅</button>
       <button class="club-btn club-btn--ghost" @tap="handleLogout">退出登录</button>
     </view>
   </view>
@@ -43,7 +43,7 @@ import { completeOrder, getMyOrders, logoutPlayer } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { go, replace } from '@/utils/nav'
+import { go, replace, backToRoute } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
 const player = ref<any>(null)
