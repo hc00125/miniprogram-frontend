@@ -31,7 +31,7 @@
     </view>
 
     <view class="footer-actions">
-      <button class="club-btn club-btn--ghost" @tap="go('/pages/player/grab/index')">抢单大厅</button>
+      <button class="club-btn club-btn--ghost" @tap="replace('/pages/player/grab/index')">抢单大厅</button>
       <button class="club-btn club-btn--ghost" @tap="handleLogout">退出登录</button>
     </view>
   </view>
@@ -94,7 +94,7 @@ async function handleLogout() {
 onMounted(async () => {
   if (!(await isApprovedPlayer())) {
     toast('请先成为陪玩师')
-    go('/pages/player/apply/index')
+    replace('/pages/player/apply/index')
     return
   }
   const token = getStorage<string>('token')
