@@ -50,7 +50,7 @@
     </view>
 
     <view class="footer-actions">
-      <button class="club-btn club-btn--ghost" @tap="go('/pages/player/grab/index')">大厅</button>
+      <button class="club-btn club-btn--ghost" @tap="replace('/pages/player/grab/index')">大厅</button>
       <button v-if="orderInfo?.status === '进行中' && !orderInfo?.timer_started_at" class="club-btn" :disabled="starting" @tap="handleStartTimer">开始计时</button>
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.timer_started_at && !orderInfo?.is_paused" class="club-btn club-btn--warn" @tap="handlePause">暂停</button>
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.is_paused" class="club-btn" @tap="handleResume">继续</button>
@@ -67,7 +67,7 @@ import { completeOrder, getPlayerOrder, pausePlayerOrder, resumePlayerOrder, sta
 import { formatDuration } from '@/utils/format'
 import { getStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { go, replace } from '@/utils/nav'
+import { replace } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
 const orderNo = ref('')
@@ -199,7 +199,7 @@ onLoad((query) => {
 onMounted(async () => {
   if (!(await isApprovedPlayer())) {
     toast('请先成为陪玩师')
-    go('/pages/player/apply/index')
+    replace('/pages/player/apply/index')
     return
   }
   const token = getStorage<string>('token')
