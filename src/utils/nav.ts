@@ -22,49 +22,37 @@ export function relaunch(path: string, params: Record<string, string | number | 
 }
 
 /**
- * 5 个底部 tab 的目标值。
- * home 内部 swiper 索引与之一致。
+ * 5 个底部主入口。
+ * home / order 在首页 swiper 内切换，query / players / profile 是独立页面。
+ * 主入口之间统一使用 reLaunch，避免 navigateTo 导致页面栈不断堆积。
  */
 export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
 
-const tabParam: Record<MainTab, string> = {
+const homeTabs: Record<'home' | 'order', string> = {
   home: 'home',
-  order: 'order',
-  query: 'query',
-  players: 'players',
-  profile: 'profile'
+  order: 'order'
+}
+
+const standaloneMainTabPaths: Record<'query' | 'players' | 'profile', string> = {
+  query: '/pages/boss/query/index',
+  players: '/pages/player/list/index',
+  profile: '/pages/client/profile/index'
 }
 
 export function goMain(tab: MainTab = 'home') {
-  // query / players / profile 改用 navigateTo，让 navbar 显示返回箭头
-  // 而不是 reLaunch 默认的"首页"图标
   if (tab === 'home' || tab === 'order') {
-    relaunch('/pages/boss/home/index', { tab: tabParam[tab] })
+    relaunch('/pages/boss/home/index', { tab: homeTabs[tab] })
     return
   }
-  if (tab === 'query') {
-    uni.navigateTo({ url: '/pages/boss/query/index' })
-    return
-  }
-  if (tab === 'players') {
-    uni.navigateTo({ url: '/pages/player/list/index' })
-    return
-  }
-  uni.navigateTo({ url: '/pages/client/profile/index' })
+  relaunch(standaloneMainTabPaths[tab])
 }
 
 /**
- * 用于 query / players / profile 页面之间切换 tab。
- * 使用 navigateTo 让 navbar 显示返回箭头，避免微信原生的"首页"图标。
- * 目标页面在 onLoad 中通过 tab 参数自动跳转 swiper/状态。
+ * 用于 query / players / profile 页面之间切换主入口。
+ * 这里不能用 navigateTo，否则每次点击底部导航都会新增页面栈。
  */
 export function navigateToTab(tab: 'query' | 'players' | 'profile') {
-  const pathMap: Record<string, string> = {
-    query: '/pages/boss/query/index',
-    players: '/pages/player/list/index',
-    profile: '/pages/client/profile/index'
-  }
-  uni.navigateTo({ url: pathMap[tab] })
+  relaunch(standaloneMainTabPaths[tab])
 }
 
 export function back(delta = 1) {
