@@ -9,18 +9,6 @@ export function toPageUrl(path: string, params: Record<string, string | number |
   return `${path}${toQueryString(params)}`
 }
 
-export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  uni.navigateTo({ url: toPageUrl(path, params) })
-}
-
-export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  uni.redirectTo({ url: toPageUrl(path, params) })
-}
-
-export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  uni.reLaunch({ url: toPageUrl(path, params) })
-}
-
 export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
 
 const mainTabPaths: Record<MainTab, string> = {
@@ -31,8 +19,46 @@ const mainTabPaths: Record<MainTab, string> = {
   profile: '/pages/client/profile/index'
 }
 
+const mainTabPathSet = new Set(Object.values(mainTabPaths))
+
+function normalizePath(path: string) {
+  return path.split('?')[0]
+}
+
+function isMainTabPath(path: string) {
+  return mainTabPathSet.has(normalizePath(path))
+}
+
+function switchMainTab(path: string) {
+  uni.switchTab({ url: normalizePath(path) })
+}
+
+export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  if (isMainTabPath(path)) {
+    switchMainTab(path)
+    return
+  }
+  uni.navigateTo({ url: toPageUrl(path, params) })
+}
+
+export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  if (isMainTabPath(path)) {
+    switchMainTab(path)
+    return
+  }
+  uni.redirectTo({ url: toPageUrl(path, params) })
+}
+
+export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  if (isMainTabPath(path)) {
+    switchMainTab(path)
+    return
+  }
+  uni.reLaunch({ url: toPageUrl(path, params) })
+}
+
 export function goMain(tab: MainTab = 'home') {
-  uni.switchTab({ url: mainTabPaths[tab] })
+  switchMainTab(mainTabPaths[tab])
 }
 
 export function navigateToTab(tab: 'query' | 'players' | 'profile') {
