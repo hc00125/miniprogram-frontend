@@ -43,7 +43,7 @@ import { completeOrder, getMyOrders, logoutPlayer } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { go, replace } from '@/utils/nav'
+import { go, goMain, replace } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
 const player = ref<any>(null)
@@ -94,7 +94,7 @@ async function handleLogout() {
 onMounted(async () => {
   if (!(await isApprovedPlayer())) {
     toast('请先成为陪玩师')
-    go('/pages/player/apply/index')
+    replace('/pages/player/apply/index')
     return
   }
   const token = getStorage<string>('token')
@@ -105,7 +105,7 @@ onMounted(async () => {
   }
   if (!playerInfo) {
     toast('陪玩师信息未同步，请刷新个人中心')
-    replace('/pages/client/profile/index')
+    goMain('profile')
     return
   }
   player.value = playerInfo
