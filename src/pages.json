@@ -10,6 +10,32 @@
       }
     },
     {
+      "path": "pages/boss/order/index",
+      "style": {
+        "navigationBarTitleText": "点单大厅",
+        "navigationBarBackgroundColor": "#fbf7ef",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/boss/query/index",
+      "style": {
+        "navigationBarTitleText": "订单查询"
+      }
+    },
+    {
+      "path": "pages/player/list/index",
+      "style": {
+        "navigationBarTitleText": "已入驻陪玩"
+      }
+    },
+    {
+      "path": "pages/client/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
+      }
+    },
+    {
       "path": "pages/boss/waiting/index",
       "style": {
         "navigationBarTitleText": "等待接单"
@@ -28,21 +54,9 @@
       }
     },
     {
-      "path": "pages/boss/query/index",
-      "style": {
-        "navigationBarTitleText": "订单查询"
-      }
-    },
-    {
       "path": "pages/client/login/index",
       "style": {
         "navigationBarTitleText": "微信登录"
-      }
-    },
-    {
-      "path": "pages/client/profile/index",
-      "style": {
-        "navigationBarTitleText": "个人中心"
       }
     },
     {
@@ -70,12 +84,6 @@
       }
     },
     {
-      "path": "pages/player/list/index",
-      "style": {
-        "navigationBarTitleText": "已入驻陪玩"
-      }
-    },
-    {
       "path": "pages/player/my-orders/index",
       "style": {
         "navigationBarTitleText": "我的订单"
@@ -88,6 +96,34 @@
       }
     }
   ],
+  "tabBar": {
+    "color": "#7c847d",
+    "selectedColor": "#2f9b63",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/boss/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/boss/order/index",
+        "text": "点单"
+      },
+      {
+        "pagePath": "pages/boss/query/index",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/player/list/index",
+        "text": "陪玩"
+      },
+      {
+        "pagePath": "pages/client/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "偷吃电竞",
