@@ -115,14 +115,15 @@ export function back(delta = 1) {
  * Avoids page accumulation from repeated replace() calls in workspace pages.
  */
 export function backToRoute(routePath: string) {
+  const targetRoute = routePath.replace(/^\//, '').split('?')[0]
   const pages = getCurrentPages()
   const currentRoutes = pages.map((p) => (p as any).route || '')
   for (let i = currentRoutes.length - 2; i >= 0; i--) {
-    if (currentRoutes[i] === routePath.replace(/^\//, '')) {
+    if (currentRoutes[i] === targetRoute) {
       const delta = currentRoutes.length - 1 - i
       uni.navigateBack({ delta })
       return
     }
   }
-  uni.navigateBack({ delta: pages.length - 1 })
+  replacePage(routePath)
 }

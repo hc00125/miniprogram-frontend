@@ -307,6 +307,8 @@
               </view>
             </view>
 
+            <view v-if="selectedPackage" class="order-bottom-spacer"></view>
+
             <view v-if="selectedPackage" class="order-bottom-bar">
               <view>
                 <text>预估 <text class="detail-link">明细 ›</text></text>
@@ -2653,7 +2655,9 @@ onUnmounted(() => {
 
 .order-panel {
   min-height: 100vh;
-  padding: 0 18rpx calc(500rpx + 2 * env(safe-area-inset-bottom));
+  padding: 0 18rpx 520rpx;
+  padding-bottom: calc(520rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(520rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   color: #202422;
   background: #faf8f2;
@@ -3407,14 +3411,24 @@ onUnmounted(() => {
   border-color: #eee6da;
 }
 
+.order-bottom-spacer {
+  height: 360rpx;
+  height: calc(360rpx + constant(safe-area-inset-bottom));
+  height: calc(360rpx + env(safe-area-inset-bottom));
+}
+
 .order-bottom-bar {
   position: fixed;
   left: 18rpx;
   right: 18rpx;
+  bottom: 160rpx;
+  bottom: calc(160rpx + constant(safe-area-inset-bottom));
   bottom: calc(160rpx + env(safe-area-inset-bottom));
   z-index: 20;
   min-height: 138rpx;
-  padding: 24rpx 26rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: 24rpx 26rpx 24rpx;
+  padding-bottom: calc(24rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   border-radius: 32rpx;
   background: #fff;

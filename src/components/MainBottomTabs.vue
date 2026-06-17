@@ -50,9 +50,15 @@ function handleSelect(tab: MainTab) {
 }
 
 .main-bottom-tabs {
-  width: 100%;
+  position: fixed;
+  left: 16rpx;
+  right: 16rpx;
+  bottom: 14rpx;
+  z-index: 22;
+  width: auto;
   height: calc(104rpx + env(safe-area-inset-bottom));
   padding: 10rpx 18rpx calc(10rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   background: rgba(255, 255, 255, 0.96);
