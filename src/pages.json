@@ -104,23 +104,33 @@
     "list": [
       {
         "pagePath": "pages/boss/home/index",
-        "text": "首页"
+        "text": "首页",
+        "iconPath": "/static/icons/tab-home.png",
+        "selectedIconPath": "/static/icons/tab-home-active.png"
       },
       {
         "pagePath": "pages/boss/order/index",
-        "text": "点单"
+        "text": "点单",
+        "iconPath": "/static/icons/tab-order.png",
+        "selectedIconPath": "/static/icons/tab-order-active.png"
       },
       {
         "pagePath": "pages/boss/query/index",
-        "text": "订单"
+        "text": "订单",
+        "iconPath": "/static/icons/tab-query.png",
+        "selectedIconPath": "/static/icons/tab-query-active.png"
       },
       {
         "pagePath": "pages/player/list/index",
-        "text": "陪玩"
+        "text": "陪玩",
+        "iconPath": "/static/icons/tab-players.png",
+        "selectedIconPath": "/static/icons/tab-players-active.png"
       },
       {
         "pagePath": "pages/client/profile/index",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "/static/icons/tab-profile.png",
+        "selectedIconPath": "/static/icons/tab-profile-active.png"
       }
     ]
   },

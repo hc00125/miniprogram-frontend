@@ -307,6 +307,7 @@
               </view>
             </view>
 
+            <view v-if="selectedPackage" class="order-bottom-spacer"></view>
             <view v-if="selectedPackage" class="order-bottom-bar">
               <view>
                 <text>预估 <text class="detail-link">明细 ›</text></text>
@@ -3407,14 +3408,24 @@ onUnmounted(() => {
   border-color: #eee6da;
 }
 
+.order-bottom-spacer {
+  height: 300rpx;
+  height: calc(300rpx + constant(safe-area-inset-bottom));
+  height: calc(300rpx + env(safe-area-inset-bottom));
+}
+
 .order-bottom-bar {
   position: fixed;
   left: 18rpx;
   right: 18rpx;
+  bottom: 132rpx;
+  bottom: calc(132rpx + constant(safe-area-inset-bottom));
   bottom: calc(132rpx + env(safe-area-inset-bottom));
   z-index: 20;
   min-height: 138rpx;
-  padding: 24rpx 26rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: 24rpx 26rpx 24rpx;
+  padding-bottom: calc(24rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   border-radius: 32rpx;
   background: #fff;

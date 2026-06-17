@@ -38,7 +38,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { getPlayerTypes } from '@/api/boss'
 import { getCurrentPlayer, loginPlayer } from '@/api/player'
 import { getErrorMessage, toast, success } from '@/utils/feedback'
-import { go, replace } from '@/utils/nav'
+import { replace } from '@/utils/nav'
 import { getStorage, setStorage } from '@/utils/storage'
 
 const form = reactive({ name: '', type_id: 0 })
@@ -64,7 +64,7 @@ async function handleLogin() {
     setStorage('token', res.token)
     setStorage('player', res.player)
     success('登录成功')
-    go('/pages/player/grab/index')
+    replace('/pages/player/grab/index')
   } catch (error) {
     toast(getErrorMessage(error, '登录失败'))
   } finally {
@@ -78,7 +78,7 @@ onMounted(async () => {
   if (token && player) {
     try {
       await getCurrentPlayer()
-      go('/pages/player/grab/index')
+      replace('/pages/player/grab/index')
       return
     } catch {
       // ignore invalid token and stay on page

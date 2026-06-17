@@ -29,6 +29,7 @@ function isMainTabPath(path: string) {
   return mainTabPathSet.has(normalizePath(path))
 }
 
+/** Switch to a main tab page via native tabBar. */
 function switchMainTab(path: string) {
   uni.switchTab({ url: normalizePath(path) })
 }
@@ -59,6 +60,40 @@ export function relaunch(path: string, params: Record<string, string | number | 
 
 export function goMain(tab: MainTab = 'home') {
   switchMainTab(mainTabPaths[tab])
+}
+
+/**
+ * Navigate back to a target route if it exists in the page stack.
+ * Falls back to redirectTo (or switchTab for main-tab targets).
+ * Prevents page stack accumulation when jumping between sub-pages and tabs.
+ */
+export function backToRoute(routePath: string) {
+  const targetRoute = normalizePath(routePath).replace(/^\//, '')
+  const pages = getCurrentPages()
+  const currentRoutes = pages.map((p) => (p as any).route || '')
+  for (let i = currentRoutes.length - 2; i >= 0; i--) {
+    if (currentRoutes[i] === targetRoute) {
+      const delta = currentRoutes.length - 1 - i
+      uni.navigateBack({ delta })
+      return
+    }
+  }
+  // Target not in stack: redirect to it
+  if (isMainTabPath(routePath)) {
+    switchMainTab(routePath)
+  } else {
+    uni.redirectTo({ url: normalizePath(routePath) })
+  }
+}
+
+/** Direct navigateTo without main-tab detection. Prefer go() unless you need raw navigateTo. */
+export function openPage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  uni.navigateTo({ url: toPageUrl(path, params) })
+}
+
+/** Direct redirectTo without main-tab detection. Prefer replace() unless you need raw redirectTo. */
+export function replacePage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  uni.redirectTo({ url: toPageUrl(path, params) })
 }
 
 export function navigateToTab(tab: 'query' | 'players' | 'profile') {

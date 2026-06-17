@@ -536,9 +536,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20rpx;
-  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.96);
+ gap: 20rpx;
+  padding: 20rpx 24rpx 20rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+ background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 -8rpx 30rpx rgba(39, 61, 42, 0.10);
 }
 .order-bottom-bar > view {
