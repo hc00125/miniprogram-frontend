@@ -19,7 +19,8 @@
       <view class="card-content">
         <view class="card-top">
           <view class="card-avatar">
-            <text>{{ player?.name?.[0] || '陪' }}</text>
+            <image v-if="playerAvatarUrl" class="card-avatar-img" :src="playerAvatarUrl" mode="aspectFill" />
+            <text v-else>{{ player?.name?.[0] || '陪' }}</text>
           </view>
           <view class="card-info">
             <view class="card-eyebrow">PLAYER HUB · 抢单大厅</view>
@@ -30,9 +31,9 @@
               <text class="type-rating">★ {{ player?.avg_rating || '5.0' }}</text>
             </view>
           </view>
-          <button class="online-toggle" :class="`online-toggle--${online ? 'on' : 'off'}`" @tap="toggleOnline">
+          <button class="online-toggle" :class="`online-toggle--${online ? 'on' : 'off'}`" :disabled="onlineUpdating" @tap="toggleOnline">
             <view class="toggle-dot"></view>
-            <text>{{ online ? '在线' : '离线' }}</text>
+            <text>{{ onlineUpdating ? '同步中' : (online ? '在线' : '离线') }}</text>
           </button>
         </view>
         <view class="stats-row">
@@ -145,19 +146,24 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { getAvailableOrders, grabOrder as apiGrabOrder, logoutPlayer } from '@/api/player'
+import { getAvailableOrders, getCurrentPlayer, grabOrder as apiGrabOrder, logoutPlayer, updatePlayerOnlineStatus } from '@/api/player'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
-import { isApprovedPlayer, setPlayerOnlineStatus, getPlayerOnlineStatus } from '@/utils/client'
+import { getClientProfile, isApprovedPlayer, normalizeAvatarUrl, setPlayerOnlineStatus, getPlayerOnlineStatus } from '@/utils/client'
 
 const player = ref<any>(null)
 const orders = ref<any[]>([])
 const online = ref(getPlayerOnlineStatus())
+const onlineUpdating = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let prevOrderCount = 0
 
 const availableCount = computed(() => orders.value.filter(o => o.can_grab).length)
+const playerAvatarUrl = computed(() => {
+  const profile = getClientProfile()
+  return normalizeAvatarUrl(player.value?.avatar_url || player.value?.avatarUrl || profile?.avatar_url || profile?.avatarUrl)
+})
 const todayCount = computed(() => Math.floor(Math.random() * 5) + 1) // 演示数据
 const todayIncome = computed(() => {
   // 演示数据：基于陪玩师类型估算
@@ -178,6 +184,19 @@ function relativeTime(input: string) {
   if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
   if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
   return `${Math.floor(diff / 86400)} 天前`
+}
+
+function stopOrderRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+async function startOrderRefresh() {
+  await fetchOrders()
+  stopOrderRefresh()
+  refreshTimer = setInterval(fetchOrders, 10000)
 }
 
 async function fetchOrders() {
@@ -207,19 +226,26 @@ async function grab(order: any) {
   }
 }
 
-function toggleOnline() {
-  online.value = !online.value
-  setPlayerOnlineStatus(online.value)
-  if (!online.value) {
-    if (refreshTimer) {
-      clearInterval(refreshTimer)
-      refreshTimer = null
+async function toggleOnline() {
+  if (onlineUpdating.value) return
+  const nextOnline = !online.value
+  onlineUpdating.value = true
+  try {
+    const res = await updatePlayerOnlineStatus(nextOnline)
+    online.value = Boolean(res.is_online)
+    setPlayerOnlineStatus(online.value)
+    if (player.value) player.value = { ...player.value, is_online: online.value }
+    if (!online.value) {
+      stopOrderRefresh()
+      toast('已离线，停止接单')
+    } else {
+      await startOrderRefresh()
+      toast('已上线，开始接单')
     }
-    toast('已离线，停止接单')
-  } else {
-    fetchOrders()
-    refreshTimer = setInterval(fetchOrders, 10000)
-    toast('已上线，开始接单')
+  } catch (error) {
+    toast(getErrorMessage(error, '在线状态更新失败'))
+  } finally {
+    onlineUpdating.value = false
   }
 }
 
@@ -229,6 +255,7 @@ async function handleLogout() {
   try {
     await logoutPlayer()
   } catch {}
+  setPlayerOnlineStatus(false)
   removeStorage('token')
   removeStorage('player')
   replace('/pages/client/login/index')
@@ -241,28 +268,39 @@ onMounted(async () => {
     return
   }
   const token = getStorage<string>('token')
-  const playerInfo = getStorage<any>('player')
   if (!token) {
     replace('/pages/client/login/index')
     return
   }
-  if (!playerInfo) {
+  try {
+    const currentPlayer = await getCurrentPlayer()
+    player.value = currentPlayer
+    online.value = Boolean(currentPlayer?.is_online)
+    setPlayerOnlineStatus(online.value)
+  } catch (error) {
+    const playerInfo = getStorage<any>('player')
+    if (!playerInfo) {
+      toast('陪玩师信息未同步，请刷新个人中心')
+      replace('/pages/client/profile/index')
+      return
+    }
+    player.value = playerInfo
+    online.value = getPlayerOnlineStatus()
+  }
+  if (!player.value) {
     toast('陪玩师信息未同步，请刷新个人中心')
     replace('/pages/client/profile/index')
     return
   }
-  player.value = playerInfo
   if (!online.value) {
-    // 恢复为离线状态时，仅拉一次订单列表，不启动轮询
     await fetchOrders()
     return
   }
-  await fetchOrders()
-  refreshTimer = setInterval(fetchOrders, 10000)
+  await startOrderRefresh()
 })
 
 onUnmounted(() => {
-  if (refreshTimer) clearInterval(refreshTimer)
+  stopOrderRefresh()
 })
 </script>
 
@@ -424,6 +462,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 10rpx 24rpx rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.card-avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .card-info {

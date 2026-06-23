@@ -46,7 +46,7 @@
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
           <view class="card-actions">
             <text>+¥{{ formatMoney(player.price_extra || 0) }}/时</text>
-            <button class="club-btn" @tap="goMain('order')">指定TA</button>
+            <button class="club-btn" @tap="showDesignateUnavailable">指定TA</button>
           </view>
         </view>
       </view>
@@ -88,6 +88,10 @@ function formatMoney(value: number) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(1)
 }
 
+function normalizeOnlineValue(value: unknown) {
+  return value === true || value === 1 || value === '1' || value === 'true'
+}
+
 async function fetchPlayers() {
   loaded.value = false
   try {
@@ -96,9 +100,10 @@ async function fetchPlayers() {
     // 标准化后端响应的嵌套字段
     players.value = (list || []).map(p => ({
       ...p,
+      is_online: normalizeOnlineValue(p.is_online),
       type_name: p.player_type?.name || p.type_name || '优质陪玩',
       price_extra: p.player_type?.price_extra || p.price_extra || 0,
-      status: p.status || (p.is_online ? '在线' : '离线')
+      status: normalizeOnlineValue(p.is_online) ? '在线' : '离线'
     }))
   } catch (error) {
     players.value = []
@@ -109,6 +114,10 @@ async function fetchPlayers() {
 }
 
 onMounted(fetchPlayers)
+
+function showDesignateUnavailable() {
+  toast('该功能尚未上线')
+}
 
 function handleMainTabSelect(tab: MainTab) {
   if (tab === 'home' || tab === 'order') {

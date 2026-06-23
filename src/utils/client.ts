@@ -98,25 +98,33 @@ export function ensureClientProfile() {
 
 export async function syncClientProfile() {
   const profile = normalizeProfile(await getClientProfileApi())
-  // 后端返回的 is_online 字段可能滞后或缺失，
-  // 优先用本地缓存的在线状态（在 grab 等页面切换时更新）
-  const cachedOnline = uni.getStorageSync<string>('player_online_status')
-  if (profile.player && cachedOnline !== '' && cachedOnline !== null && cachedOnline !== undefined) {
-    profile.player.is_online = cachedOnline === '1' || cachedOnline === true
-  }
   saveClientProfile(profile)
-  if (profile.player) uni.setStorageSync('player', profile.player)
+  if (profile.player) {
+    uni.setStorageSync('player', profile.player)
+    uni.setStorageSync('player_online_status', profile.player.is_online ? '1' : '0')
+  }
   if (profile.application) uni.setStorageSync(APPLICATION_KEY, profile.application)
   return profile
 }
 
 export function setPlayerOnlineStatus(online: boolean) {
   uni.setStorageSync('player_online_status', online ? '1' : '0')
+  const player = uni.getStorageSync<any>('player')
+  if (player) {
+    uni.setStorageSync('player', { ...player, is_online: online })
+  }
+  const profile = getClientProfile()
+  if (profile?.player) {
+    saveClientProfile({ ...profile, player: { ...profile.player, is_online: online } })
+  }
 }
 
 export function getPlayerOnlineStatus(): boolean {
   const value = uni.getStorageSync<string>('player_online_status')
-  if (value === '' || value === null || value === undefined) return true // 默认在线
+  if (value === '' || value === null || value === undefined) {
+    const player = uni.getStorageSync<any>('player')
+    return Boolean(player?.is_online)
+  }
   return value === '1' || value === true
 }
 

@@ -79,9 +79,10 @@
               </view>
               <button @tap="goPlayerList">全部陪玩 ›</button>
             </view>
-            <scroll-view scroll-x class="player-showcase" show-scrollbar="false">
-              <view v-for="(player, index) in featuredPlayers" :key="player.id" class="show-player">
-                <image class="show-photo" :src="player.avatar_url || playerAvatarFor(index)" mode="aspectFill" />
+            <scroll-view v-if="featuredPlayers.length" scroll-x class="player-showcase" show-scrollbar="false">
+              <view v-for="player in featuredPlayers" :key="player.id" class="show-player">
+                <image v-if="player.avatar_url" class="show-photo" :src="player.avatar_url" mode="aspectFill" />
+                <view v-else class="show-photo show-photo--placeholder">{{ playerInitial(player) }}</view>
                 <view class="player-status" :class="{ busy: player.status === '忙碌' }">
                   {{ player.status || (player.is_online ? '在线' : '可预约') }}
                 </view>
@@ -94,6 +95,7 @@
                 </view>
               </view>
             </scroll-view>
+            <view v-else class="player-showcase-empty">暂无已入驻陪玩</view>
 
             <view class="section-head package-head">
               <view>
@@ -152,7 +154,10 @@
                     <text class="section-line"></text>
                     <text class="section-title">选择套餐</text>
                   </view>
-                  <text class="section-help">套餐说明 ?</text>
+                  <view class="section-side">
+                    <text class="section-more-hint">右滑查看更多</text>
+                    <text class="section-help">套餐说明 ?</text>
+                  </view>
                 </view>
                 <scroll-view v-if="categories.length" scroll-x class="tabs order-tabs" show-scrollbar="false">
                   <view
@@ -352,7 +357,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { createOrder, getAddons, getMyBossOrders, getOnlinePlayers, getPackageGroups, getPackages, queryBossOrders, type BossAddon, type BossOrderListItem, type BossPackage, type OnlinePlayer, type PackageGroup } from '@/api/boss'
+import { createOrder, getAddons, getMyBossOrders, getOnlinePlayers, getPackageGroups, getPackages, getPlayerList, queryBossOrders, type BossAddon, type BossOrderListItem, type BossPackage, type OnlinePlayer, type PackageGroup } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { formatHours } from '@/utils/format'
 import { replace, relaunch, navigateToTab, type MainTab } from '@/utils/nav'
@@ -364,11 +369,6 @@ interface Category extends PackageGroup { icon: string }
 
 const assetBase = '/images/home-redesign'
 const homeHero = `${assetBase}/hero-lounge.jpg`
-const playerVisuals = [
-  `${assetBase}/player-deer.png`,
-  `${assetBase}/player-chen.png`,
-  `${assetBase}/player-star.png`
-]
 const packageVisuals = [
   `${assetBase}/package-five.png`,
   `${assetBase}/package-six.png`
@@ -421,6 +421,7 @@ const MAX_PLAYER_COUNT = 3
 const packages = ref<BossPackage[]>([...fallbackPackages])
 const addons = ref<BossAddon[]>([...fallbackAddons])
 const onlinePlayers = ref<OnlinePlayer[]>([])
+const settledPlayers = ref<OnlinePlayer[]>([])
 const categories = ref<Category[]>([...fallbackCategories])
 const activeCategory = ref<number | null>(fallbackCategories[0].id)
 const selectedPackage = ref<BossPackage | null>(fallbackPackages[0])
@@ -451,12 +452,7 @@ const filteredPackages = computed(() => {
 const sortedOnlinePlayers = computed(() => [...onlinePlayers.value].sort((a, b) => (a.type_name || '').localeCompare(b.type_name || '')))
 
 const featuredPlayers = computed(() => {
-  const fallback = [
-    { id: -1, name: '小鹿', type_id: 1, type_name: '女陪', avg_rating: 4.9, total_orders: 36, status: '在线', price_extra: 20 },
-    { id: -2, name: '阿辰', type_id: 2, type_name: '技术陪', avg_rating: 5.0, total_orders: 48, status: '在线', price_extra: 10 },
-    { id: -3, name: '星野', type_id: 3, type_name: '金牌陪', avg_rating: 4.8, total_orders: 29, status: '忙碌', price_extra: 20 }
-  ] as OnlinePlayer[]
-  return (onlinePlayers.value.length ? onlinePlayers.value : fallback).slice(0, 6)
+  return settledPlayers.value.slice(0, 6)
 })
 
 const filteredDesignatePlayers = computed(() => {
@@ -564,8 +560,8 @@ function goMain(tab: MainTab = 'home') {
 }
 
 
-function playerAvatarFor(index: number) {
-  return playerVisuals[index % playerVisuals.length]
+function playerInitial(player: OnlinePlayer) {
+  return (player.name || player.type_name || '陪').trim().slice(0, 1)
 }
 
 function packageImageFor(index: number) {
@@ -624,6 +620,21 @@ function normalizePackages(sourcePackages: BossPackage[], sourceCategories: Cate
 function normalizeAddon(addon: BossAddon): BossAddon {
   const price = addonPriceOverrides[addon.name]
   return price === undefined ? addon : { ...addon, price_per_player: price }
+}
+
+function normalizeOnlineValue(value: unknown) {
+  return value === true || value === 1 || value === '1' || value === 'true'
+}
+
+function normalizePlayerForHome(player: OnlinePlayer): OnlinePlayer {
+  const isOnline = normalizeOnlineValue(player.is_online)
+  return {
+    ...player,
+    is_online: isOnline,
+    type_name: player.player_type?.name || player.type_name || '优质陪玩',
+    price_extra: player.player_type?.price_extra || player.price_extra || 0,
+    status: isOnline ? '在线' : '离线'
+  }
 }
 
 function getAddonName(id: number) {
@@ -741,11 +752,12 @@ function adjustPlayerCount(delta: number) {
 
 async function fetchData() {
   try {
-    const [pkgRes, addonRes, playerRes, groupRes] = await Promise.all([
+    const [pkgRes, addonRes, playerRes, groupRes, playerListRes] = await Promise.all([
       getPackages(),
       getAddons(),
       getOnlinePlayers(),
-      getPackageGroups()
+      getPackageGroups(),
+      getPlayerList()
     ])
 
     const nextCategories = (groupRes.length ? groupRes : fallbackCategories).map(group => ({
@@ -758,6 +770,7 @@ async function fetchData() {
     packages.value = nextPackages
     addons.value = nextAddons
     onlinePlayers.value = playerRes
+    settledPlayers.value = (playerListRes || []).map(normalizePlayerForHome)
     categories.value = nextCategories
 
     syncCategorySelection(nextCategories)
@@ -768,6 +781,7 @@ async function fetchData() {
     addons.value = fallbackAddons.map(normalizeAddon)
     categories.value = fallbackCategories
     onlinePlayers.value = []
+    settledPlayers.value = []
     syncCategorySelection(fallbackCategories)
     syncPackageSelection(packages.value)
     ensureAddonCounts()
@@ -777,7 +791,12 @@ async function fetchData() {
 
 async function refreshOnlinePlayers() {
   try {
-    onlinePlayers.value = await getOnlinePlayers()
+    const [nextOnlinePlayers, nextSettledPlayers] = await Promise.all([
+      getOnlinePlayers(),
+      getPlayerList()
+    ])
+    onlinePlayers.value = nextOnlinePlayers
+    settledPlayers.value = (nextSettledPlayers || []).map(normalizePlayerForHome)
   } catch {
     // keep current list
   }
@@ -1774,20 +1793,35 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.player-showcase-empty {
+  height: 168rpx;
+  border-radius: 18rpx;
+  border: 1px dashed rgba(49, 90, 117, 0.24);
+  color: #7f8c88;
+  background: rgba(255, 255, 255, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
 .show-player {
   position: relative;
   width: 226rpx;
   height: 322rpx;
   min-height: 322rpx;
   margin-right: 18rpx;
-  padding: 0;
+  padding: 22rpx 18rpx 20rpx;
   display: inline-flex;
   flex-direction: column;
-  justify-content: flex-end;
+  align-items: center;
   vertical-align: top;
   border-radius: 18rpx;
   overflow: hidden;
-  background: #174a36;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0) 34%),
+    linear-gradient(180deg, #eef7f0 0%, #dfeee7 46%, #174a36 100%);
   border: 1px solid rgba(216, 190, 151, 0.24);
   box-shadow: 0 14rpx 28rpx rgba(39, 61, 42, 0.10);
 }
@@ -1795,16 +1829,31 @@ onUnmounted(() => {
 .show-player::before {
   content: '';
   position: absolute;
-  inset: 42% 0 0;
+  inset: 48% 0 0;
   z-index: 1;
   background: linear-gradient(180deg, rgba(24, 70, 52, 0), rgba(20, 73, 53, 0.92));
 }
 
 .show-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
+  width: 128rpx;
+  height: 128rpx;
+  margin-top: 38rpx;
+  border-radius: 50%;
+  border: 6rpx solid rgba(255, 255, 255, 0.88);
+  background: linear-gradient(135deg, #65c980, #1f7c4b);
+  box-shadow: 0 16rpx 28rpx rgba(31, 124, 75, 0.24);
+  flex-shrink: 0;
+}
+
+.show-photo--placeholder {
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54rpx;
+  font-weight: 900;
 }
 
 .player-status {
@@ -1830,15 +1879,20 @@ onUnmounted(() => {
 .show-meta {
   position: relative;
   z-index: 2;
-  margin-left: 18rpx;
-  margin-right: 18rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .show-name {
+  margin-top: 24rpx;
   color: #fff;
   font-size: 32rpx;
   font-weight: 900;
+  text-align: left;
   text-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .show-type {
@@ -1850,6 +1904,10 @@ onUnmounted(() => {
   background: rgba(255, 247, 223, 0.92);
   font-size: 21rpx;
   font-weight: 800;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .show-meta {
@@ -1861,6 +1919,10 @@ onUnmounted(() => {
   color: #fff4d0;
   font-size: 22rpx;
   font-weight: 900;
+}
+
+.show-meta text {
+  min-width: 0;
 }
 
 .package-head {
@@ -2860,6 +2922,22 @@ onUnmounted(() => {
 .section-note {
   color: #666b68;
   font-size: 22rpx;
+  white-space: nowrap;
+}
+
+.section-side {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14rpx;
+  min-width: 0;
+}
+
+.section-more-hint {
+  color: #2f9b63;
+  font-size: 22rpx;
+  font-weight: 700;
   white-space: nowrap;
 }
 
