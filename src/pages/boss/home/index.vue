@@ -81,7 +81,7 @@
             </view>
             <scroll-view scroll-x class="player-showcase" show-scrollbar="false">
               <view v-for="(player, index) in featuredPlayers" :key="player.id" class="show-player">
-                <image class="show-photo" :src="playerAvatarFor(index)" mode="aspectFill" />
+                <image class="show-photo" :src="player.avatar_url || playerAvatarFor(index)" mode="aspectFill" />
                 <view class="player-status" :class="{ busy: player.status === '忙碌' }">
                   {{ player.status || (player.is_online ? '在线' : '可预约') }}
                 </view>

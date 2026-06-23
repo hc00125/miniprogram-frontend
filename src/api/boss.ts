@@ -1,4 +1,12 @@
 import api from '@/utils/request'
+/** 过滤后端残留的测试数据（名称以 test / group_ 开头，或纯英文 slug 的条目） */
+function isTestEntry(name: string): boolean {
+  const n = (name || '').trim().toLowerCase()
+  if (!n) return true
+  if (n.startsWith('test') || n.startsWith('group_')) return true
+  if (/^[a-z0-9_\-]+$/.test(n)) return true
+  return false
+}
 
 export interface BossPackage {
   id: number
@@ -79,11 +87,21 @@ export interface OrderCreatePayload {
 }
 
 export function getPackages() {
-  return api.get<BossPackage[]>('/boss/packages')
+  return api.get<BossPackage[]>('/boss/packages').then(list => {
+    const filtered = list.filter(p => !isTestEntry(p.name))
+    // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除
+    const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
+    if (firstGroupId !== null) {
+      filtered.forEach(p => {
+        if (p.group_id === null) { p.group_id = firstGroupId; p.group_name = '' }
+      })
+    }
+    return filtered
+  })
 }
 
 export function getPackageGroups() {
-  return api.get<PackageGroup[]>('/boss/package-groups')
+  return api.get<PackageGroup[]>('/boss/package-groups').then(list => list.filter(g => !isTestEntry(g.name)))
 }
 
 export function getAddons() {
@@ -91,7 +109,7 @@ export function getAddons() {
 }
 
 export function getPlayerTypes() {
-  return api.get<PlayerType[]>('/boss/player-types')
+  return api.get<PlayerType[]>('/boss/player-types').then(list => list.filter(t => !isTestEntry(t.name)))
 }
 
 export function getOnlinePlayers() {
