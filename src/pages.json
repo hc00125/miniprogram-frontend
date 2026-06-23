@@ -12,6 +12,7 @@
     {
       "path": "pages/boss/order/index",
       "style": {
+        "navigationStyle": "custom",
         "navigationBarTitleText": "点单大厅",
         "navigationBarBackgroundColor": "#fbf7ef",
         "navigationBarTextStyle": "black"
