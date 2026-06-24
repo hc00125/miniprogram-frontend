@@ -19,6 +19,23 @@
       }
     },
     {
+      "path": "pages/shop/category/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "商品分类",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/shop/detail/index",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/boss/query/index",
       "style": {
         "navigationBarTitleText": "订单查询"
@@ -110,7 +127,7 @@
         "selectedIconPath": "/icons/tab-home-active.png"
       },
       {
-        "pagePath": "pages/boss/order/index",
+        "pagePath": "pages/shop/category/index",
         "text": "点单",
         "iconPath": "/icons/tab-order.png",
         "selectedIconPath": "/icons/tab-order-active.png"
