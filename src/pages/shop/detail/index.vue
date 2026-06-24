@@ -125,8 +125,7 @@ function handleCartTap() {
 
 function handleBuyTap() {
   if (!product.value) return
-  toast('已为你打开原点单页，下一阶段接入规格下单')
-  go('/pages/boss/order/index', { packageId: product.value.id })
+  go('/pages/shop/checkout/index', { packageId: product.value.id })
 }
 
 function goBack() {
