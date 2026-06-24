@@ -25,6 +25,16 @@ function normalizePath(path: string) {
   return path.split('?')[0]
 }
 
+function isMainTab(value: unknown): value is MainTab {
+  return typeof value === 'string' && value in mainTabPaths
+}
+
+function resolveMainTabPath(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  const normalized = normalizePath(path)
+  if (normalized === mainTabPaths.home && isMainTab(params.tab)) return mainTabPaths[params.tab]
+  return normalized
+}
+
 function isMainTabPath(path: string) {
   return mainTabPathSet.has(normalizePath(path))
 }
@@ -35,24 +45,27 @@ function switchMainTab(path: string) {
 }
 
 export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  if (isMainTabPath(path)) {
-    switchMainTab(path)
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
     return
   }
   uni.navigateTo({ url: toPageUrl(path, params) })
 }
 
 export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  if (isMainTabPath(path)) {
-    switchMainTab(path)
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
     return
   }
   uni.redirectTo({ url: toPageUrl(path, params) })
 }
 
 export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  if (isMainTabPath(path)) {
-    switchMainTab(path)
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
     return
   }
   uni.reLaunch({ url: toPageUrl(path, params) })
