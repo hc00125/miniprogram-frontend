@@ -17,6 +17,16 @@ export interface BossPackage {
   is_custom: boolean
   group_id: number | null
   group_name: string | null
+  cover_url?: string
+  image_url?: string
+  thumb_url?: string
+  picture_url?: string
+  price?: number
+  original_price?: number
+  sold_count?: number
+  sales_count?: number
+  sales?: number
+  order_count?: number
 }
 
 export interface BossAddon {
