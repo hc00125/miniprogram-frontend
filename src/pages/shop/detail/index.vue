@@ -1,54 +1,100 @@
 <template>
   <view class="shop-detail-page">
     <scroll-view v-if="product" scroll-y class="detail-scroll">
-      <view class="cover-wrap">
-        <image class="cover-image" :src="productImage" mode="aspectFill" />
+      <view class="hero-section">
+        <image v-if="rawProductImage" class="hero-image" :src="rawProductImage" mode="aspectFill" />
+        <view v-else class="hero-placeholder">
+          <view class="hero-brand">白象电竞 <text>CLUB</text></view>
+          <view class="hero-title">{{ heroTitle }}</view>
+          <view class="hero-subtitle">{{ heroSubtitle }}</view>
+          <view class="hero-note">注：所有保障单和体验单都可享受</view>
+        </view>
+        <view class="hero-mask"></view>
+        <view class="hero-float hero-float--left" @tap="goBack">‹</view>
+        <view class="hero-float hero-float--right">•••</view>
+        <view class="hero-sold">{{ soldCountText }}</view>
       </view>
 
-      <view class="detail-card price-card">
-        <view class="price-row">
+      <view class="detail-card product-card">
+        <view class="price-line">
           <view class="price-wrap">
             <text class="price-symbol">¥</text>
             <text class="price-value">{{ formatMoney(productPrice) }}</text>
             <text class="price-unit">/时</text>
           </view>
-          <text class="sold-text">已售{{ soldCount }}件</text>
+          <text v-if="originalPrice > productPrice" class="origin-price">¥{{ formatMoney(originalPrice) }}</text>
         </view>
         <text class="product-name">{{ product.name }}</text>
-        <text class="product-desc">{{ product.description || '精选陪玩套餐，平台保障，快速匹配陪玩。' }}</text>
-      </view>
-
-      <view class="detail-card service-card">
-        <view class="card-title">服务保障</view>
-        <view class="service-grid">
-          <view class="service-item">
-            <text class="service-dot">✓</text>
-            <text>平台保障</text>
-          </view>
-          <view class="service-item">
-            <text class="service-dot">✓</text>
-            <text>快速匹配</text>
-          </view>
-          <view class="service-item">
-            <text class="service-dot">✓</text>
-            <text>订单可查</text>
-          </view>
+        <view class="member-strip">
+          <text>加入会员，享会员价</text>
+          <text>了解更多 ›</text>
+        </view>
+        <view class="product-meta">
+          <text>已售{{ soldCount }}件</text>
+          <text>{{ wantCount }}人想买</text>
         </view>
       </view>
 
-      <view class="detail-card info-card">
-        <view class="card-title">商品详情</view>
-        <view class="info-row">
-          <text class="info-label">商品分类</text>
-          <text class="info-value">{{ product.group_name || '推荐套餐' }}</text>
+      <view class="detail-card option-card">
+        <view class="option-row" @tap="handleBuyTap">
+          <text class="option-label">选择</text>
+          <text class="option-value">请选择规格</text>
+          <text class="option-arrow">›</text>
         </view>
-        <view class="info-row">
-          <text class="info-label">默认人数</text>
-          <text class="info-value">{{ product.player_count || 1 }}人</text>
+        <view class="option-row">
+          <text class="option-label">活动</text>
+          <text class="tag">送积分</text>
+          <text class="option-value">购买最高可得 {{ rewardPoints }} 积分</text>
         </view>
-        <view class="info-row">
-          <text class="info-label">计费方式</text>
-          <text class="info-value">按小时计费</text>
+      </view>
+
+      <view class="detail-card review-card">
+        <view class="card-head">
+          <text class="card-title">暂无评价</text>
+          <text class="card-more">查看全部 ›</text>
+        </view>
+      </view>
+
+      <view class="graphic-title">
+        <text></text>
+        <text>图文详情</text>
+        <text></text>
+      </view>
+
+      <view class="graphic-card">
+        <image v-if="rawProductImage" class="graphic-image" :src="rawProductImage" mode="widthFix" />
+        <view v-else class="graphic-placeholder">
+          <view class="hero-brand">白象电竞 <text>CLUB</text></view>
+          <view class="hero-title">{{ heroTitle }}</view>
+          <view class="hero-subtitle">{{ heroSubtitle }}</view>
+          <view class="hero-note">注：所有保障单和体验单都可享受</view>
+        </view>
+      </view>
+
+      <view v-if="recommendProducts.length" class="recommend-section">
+        <view class="graphic-title recommend-title">
+          <text></text>
+          <text>您或许会喜欢</text>
+          <text></text>
+        </view>
+        <view class="recommend-grid">
+          <view
+            v-for="item in recommendProducts"
+            :key="item.id"
+            class="recommend-card"
+            @tap="openProduct(item.id)"
+          >
+            <image v-if="getRawProductImage(item)" class="recommend-image" :src="getRawProductImage(item)" mode="aspectFill" />
+            <view v-else class="recommend-image recommend-image--placeholder">
+              <text>{{ item.name.slice(0, 1) }}</text>
+            </view>
+            <text class="recommend-name">{{ item.name }}</text>
+            <view class="recommend-price">
+              <text>¥</text>
+              <text>{{ formatMoney(getProductPrice(item)) }}</text>
+            </view>
+            <text class="recommend-cart">🛒</text>
+          </view>
         </view>
       </view>
 
@@ -61,12 +107,16 @@
     </view>
 
     <view v-if="product" class="bottom-bar">
-      <view class="bottom-price">
-        <text>合计</text>
-        <text>¥{{ formatMoney(productPrice) }}</text>
+      <view class="bottom-icon" @tap="goHome">
+        <text>⌂</text>
+        <text>首页</text>
       </view>
-      <button class="cart-action" @tap="handleCartTap">购物车</button>
-      <button class="buy-action" @tap="handleBuyTap">立即下单</button>
+      <view class="bottom-icon" @tap="handleCollectTap">
+        <text>♡</text>
+        <text>收藏</text>
+      </view>
+      <button class="cart-action" @tap="handleCartTap">加入购物车</button>
+      <button class="buy-action" @tap="handleBuyTap">立即购买</button>
     </view>
   </view>
 </template>
@@ -76,25 +126,38 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getPackages, type BossPackage } from '@/api/boss'
 import { getErrorMessage, toast } from '@/utils/feedback'
-import { go } from '@/utils/nav'
+import { go, goMain } from '@/utils/nav'
 
-const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
 const loading = ref(false)
 const product = ref<BossPackage | null>(null)
+const allProducts = ref<BossPackage[]>([])
 
-const productImage = computed(() => product.value ? getProductImage(product.value) : fallbackImage)
+const rawProductImage = computed(() => product.value ? getRawProductImage(product.value) : '')
 const productPrice = computed(() => product.value ? getProductPrice(product.value) : 0)
+const originalPrice = computed(() => product.value ? getOriginalPrice(product.value) : 0)
 const soldCount = computed(() => product.value ? getSoldCount(product.value) : 0)
+const soldCountText = computed(() => soldCount.value ? `已售${soldCount.value}件` : '新品上线')
+const wantCount = computed(() => Math.max(1, soldCount.value + 1))
+const rewardPoints = computed(() => Math.max(1, Math.round(productPrice.value)))
+const heroTitle = computed(() => product.value?.name || 'VIP特惠')
+const heroSubtitle = computed(() => product.value?.description || 'VIP+ 50W · SVIP+ 100W · SSVIP+ 150W')
+const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 
-function getProductImage(item: BossPackage) {
+function getRawProductImage(item: BossPackage) {
   const productItem = item as BossPackage & Record<string, any>
-  return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || fallbackImage
+  return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || ''
 }
 
 function getProductPrice(item: BossPackage) {
   const productItem = item as BossPackage & Record<string, any>
-  return Number(productItem.price ?? productItem.base_price ?? 0)
+  return Math.max(0, Number(productItem.price ?? productItem.base_price ?? 0))
+}
+
+function getOriginalPrice(item: BossPackage) {
+  const productItem = item as BossPackage & Record<string, any>
+  const price = getProductPrice(item)
+  return Math.max(price, Number(productItem.original_price ?? productItem.market_price ?? price))
 }
 
 function getSoldCount(item: BossPackage) {
@@ -111,6 +174,7 @@ async function fetchProduct() {
   loading.value = true
   try {
     const list = await getPackages()
+    allProducts.value = list
     product.value = list.find(item => item.id === packageId.value) || null
   } catch (error) {
     toast(getErrorMessage(error, '商品详情加载失败'))
@@ -119,13 +183,25 @@ async function fetchProduct() {
   }
 }
 
+function openProduct(nextPackageId: number) {
+  go('/pages/shop/detail/index', { packageId: nextPackageId })
+}
+
 function handleCartTap() {
   toast('第一阶段暂不做复杂购物车')
+}
+
+function handleCollectTap() {
+  toast('收藏功能开发中')
 }
 
 function handleBuyTap() {
   if (!product.value) return
   go('/pages/shop/checkout/index', { packageId: product.value.id })
+}
+
+function goHome() {
+  goMain('home')
 }
 
 function goBack() {
@@ -144,7 +220,7 @@ onLoad((query) => {
 
 .shop-detail-page {
   min-height: 100vh;
-  background: #f7f7f7;
+  background: #f6f6f6;
   color: #222;
 }
 
@@ -152,36 +228,135 @@ onLoad((query) => {
   height: 100vh;
 }
 
-.cover-wrap {
-  width: 100%;
-  height: 560rpx;
-  background: #ececec;
+.hero-section {
+  position: relative;
+  min-height: 720rpx;
+  overflow: hidden;
+  background: #2d2d22;
 }
 
-.cover-image {
+.hero-image {
   width: 100%;
-  height: 100%;
+  height: 720rpx;
+  display: block;
+}
+
+.hero-placeholder,
+.graphic-placeholder {
+  min-height: 720rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 70rpx 44rpx 90rpx;
+  color: #20ff9a;
+  background:
+    radial-gradient(circle at 12% 28%, rgba(255, 255, 255, 0.12), transparent 23%),
+    linear-gradient(135deg, #2f2f20 0%, #1f2118 48%, #343526 100%);
+  box-sizing: border-box;
+}
+
+.hero-brand {
+  color: #fff;
+  font-size: 38rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.hero-brand text {
+  color: #20ff9a;
+}
+
+.hero-title {
+  margin-top: 26rpx;
+  color: #20ff9a;
+  font-size: 72rpx;
+  line-height: 1.08;
+  font-weight: 900;
+  word-break: break-all;
+}
+
+.hero-subtitle {
+  margin-top: 22rpx;
+  color: #20ff9a;
+  font-size: 40rpx;
+  line-height: 1.45;
+  font-weight: 900;
+}
+
+.hero-note {
+  margin-top: 36rpx;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 800;
+  opacity: 0.88;
+}
+
+.hero-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 160rpx;
+  background: linear-gradient(180deg, transparent, rgba(246, 246, 246, 0.95));
+  pointer-events: none;
+}
+
+.hero-float {
+  position: absolute;
+  top: calc(22rpx + env(safe-area-inset-top));
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  color: #fff;
+  font-size: 38rpx;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(8rpx);
+}
+
+.hero-float--left {
+  left: 24rpx;
+}
+
+.hero-float--right {
+  right: 24rpx;
+  font-size: 28rpx;
+  letter-spacing: 3rpx;
+}
+
+.hero-sold {
+  position: absolute;
+  left: 24rpx;
+  bottom: 34rpx;
+  z-index: 2;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  color: #fff;
+  font-size: 23rpx;
+  background: rgba(0, 0, 0, 0.42);
 }
 
 .detail-card {
-  margin: 20rpx 22rpx 0;
-  padding: 26rpx;
-  border-radius: 22rpx;
+  margin: 18rpx 22rpx 0;
+  padding: 24rpx;
+  border-radius: 18rpx;
   background: #ffffff;
   box-sizing: border-box;
 }
 
-.price-card {
-  margin-top: -38rpx;
+.product-card {
+  margin-top: -18rpx;
   position: relative;
   z-index: 2;
 }
 
-.price-row {
+.price-line {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20rpx;
+  align-items: baseline;
+  gap: 18rpx;
 }
 
 .price-wrap {
@@ -191,99 +366,251 @@ onLoad((query) => {
 }
 
 .price-symbol {
-  font-size: 28rpx;
-  font-weight: 800;
+  font-size: 26rpx;
+  font-weight: 900;
 }
 
 .price-value {
   margin-left: 4rpx;
-  font-size: 54rpx;
+  font-size: 50rpx;
   line-height: 1;
   font-weight: 900;
 }
 
 .price-unit {
   margin-left: 6rpx;
-  font-size: 24rpx;
+  font-size: 23rpx;
+  font-weight: 800;
 }
 
-.sold-text {
-  color: #8f8f8f;
+.origin-price {
+  color: #aaa;
   font-size: 24rpx;
+  text-decoration: line-through;
 }
 
 .product-name {
   display: block;
   margin-top: 18rpx;
-  color: #252525;
-  font-size: 36rpx;
+  color: #2b2b2b;
+  font-size: 34rpx;
   font-weight: 900;
   line-height: 1.35;
 }
 
-.product-desc {
-  display: block;
-  margin-top: 14rpx;
-  color: #686868;
-  font-size: 26rpx;
-  line-height: 1.55;
-}
-
-.card-title {
-  color: #202020;
-  font-size: 30rpx;
-  font-weight: 900;
-  margin-bottom: 22rpx;
-}
-
-.service-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16rpx;
-}
-
-.service-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 16rpx;
-  border-radius: 999rpx;
-  color: #1f7c4b;
-  font-size: 24rpx;
-  background: rgba(47, 155, 99, 0.10);
-}
-
-.service-dot {
-  font-weight: 900;
-}
-
-.info-row {
+.member-strip {
+  min-height: 62rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24rpx;
-  padding: 18rpx 0;
-  border-bottom: 1rpx solid #f0f0f0;
+  gap: 20rpx;
+  padding: 0 20rpx;
+  margin-top: 18rpx;
+  border-radius: 10rpx;
+  color: #5f4216;
+  font-size: 24rpx;
+  background: #fff8d8;
+  box-sizing: border-box;
 }
 
-.info-row:last-child {
+.member-strip text:first-child {
+  color: #2f2f2f;
+}
+
+.member-strip text:last-child {
+  color: #6b4b16;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  color: #8b8b8b;
+  font-size: 23rpx;
+}
+
+.option-card {
+  padding: 0 24rpx;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  min-height: 88rpx;
+  border-bottom: 1rpx solid #f2f2f2;
+  box-sizing: border-box;
+}
+
+.option-row:last-child {
   border-bottom: none;
 }
 
-.info-label {
-  color: #888;
-  font-size: 26rpx;
+.option-label {
+  width: 72rpx;
+  flex-shrink: 0;
+  color: #858585;
+  font-size: 25rpx;
+  font-weight: 800;
 }
 
-.info-value {
+.option-value {
   flex: 1;
+  min-width: 0;
   color: #333;
-  font-size: 26rpx;
-  text-align: right;
+  font-size: 25rpx;
+}
+
+.option-arrow {
+  color: #aaa;
+  font-size: 36rpx;
+}
+
+.tag {
+  padding: 3rpx 8rpx;
+  margin-right: 14rpx;
+  border: 1rpx solid #ef4f5f;
+  border-radius: 4rpx;
+  color: #ef4f5f;
+  font-size: 20rpx;
+}
+
+.review-card {
+  min-height: 84rpx;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  color: #222;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.card-more {
+  color: #999;
+  font-size: 24rpx;
+}
+
+.graphic-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18rpx;
+  margin: 38rpx 0 18rpx;
+  color: #777;
+  font-size: 25rpx;
+}
+
+.graphic-title text:first-child,
+.graphic-title text:last-child {
+  width: 70rpx;
+  height: 1rpx;
+  background: #d7d7d7;
+}
+
+.graphic-card {
+  margin: 0 22rpx;
+  overflow: hidden;
+  border-radius: 8rpx;
+  background: #2d2d22;
+}
+
+.graphic-image {
+  width: 100%;
+  display: block;
+}
+
+.graphic-placeholder {
+  min-height: 680rpx;
+}
+
+.recommend-section {
+  padding: 0 22rpx;
+}
+
+.recommend-title {
+  margin-top: 40rpx;
+}
+
+.recommend-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18rpx;
+}
+
+.recommend-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: #fff;
+}
+
+.recommend-image {
+  width: 100%;
+  height: 250rpx;
+  display: block;
+  background: #f0f0f0;
+}
+
+.recommend-image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #20ff9a;
+  font-size: 58rpx;
+  font-weight: 900;
+  background: linear-gradient(135deg, #2f2f20, #1f2118);
+}
+
+.recommend-name {
+  display: block;
+  min-height: 72rpx;
+  padding: 16rpx 16rpx 0;
+  color: #333;
+  font-size: 27rpx;
+  line-height: 1.35;
+}
+
+.recommend-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4rpx;
+  padding: 12rpx 16rpx 20rpx;
+  color: #ef4f5f;
+}
+
+.recommend-price text:first-child {
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.recommend-price text:last-child {
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.recommend-cart {
+  position: absolute;
+  right: 16rpx;
+  bottom: 18rpx;
+  width: 50rpx;
+  height: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1rpx solid #ef6b77;
+  color: #ef4f5f;
+  font-size: 24rpx;
+  background: #fff;
 }
 
 .bottom-spacer {
-  height: calc(150rpx + env(safe-area-inset-bottom));
+  height: calc(156rpx + env(safe-area-inset-bottom));
 }
 
 .empty-state {
@@ -319,42 +646,43 @@ onLoad((query) => {
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 16rpx;
-  padding: 18rpx 22rpx calc(18rpx + env(safe-area-inset-bottom));
+  gap: 14rpx;
+  padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
   background: #ffffff;
   box-shadow: 0 -10rpx 30rpx rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
 }
 
-.bottom-price {
-  min-width: 150rpx;
-  flex: 1;
+.bottom-icon {
+  width: 72rpx;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4rpx;
+  color: #7c7c7c;
 }
 
-.bottom-price text:first-child {
-  color: #888;
-  font-size: 22rpx;
-}
-
-.bottom-price text:last-child {
-  color: #ef4f5f;
+.bottom-icon text:first-child {
   font-size: 34rpx;
-  font-weight: 900;
+  line-height: 1;
+}
+
+.bottom-icon text:last-child {
+  font-size: 20rpx;
 }
 
 .cart-action,
 .buy-action {
-  height: 78rpx;
+  flex: 1;
+  height: 76rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 30rpx;
+  padding: 0 18rpx;
   margin: 0;
   border-radius: 999rpx;
-  font-size: 28rpx;
+  color: #fff;
+  font-size: 27rpx;
   font-weight: 900;
 }
 
@@ -364,13 +692,10 @@ onLoad((query) => {
 }
 
 .cart-action {
-  color: #ef4f5f;
-  background: #fff1f3;
+  background: linear-gradient(135deg, #ffbd27, #ff9e00);
 }
 
 .buy-action {
-  min-width: 188rpx;
-  color: #fff;
   background: linear-gradient(135deg, #ff7583, #ef3f51);
 }
 </style>
