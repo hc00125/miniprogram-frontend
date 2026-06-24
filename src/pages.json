@@ -36,6 +36,14 @@
       }
     },
     {
+      "path": "pages/shop/checkout/index",
+      "style": {
+        "navigationBarTitleText": "确认下单",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/boss/query/index",
       "style": {
         "navigationBarTitleText": "订单查询"
