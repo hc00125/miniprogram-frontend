@@ -13,7 +13,7 @@ export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
 
 const mainTabPaths: Record<MainTab, string> = {
   home: '/pages/boss/home/index',
-  order: '/pages/boss/order/index',
+  order: '/pages/shop/category/index',
   query: '/pages/boss/query/index',
   players: '/pages/player/list/index',
   profile: '/pages/client/profile/index'
