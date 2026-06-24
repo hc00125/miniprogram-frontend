@@ -1,34 +1,58 @@
 <template>
   <view class="club-page home-page">
-    <view class="custom-navbar" :style="{ paddingTop: statusBarHeight + 'px' }">
+    <view class="custom-navbar" :style="{ paddingTop: `${statusBarHeight}px` }">
       <view class="nav-left">
         <text class="nav-brand">偷吃电竞</text>
       </view>
       <view class="nav-right" @tap="goProfile">
-        <text>•••</text>
+        <text>···</text>
       </view>
     </view>
 
     <scroll-view scroll-y class="home-scroll">
       <view class="landing">
-        <view class="hero-poster">
-          <image class="hero-bg" :src="homeHero" mode="aspectFill" />
-          <view class="hero-glass"></view>
-          <view class="hero-copy">
-            <view class="hero-title">今晚开局，不等队友</view>
-            <view class="hero-sub">在线陪玩 · 快速接单 · 明星阵容</view>
-            <view class="hero-actions">
-              <button class="hero-btn hero-btn--primary" @tap="goShopCategory">立即点单 <text>›</text></button>
-              <button class="hero-btn hero-btn--light" @tap="goQuery">
-                <text class="btn-icon">▤</text>
-                我的订单
-              </button>
-            </view>
+        <view class="hero-section">
+          <swiper
+            class="hero-swiper"
+            circular
+            autoplay
+            interval="4200"
+            duration="480"
+            previous-margin="14rpx"
+            next-margin="110rpx"
+            @change="handleHeroChange"
+          >
+            <swiper-item v-for="banner in heroBanners" :key="banner.id">
+              <view class="hero-slide" @tap="handleHeroBannerTap(banner.target)">
+                <image class="hero-slide__image" :src="banner.image" mode="aspectFill" />
+                <view class="hero-slide__shade"></view>
+                <view class="hero-slide__body">
+                  <text class="hero-slide__badge">{{ banner.badge }}</text>
+                  <view class="hero-slide__copy">
+                    <text class="hero-slide__title">{{ banner.title }}</text>
+                    <text class="hero-slide__sub">{{ banner.subtitle }}</text>
+                  </view>
+                  <text class="hero-slide__link">{{ banner.cta }} <text>›</text></text>
+                </view>
+              </view>
+            </swiper-item>
+          </swiper>
+
+          <view class="hero-meta">
             <view class="hero-dots">
-              <text></text>
-              <text></text>
-              <text></text>
+              <text
+                v-for="(banner, index) in heroBanners"
+                :key="banner.id"
+                :class="{ active: currentHeroIndex === index }"
+              ></text>
             </view>
+            <text class="hero-hint">左右滑动查看更多海报</text>
+          </view>
+
+          <view class="hero-shortcuts">
+            <button class="hero-chip hero-chip--primary" @tap="goShopCategory">立即点单</button>
+            <button class="hero-chip" @tap="goQuery">我的订单</button>
+            <button class="hero-chip" @tap="goPlayerList">陪玩入驻</button>
           </view>
         </view>
 
@@ -37,7 +61,7 @@
             <view class="quick-icon quick-icon--order">✓</view>
             <view class="quick-main">
               <text>点单大厅</text>
-              <text>海量陪玩 · 快速响应</text>
+              <text>海量陪玩，快速响应</text>
             </view>
             <text class="quick-arrow">›</text>
           </view>
@@ -45,23 +69,23 @@
             <view class="quick-icon quick-icon--query">◷</view>
             <view class="quick-main">
               <text>订单进度</text>
-              <text>实时查看 · 进度跟踪</text>
+              <text>实时查看，进度跟踪</text>
             </view>
             <text class="quick-arrow">›</text>
           </view>
           <view class="quick-card" @tap="goPlayerList">
-            <view class="quick-icon quick-icon--player">♙</view>
+            <view class="quick-icon quick-icon--player">驻</view>
             <view class="quick-main">
               <text>陪玩入驻</text>
-              <text>加入我们 · 收益多多</text>
+              <text>加入我们，收益更多</text>
             </view>
             <text class="quick-arrow">›</text>
           </view>
           <view class="quick-card" @tap="goProfile">
-            <view class="quick-icon quick-icon--profile">●</view>
+            <view class="quick-icon quick-icon--profile">我</view>
             <view class="quick-main">
               <text>个人中心</text>
-              <text>我的资料 · 会员特权</text>
+              <text>我的资料，会员特权</text>
             </view>
             <text class="quick-arrow">›</text>
           </view>
@@ -69,7 +93,7 @@
 
         <view class="notice-bar">
           <text class="notice-avatar">●</text>
-          <text class="notice-text">18分钟前用户下单 · 金牌陪已接单</text>
+          <text class="notice-text">18分钟前用户下单，金牌陪已接单</text>
           <text class="notice-arrow">›</text>
         </view>
 
@@ -139,15 +163,57 @@ import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
 
+type HeroTarget = 'shop' | 'query' | 'players'
+
+type HeroBanner = {
+  id: string
+  image: string
+  badge: string
+  title: string
+  subtitle: string
+  cta: string
+  target: HeroTarget
+}
+
 const assetBase = '/images/home-redesign'
 const homeHero = `${assetBase}/hero-lounge.jpg`
 const packageVisuals = [`${assetBase}/package-five.png`, `${assetBase}/package-six.png`]
+const heroBanners: HeroBanner[] = [
+  {
+    id: 'lounge',
+    image: homeHero,
+    badge: '今夜热推',
+    title: '今晚开局，不等队友',
+    subtitle: '在线陪玩 · 快速接单 · 明星阵容',
+    cta: '立即看看',
+    target: 'shop'
+  },
+  {
+    id: 'package',
+    image: `${assetBase}/package-five.png`,
+    badge: '组队优先',
+    title: '热门套餐，一滑即到',
+    subtitle: '四黑五黑快速包场 · 价格透明',
+    cta: '查看套餐',
+    target: 'shop'
+  },
+  {
+    id: 'orders',
+    image: `${assetBase}/package-six.png`,
+    badge: '老板精选',
+    title: '订单进度一眼看清',
+    subtitle: '下单、接单、进度追踪都在同一入口',
+    cta: '去看订单',
+    target: 'query'
+  }
+]
 const fallbackPackages: BossPackage[] = [
   { id: 1001, name: '四套四弹', player_count: 4, base_price: 15, description: '默认四人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' },
-  { id: 1002, name: '五套四弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
+  { id: 1002, name: '五套五弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
 ]
 
 const statusBarHeight = ref(20)
+const currentHeroIndex = ref(0)
 const packages = ref<BossPackage[]>([...fallbackPackages])
 const players = ref<OnlinePlayer[]>([])
 const hotPackages = computed(() => (packages.value.length ? packages.value : fallbackPackages).slice(0, 2))
@@ -163,7 +229,7 @@ function getPackagePlayerCount(pkg: BossPackage | null | undefined) {
 }
 
 function getPackageBasePrice(pkg: BossPackage | null | undefined) {
-  const item = pkg as BossPackage & Record<string, any> | null | undefined
+  const item = pkg as (BossPackage & Record<string, unknown>) | null | undefined
   return Math.max(0, toSafeNumber(item?.price ?? item?.base_price, 0))
 }
 
@@ -218,6 +284,22 @@ function goProfile() {
   goMain('profile')
 }
 
+function handleHeroChange(event: { detail?: { current?: number } }) {
+  currentHeroIndex.value = event.detail?.current || 0
+}
+
+function handleHeroBannerTap(target: HeroTarget) {
+  if (target === 'query') {
+    goQuery()
+    return
+  }
+  if (target === 'players') {
+    goPlayerList()
+    return
+  }
+  goShopCategory()
+}
+
 function handleMainTabSelect(tab: MainTab) {
   if (tab === 'home') return
   if (tab === 'order') {
@@ -236,6 +318,7 @@ async function fetchHomeData() {
   } catch {
     packages.value = fallbackPackages
   }
+
   try {
     const list = await getPlayerList()
     players.value = (list || []).map(normalizePlayer)
@@ -278,7 +361,8 @@ onShow(fetchHomeData)
   justify-content: space-between;
   height: 88rpx;
   padding: 0 28rpx;
-  background: #fbf7ef;
+  background: rgba(251, 247, 239, 0.94);
+  backdrop-filter: blur(12rpx);
   box-sizing: border-box;
 }
 
@@ -289,13 +373,16 @@ onShow(fetchHomeData)
 }
 
 .nav-right {
-  width: 104rpx;
+  min-width: 104rpx;
   height: 54rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0 16rpx;
   border-radius: 999rpx;
   color: #172116;
+  font-size: 28rpx;
+  letter-spacing: 4rpx;
   background: rgba(255, 255, 255, 0.82);
 }
 
@@ -307,109 +394,151 @@ onShow(fetchHomeData)
   padding: 0 24rpx 40rpx;
 }
 
-.hero-poster {
-  position: relative;
-  height: 330rpx;
-  overflow: hidden;
-  border-radius: 26rpx;
-  box-shadow: 0 22rpx 46rpx rgba(31, 55, 40, 0.12);
+.hero-section {
+  margin-top: 6rpx;
 }
 
-.hero-bg,
-.hero-glass {
+.hero-swiper {
+  height: 332rpx;
+}
+
+.hero-slide {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 28rpx;
+  background: #15261b;
+}
+
+.hero-slide__image,
+.hero-slide__shade {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
 
-.hero-glass {
-  background: linear-gradient(180deg, rgba(251, 247, 239, 0.30), rgba(251, 247, 239, 0.82));
-  backdrop-filter: blur(2rpx);
+.hero-slide__shade {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(8, 20, 14, 0.74) 100%),
+    linear-gradient(90deg, rgba(8, 20, 14, 0.05) 0%, rgba(8, 20, 14, 0.56) 100%);
 }
 
-.hero-copy {
+.hero-slide__body {
   position: relative;
   z-index: 2;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 34rpx;
-  text-align: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 24rpx 24rpx 26rpx;
   box-sizing: border-box;
 }
 
-.hero-title {
-  color: #0f3f25;
-  font-size: 48rpx;
-  font-weight: 900;
-  letter-spacing: 2rpx;
+.hero-slide__badge {
+  align-self: flex-start;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  color: #fff6d6;
+  font-size: 20rpx;
+  font-weight: 700;
+  background: rgba(11, 20, 16, 0.42);
+  backdrop-filter: blur(12rpx);
 }
 
-.hero-sub {
-  margin-top: 10rpx;
-  color: rgba(23, 33, 22, 0.70);
-  font-size: 27rpx;
-}
-
-.hero-actions {
+.hero-slide__copy {
   display: flex;
-  gap: 28rpx;
-  margin-top: 34rpx;
+  flex-direction: column;
+  gap: 10rpx;
+  max-width: 78%;
 }
 
-.hero-btn {
-  min-width: 210rpx;
-  height: 74rpx;
+.hero-slide__title {
+  color: #fff;
+  font-size: 40rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.hero-slide__sub {
+  color: rgba(255, 250, 240, 0.84);
+  font-size: 24rpx;
+  line-height: 1.45;
+}
+
+.hero-slide__link {
+  align-self: flex-start;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.hero-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  padding: 0 30rpx;
-  margin: 0;
-  border-radius: 999rpx;
-  font-size: 29rpx;
-  font-weight: 900;
-}
-
-.hero-btn::after {
-  border: none;
-}
-
-.hero-btn--primary {
-  color: #fff;
-  background: linear-gradient(135deg, #2f9b63, #1f7c4b);
-}
-
-.hero-btn--light {
-  color: #9d6f2f;
-  background: rgba(255, 255, 255, 0.90);
+  justify-content: space-between;
+  margin-top: 14rpx;
+  padding: 0 6rpx;
 }
 
 .hero-dots {
   display: flex;
-  gap: 18rpx;
-  margin-top: 24rpx;
+  gap: 10rpx;
 }
 
 .hero-dots text {
-  width: 40rpx;
+  width: 22rpx;
   height: 6rpx;
   border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.70);
+  background: rgba(47, 155, 99, 0.18);
+  transition: all 0.2s ease;
 }
 
-.hero-dots text:first-child {
+.hero-dots text.active {
+  width: 40rpx;
   background: #2f9b63;
+}
+
+.hero-hint {
+  color: #8a887d;
+  font-size: 22rpx;
+}
+
+.hero-shortcuts {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+
+.hero-chip {
+  flex: 1;
+  height: 68rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  color: #38503f;
+  font-size: 25rpx;
+  font-weight: 800;
+  line-height: 68rpx;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1rpx solid rgba(61, 97, 74, 0.12);
+}
+
+.hero-chip::after {
+  border: none;
+}
+
+.hero-chip--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #2f9b63, #1f7c4b);
 }
 
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 18rpx;
-  margin-top: 22rpx;
+  margin-top: 24rpx;
 }
 
 .quick-card {
@@ -432,8 +561,17 @@ onShow(fetchHomeData)
   justify-content: center;
   border-radius: 16rpx;
   color: #1f7c4b;
+  font-size: 30rpx;
   font-weight: 900;
   background: #f5f0df;
+}
+
+.quick-icon--query {
+  color: #8f6b31;
+}
+
+.quick-icon--player {
+  color: #2f7c63;
 }
 
 .quick-main {
