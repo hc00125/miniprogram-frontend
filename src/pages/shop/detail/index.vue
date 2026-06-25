@@ -55,33 +55,17 @@
       </view>
 
       <view class="detail-card option-card">
-        <view class="option-row" @tap="handleBuyTap">
+        <view class="option-row" @tap="openSpecPopup('buy')">
           <text class="option-label">选择</text>
-          <text class="option-value">{{ selectedSpec ? selectedSpec.name : '请选择规格' }}</text>
+          <text class="option-value">{{ selectedSpec ? `已选：${selectedSpec.name}` : '请选择规格' }}</text>
           <text class="option-arrow">›</text>
         </view>
 
-        <view v-if="specs.length" class="spec-section">
-          <view class="section-head">
-            <view>
-              <text class="spec-title">{{ isGuaranteeProduct ? '保底规格' : '规格明细' }}</text>
-              <text class="spec-hint">{{ specHint }}</text>
-            </view>
-            <text class="spec-count">{{ specs.length }}档可选</text>
+        <view v-if="specs.length" class="option-preview">
+          <view class="preview-chip" v-for="spec in previewSpecs" :key="spec.id">
+            {{ spec.name }}
           </view>
-          <view class="spec-grid">
-            <view
-              v-for="spec in specs"
-              :key="spec.id"
-              class="spec-chip"
-              :class="{ active: selectedSpec?.id === spec.id }"
-              @tap="selectSpec(spec)"
-            >
-              <text>{{ spec.name }}</text>
-              <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
-              <text>¥{{ formatMoney(Number(spec.price)) }}</text>
-            </view>
-          </view>
+          <view class="preview-chip preview-chip--more">共{{ specs.length }}个规格可选</view>
         </view>
 
         <view class="option-row">
@@ -173,8 +157,52 @@
         <text>♡</text>
         <text>收藏</text>
       </view>
-      <button class="cart-action" @tap="handleCartTap">加入购物车</button>
-      <button class="buy-action" @tap="handleBuyTap">立即购买</button>
+      <button class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
+      <button class="buy-action" @tap="openSpecPopup('buy')">立即购买</button>
+    </view>
+
+    <view v-if="product && specPopupVisible" class="spec-popup-mask" @tap="closeSpecPopup">
+      <view class="spec-popup" @tap.stop>
+        <view class="spec-popup-header">
+          <image class="spec-popup-image" :src="specPopupImage" mode="aspectFill" />
+          <view class="spec-popup-info">
+            <view class="spec-popup-price">
+              <text>¥</text>
+              <text>{{ formatMoney(productPrice) }}</text>
+            </view>
+            <text class="spec-popup-stock">{{ specs.length ? `共${specs.length}个规格可选` : '无规格可选' }}</text>
+            <text class="spec-popup-selected">{{ selectedSpec ? `已选：${selectedSpec.name}` : '请选择规格' }}</text>
+          </view>
+          <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
+        </view>
+
+        <view class="spec-popup-body">
+          <view class="spec-popup-group">
+            <view class="spec-popup-title-row">
+              <text class="spec-popup-title">{{ isGuaranteeProduct ? '保底规格' : '商品规格' }}</text>
+              <text class="spec-popup-title-tip">{{ isGuaranteeProduct ? '按保底金额选择' : '请选择规格' }}</text>
+            </view>
+            <view class="spec-popup-grid">
+              <view
+                v-for="spec in specs"
+                :key="spec.id"
+                class="spec-popup-chip"
+                :class="{ active: selectedSpec?.id === spec.id }"
+                @tap="selectSpec(spec)"
+              >
+                <text>{{ spec.name }}</text>
+                <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
+                <text>¥{{ formatMoney(Number(spec.price)) }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <view class="spec-popup-footer">
+          <button class="popup-cart-btn" @tap="confirmSpecAction('cart')">加入购物车</button>
+          <button class="popup-buy-btn" @tap="confirmSpecAction('buy')">立即购买</button>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -186,14 +214,19 @@ import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 
+const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
 const loading = ref(false)
 const product = ref<BossPackage | null>(null)
 const allProducts = ref<BossPackage[]>([])
 const selectedSpec = ref<BossPackageSpec | null>(null)
+const specPopupVisible = ref(false)
+const pendingAction = ref<'cart' | 'buy'>('buy')
 
 const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
+const previewSpecs = computed(() => specs.value.slice(0, 3))
 const rawProductImage = computed(() => product.value ? getRawProductImage(product.value) : '')
+const specPopupImage = computed(() => rawProductImage.value || fallbackImage)
 const detailImages = computed(() => product.value?.detail_images?.length ? product.value.detail_images : (rawProductImage.value ? [rawProductImage.value] : []))
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(specs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
@@ -210,7 +243,6 @@ const productBadge = computed(() => isGuaranteeProduct.value ? '特色单' : pro
 const productSummary = computed(() => isGuaranteeProduct.value ? '暗区突围端游电视台保底服务，按保底金额选择规格，一单一价。' : product.value?.description || '精选套餐，平台保障，快速匹配陪玩。')
 const detailText = computed(() => isGuaranteeProduct.value ? '九档电视台保底规格可选，适合不同预算与保底目标。' : product.value?.description || selectedSpec.value?.description || '选择规格后确认下单')
 const memberStripText = computed(() => isGuaranteeProduct.value ? '保底规格可选，价格按单计算' : '加入会员，享会员价')
-const specHint = computed(() => isGuaranteeProduct.value ? '选择目标保底金额，提交后会写入订单备注' : '选择适合的套餐规格')
 const guaranteeRules = computed(() => {
   const amount = selectedSpec.value?.guarantee_amount
   return [
@@ -275,6 +307,39 @@ function openProduct(nextPackageId: number) {
   go('/pages/shop/detail/index', { packageId: nextPackageId })
 }
 
+function openSpecPopup(action: 'cart' | 'buy' = 'buy') {
+  if (!product.value) return
+  pendingAction.value = action
+  if (!specs.value.length) {
+    if (action === 'cart') {
+      handleCartTap()
+      return
+    }
+    go('/pages/shop/checkout/index', { packageId: product.value.id })
+    return
+  }
+  specPopupVisible.value = true
+}
+
+function closeSpecPopup() {
+  specPopupVisible.value = false
+}
+
+function confirmSpecAction(action?: 'cart' | 'buy') {
+  const finalAction = action || pendingAction.value
+  if (specs.value.length && !selectedSpec.value) {
+    toast('请选择规格')
+    return
+  }
+  closeSpecPopup()
+  if (finalAction === 'cart') {
+    handleCartTap()
+    return
+  }
+  if (!product.value) return
+  go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id })
+}
+
 function handleCartTap() {
   toast('第一阶段暂不做复杂购物车')
 }
@@ -284,8 +349,7 @@ function handleCollectTap() {
 }
 
 function handleBuyTap() {
-  if (!product.value) return
-  go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id })
+  openSpecPopup('buy')
 }
 
 function goHome() {
@@ -352,18 +416,9 @@ onLoad((query) => {
 .option-value { flex: 1; min-width: 0; color: #333; font-size: 25rpx; }
 .option-arrow { color: #aaa; font-size: 36rpx; }
 .tag { padding: 3rpx 8rpx; margin-right: 14rpx; border: 1rpx solid #ef4f5f; border-radius: 4rpx; color: #ef4f5f; font-size: 20rpx; }
-.spec-section { padding: 18rpx 0 8rpx; border-bottom: 1rpx solid #f2f2f2; }
-.section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; margin-bottom: 14rpx; }
-.spec-title { display: block; color: #333; font-size: 28rpx; font-weight: 900; }
-.spec-hint { display: block; margin-top: 6rpx; color: #999; font-size: 22rpx; }
-.spec-count { flex-shrink: 0; padding: 6rpx 12rpx; border-radius: 999rpx; color: #8b6a27; font-size: 21rpx; background: #fff4d9; }
-.spec-grid { display: flex; flex-wrap: wrap; gap: 14rpx; }
-.spec-chip { min-width: 210rpx; flex: 1; padding: 16rpx 18rpx; border-radius: 14rpx; border: 1rpx solid #ececec; background: #fafafa; box-sizing: border-box; }
-.spec-chip text { display: block; }
-.spec-chip text:first-child { color: #333; font-size: 24rpx; font-weight: 800; }
-.spec-chip text:nth-child(2) { margin-top: 8rpx; color: #8b6a27; font-size: 22rpx; }
-.spec-chip text:last-child { margin-top: 8rpx; color: #ef4f5f; font-size: 30rpx; font-weight: 900; }
-.spec-chip.active { border-color: #ef4f5f; background: #fff1f3; box-shadow: 0 8rpx 20rpx rgba(239, 79, 95, 0.12); }
+.option-preview { display: flex; gap: 12rpx; padding: 18rpx 0; overflow: hidden; border-bottom: 1rpx solid #f2f2f2; }
+.preview-chip { flex-shrink: 0; max-width: 180rpx; padding: 10rpx 16rpx; border-radius: 10rpx; color: #888; font-size: 22rpx; background: #f6f6f6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.preview-chip--more { color: #999; background: #f9f9f9; }
 .guarantee-rule-card { background: linear-gradient(180deg, #fff, #fff8e7); }
 .rule-list { margin-top: 18rpx; }
 .rule-item { display: flex; gap: 12rpx; margin-top: 12rpx; color: #5c5c5c; font-size: 24rpx; line-height: 1.45; }
@@ -401,4 +456,32 @@ onLoad((query) => {
 .cart-action::after, .buy-action::after { border: none; }
 .cart-action { background: linear-gradient(135deg, #ffbd27, #ff9e00); }
 .buy-action { background: linear-gradient(135deg, #ff7583, #ef3f51); }
+.spec-popup-mask { position: fixed; inset: 0; z-index: 99; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.48); }
+.spec-popup { width: 100%; max-height: 82vh; display: flex; flex-direction: column; padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom)); border-radius: 28rpx 28rpx 0 0; background: #fff; box-sizing: border-box; }
+.spec-popup-header { position: relative; display: flex; align-items: flex-start; gap: 20rpx; padding-right: 50rpx; }
+.spec-popup-image { width: 156rpx; height: 156rpx; flex-shrink: 0; border-radius: 16rpx; background: #f1f1f1; }
+.spec-popup-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; padding-top: 4rpx; }
+.spec-popup-price { display: flex; align-items: baseline; color: #ef4f5f; }
+.spec-popup-price text:first-child { font-size: 26rpx; font-weight: 900; }
+.spec-popup-price text:last-child { margin-left: 4rpx; font-size: 46rpx; line-height: 1; font-weight: 900; }
+.spec-popup-stock, .spec-popup-selected { color: #888; font-size: 24rpx; line-height: 1.4; }
+.spec-popup-selected { color: #333; }
+.spec-popup-close { position: absolute; right: 0; top: 0; width: 58rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; color: #999; font-size: 42rpx; line-height: 1; }
+.spec-popup-body { flex: 1; min-height: 0; margin-top: 28rpx; overflow-y: auto; }
+.spec-popup-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 20rpx; margin-bottom: 18rpx; }
+.spec-popup-title { color: #333; font-size: 29rpx; font-weight: 900; }
+.spec-popup-title-tip { color: #999; font-size: 23rpx; }
+.spec-popup-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.spec-popup-chip { min-width: 204rpx; flex: 1; padding: 18rpx 18rpx; border-radius: 14rpx; border: 1rpx solid #ececec; background: #f7f7f7; box-sizing: border-box; }
+.spec-popup-chip text { display: block; }
+.spec-popup-chip text:first-child { color: #333; font-size: 24rpx; font-weight: 800; line-height: 1.32; }
+.spec-popup-chip text:nth-child(2) { margin-top: 8rpx; color: #8b6a27; font-size: 22rpx; }
+.spec-popup-chip text:last-child { margin-top: 8rpx; color: #ef4f5f; font-size: 30rpx; font-weight: 900; }
+.spec-popup-chip.active { border-color: #ef4f5f; background: #fff1f3; box-shadow: 0 8rpx 20rpx rgba(239, 79, 95, 0.14); }
+.spec-popup-chip.active text:first-child, .spec-popup-chip.active text:nth-child(2), .spec-popup-chip.active text:last-child { color: #ef4f5f; }
+.spec-popup-footer { display: flex; gap: 18rpx; margin-top: 28rpx; }
+.popup-cart-btn, .popup-buy-btn { flex: 1; height: 84rpx; display: flex; align-items: center; justify-content: center; padding: 0 20rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 28rpx; font-weight: 900; }
+.popup-cart-btn::after, .popup-buy-btn::after { border: none; }
+.popup-cart-btn { background: linear-gradient(135deg, #ffbd27, #ff9e00); }
+.popup-buy-btn { background: linear-gradient(135deg, #ff7583, #ef3f51); }
 </style>
