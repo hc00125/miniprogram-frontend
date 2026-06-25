@@ -104,7 +104,8 @@ import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 interface ShopCategory extends PackageGroup {}
 
 const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
-const fallbackCategory: ShopCategory = { id: 0, name: '特惠体验单', sort_order: 0 }
+const fallbackCategory: ShopCategory = { id: -10, name: '推荐套餐', sort_order: 0 }
+const categoryOrder = ['推荐套餐', '基础陪玩套餐', '趣味单', '特色单']
 
 const statusBarHeight = ref(20)
 const keyword = ref('')
@@ -122,9 +123,7 @@ const filteredProducts = computed(() => {
   const q = keyword.value.trim().toLowerCase()
   let list = products.value
   const category = activeCategory.value
-  if (category && category.id !== fallbackCategory.id) {
-    list = list.filter(item => item.group_id === category.id || item.group_name === category.name)
-  }
+  if (category) list = list.filter(item => item.group_id === category.id || item.group_name === category.name)
   if (q) {
     list = list.filter(item => {
       const text = `${item.name || ''} ${item.description || ''} ${item.group_name || ''}`.toLowerCase()
@@ -148,7 +147,7 @@ function normalizeCategories(groupList: PackageGroup[], packageList: BossPackage
     const key = category.name || String(category.id)
     if (!merged.has(key)) merged.set(key, category)
   }
-  groupList.forEach(group => addCategory(group))
+
   packageList.forEach(item => {
     if (item.group_id === null && !item.group_name) return
     addCategory({
@@ -157,8 +156,25 @@ function normalizeCategories(groupList: PackageGroup[], packageList: BossPackage
       sort_order: 0
     })
   })
-  const result = Array.from(merged.values())
+
+  groupList.forEach(group => {
+    const hasProducts = packageList.some(item => item.group_id === group.id || item.group_name === group.name)
+    if (hasProducts) addCategory(group)
+  })
+
+  const result = sortCategories(Array.from(merged.values()))
   return result.length ? result : [fallbackCategory]
+}
+
+function sortCategories(list: ShopCategory[]) {
+  return [...list].sort((a, b) => {
+    const ai = categoryOrder.indexOf(a.name)
+    const bi = categoryOrder.indexOf(b.name)
+    const av = ai === -1 ? 999 : ai
+    const bv = bi === -1 ? 999 : bi
+    if (av !== bv) return av - bv
+    return Number(a.sort_order || 0) - Number(b.sort_order || 0)
+  })
 }
 
 function hashName(name: string) {
@@ -241,7 +257,6 @@ onShow(() => {
 
 <style lang="scss" scoped>
 @import '@/styles/theme.scss';
-
 .shop-category-page { min-height: 100vh; padding: 0 0 calc(120rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: #fff; }
 .shop-top { position: sticky; top: 0; z-index: 10; padding: 18rpx 24rpx 10rpx; background: #fff; box-sizing: border-box; }
 .search-box { display: flex; align-items: center; gap: 12rpx; height: 64rpx; padding: 0 22rpx; border-radius: 999rpx; background: #f6f6f6; box-sizing: border-box; }
