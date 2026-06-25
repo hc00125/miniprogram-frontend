@@ -1,12 +1,16 @@
 <template>
   <view class="shop-checkout-page">
     <scroll-view scroll-y class="checkout-scroll">
-      <view v-if="product" class="product-card">
+      <view v-if="product" class="product-card" :class="{ 'product-card--guarantee': isGuaranteeProduct }">
         <image class="product-image" :src="productImage" mode="aspectFill" />
         <view class="product-main">
-          <text class="product-name">{{ product.name }}</text>
-          <text class="product-desc">{{ selectedSpec?.name || product.description || '精选套餐，平台保障，快速匹配陪玩。' }}</text>
+          <view class="product-title-row">
+            <text class="product-name">{{ product.name }}</text>
+            <text class="product-tag">{{ isGuaranteeProduct ? '特色单' : product.group_name || '套餐' }}</text>
+          </view>
+          <text class="product-desc">{{ productDesc }}</text>
           <view class="price-row">
+            <text class="price-prefix">{{ specs.length ? '已选' : '' }}</text>
             <text class="price-symbol">¥</text>
             <text class="price-value">{{ formatMoney(basePrice) }}</text>
             <text class="price-unit">{{ isSpecProduct ? '/单' : '/时/人' }}</text>
@@ -15,7 +19,13 @@
       </view>
 
       <view v-if="product && specs.length" class="checkout-card spec-card">
-        <view class="card-title">选择规格</view>
+        <view class="card-head-row">
+          <view>
+            <view class="card-title">{{ isGuaranteeProduct ? '选择保底规格' : '选择规格' }}</view>
+            <text class="card-subtitle">{{ isGuaranteeProduct ? '选择目标保底金额，订单会自动记录规格' : '请选择本次下单规格' }}</text>
+          </view>
+          <text class="spec-count">{{ specs.length }}档</text>
+        </view>
         <view class="spec-grid">
           <view
             v-for="spec in specs"
@@ -25,7 +35,26 @@
             @tap="selectSpec(spec)"
           >
             <text>{{ spec.name }}</text>
+            <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
             <text>¥{{ formatMoney(Number(spec.price)) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="isGuaranteeProduct" class="checkout-card notice-card">
+        <view class="card-title">下单说明</view>
+        <view class="notice-list">
+          <view class="notice-item">
+            <text></text>
+            <text>{{ selectedSpec ? `当前规格：${selectedSpec.name}` : '请选择一个保底规格' }}</text>
+          </view>
+          <view class="notice-item">
+            <text></text>
+            <text>保底单按单计价，不需要选择人数和时长。</text>
+          </view>
+          <view class="notice-item">
+            <text></text>
+            <text>提交后客服会根据所选规格确认规则和开局时间。</text>
           </view>
         </view>
       </view>
@@ -132,8 +161,13 @@ const selectedSpec = ref<BossPackageSpec | null>(null)
 const form = reactive({ contact: '', gameId: '', note: '', bookedHours: 1, playerCount: 1 })
 
 const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
+const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(specs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
 const productImage = computed(() => product.value ? getProductImage(product.value) : fallbackImage)
+const productDesc = computed(() => {
+  if (isGuaranteeProduct.value) return selectedSpec.value ? `电视台保底规格：${selectedSpec.value.guarantee_amount || selectedSpec.value.name}` : '电视台保底单，选择规格后按单下单。'
+  return selectedSpec.value?.name || product.value?.description || '精选套餐，平台保障，快速匹配陪玩。'
+})
 const basePrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
 const totalAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
 
@@ -298,15 +332,23 @@ onLoad((query) => {
 .checkout-scroll { height: 100vh; }
 .product-card, .checkout-card { margin: 22rpx; padding: 24rpx; border-radius: 22rpx; background: #fff; box-sizing: border-box; }
 .product-card { display: flex; gap: 20rpx; }
+.product-card--guarantee { background: linear-gradient(135deg, #fff, #fff7e8); }
 .product-image { width: 150rpx; height: 150rpx; flex-shrink: 0; border-radius: 12rpx; background: #f0f0f0; }
 .product-main { min-width: 0; flex: 1; display: flex; flex-direction: column; }
-.product-name { color: #262626; font-size: 32rpx; font-weight: 900; line-height: 1.35; }
+.product-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14rpx; }
+.product-name { flex: 1; min-width: 0; color: #262626; font-size: 32rpx; font-weight: 900; line-height: 1.35; }
+.product-tag { flex-shrink: 0; padding: 6rpx 12rpx; border-radius: 999rpx; color: #ef4f5f; font-size: 21rpx; font-weight: 900; background: #fff1f3; }
 .product-desc { margin-top: 10rpx; color: #777; font-size: 24rpx; line-height: 1.4; }
 .price-row { margin-top: auto; display: flex; align-items: baseline; color: #ef4f5f; }
+.price-prefix { margin-right: 6rpx; font-size: 20rpx; font-weight: 800; }
 .price-symbol { font-size: 26rpx; font-weight: 900; }
 .price-value { margin-left: 4rpx; font-size: 42rpx; font-weight: 900; line-height: 1; }
 .price-unit { margin-left: 6rpx; font-size: 22rpx; }
+.card-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; margin-bottom: 22rpx; }
 .card-title { margin-bottom: 22rpx; color: #222; font-size: 30rpx; font-weight: 900; }
+.card-head-row .card-title { margin-bottom: 6rpx; }
+.card-subtitle { color: #999; font-size: 23rpx; }
+.spec-count { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; color: #8b6a27; font-size: 22rpx; background: #fff4d9; }
 .input-row { margin-top: 22rpx; }
 .input-row:first-of-type { margin-top: 0; }
 .input-label { display: block; margin-bottom: 12rpx; color: #666; font-size: 25rpx; font-weight: 800; }
@@ -326,8 +368,14 @@ onLoad((query) => {
 .spec-chip { min-width: 220rpx; flex: 1; padding: 16rpx 18rpx; border-radius: 16rpx; border: 1rpx solid #ececec; background: #fafafa; box-sizing: border-box; }
 .spec-chip text { display: block; }
 .spec-chip text:first-child { color: #333; font-size: 24rpx; font-weight: 800; }
+.spec-chip text:nth-child(2) { margin-top: 8rpx; color: #8b6a27; font-size: 22rpx; }
 .spec-chip text:last-child { margin-top: 8rpx; color: #ef4f5f; font-size: 30rpx; font-weight: 900; }
-.spec-chip.active { border-color: #ef4f5f; background: #fff1f3; }
+.spec-chip.active { border-color: #ef4f5f; background: #fff1f3; box-shadow: 0 8rpx 20rpx rgba(239, 79, 95, 0.12); }
+.notice-card { background: linear-gradient(180deg, #fff, #fff8e7); }
+.notice-list { display: flex; flex-direction: column; gap: 12rpx; }
+.notice-item { display: flex; gap: 12rpx; color: #5c5c5c; font-size: 24rpx; line-height: 1.45; }
+.notice-item text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 12rpx; border-radius: 50%; background: #ef4f5f; }
+.notice-item text:last-child { flex: 1; }
 .detail-row { display: flex; align-items: center; justify-content: space-between; gap: 28rpx; padding: 18rpx 0; border-bottom: 1rpx solid #f1f1f1; color: #666; font-size: 26rpx; }
 .detail-row:last-child { border-bottom: none; }
 .detail-row text:last-child { flex: 1; text-align: right; }
