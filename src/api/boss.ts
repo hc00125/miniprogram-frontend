@@ -8,6 +8,11 @@ function isTestEntry(name: string): boolean {
   return false
 }
 
+const GROUP_RECOMMEND = '推荐套餐'
+const GROUP_BASIC = '基础陪玩套餐'
+const GROUP_FUN = '趣味单'
+const GROUP_SPECIAL = '特色单'
+
 export interface BossPackageSpec {
   id: number | string
   name: string
@@ -130,10 +135,10 @@ const frontendPresetPackages: BossPackage[] = [
     name: '六套六弹',
     player_count: 1,
     base_price: 60,
-    description: '基础套餐 · 6套6弹配置',
+    description: '推荐套餐 · 6套6弹配置',
     is_custom: false,
-    group_id: -100,
-    group_name: '基础套餐',
+    group_id: -10,
+    group_name: GROUP_RECOMMEND,
     product_type: 'normal',
     sort_order: 6606,
     is_active: true,
@@ -146,8 +151,8 @@ const frontendPresetPackages: BossPackage[] = [
     base_price: 58,
     description: '电视台保底明细可选，按规格下单',
     is_custom: false,
-    group_id: -200,
-    group_name: '保底单 / 护航单',
+    group_id: -40,
+    group_name: GROUP_SPECIAL,
     product_type: 'guarantee',
     specs: guaranteeSpecs,
     sort_order: 8801,
@@ -156,25 +161,47 @@ const frontendPresetPackages: BossPackage[] = [
   }
 ]
 
+function assignProductGroup(pkg: BossPackage): BossPackage {
+  const name = pkg.name || ''
+  if (name === '六套六弹') return { ...pkg, group_id: -10, group_name: GROUP_RECOMMEND }
+  if (name.includes('体验单') || name.includes('猛攻单') || name.includes('体验')) {
+    return { ...pkg, group_id: -20, group_name: GROUP_BASIC }
+  }
+  if (name.includes('趣味')) return { ...pkg, group_id: -30, group_name: GROUP_FUN }
+  if (
+    pkg.product_type === 'guarantee' ||
+    pkg.product_type === 'escort' ||
+    name.includes('保底') ||
+    name.includes('护航') ||
+    name.includes('大金') ||
+    name.includes('清图') ||
+    name.includes('课程') ||
+    name.includes('收集')
+  ) {
+    return { ...pkg, group_id: -40, group_name: GROUP_SPECIAL }
+  }
+  return pkg
+}
+
 function patchPackagePreset(pkg: BossPackage): BossPackage {
   if (pkg.name === '暗区突围端游保底单') {
-    return {
+    return assignProductGroup({
       ...pkg,
       product_type: pkg.product_type || 'guarantee',
       base_price: Number(pkg.base_price || pkg.price || guaranteeSpecs[0].price),
       specs: pkg.specs?.length ? pkg.specs : guaranteeSpecs
-    }
+    })
   }
   if (pkg.name === '六套六弹') {
-    return {
+    return assignProductGroup({
       ...pkg,
       product_type: pkg.product_type || 'normal',
       player_count: pkg.player_count || 1,
       base_price: Number(pkg.base_price || pkg.price || 60),
-      description: pkg.description || '基础套餐 · 6套6弹配置'
-    }
+      description: pkg.description || '推荐套餐 · 6套6弹配置'
+    })
   }
-  return pkg
+  return assignProductGroup(pkg)
 }
 
 function mergeFrontendPresets(source: BossPackage[]) {
