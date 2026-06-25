@@ -169,7 +169,7 @@ function assignProductGroup(pkg: BossPackage): BossPackage {
   const name = pkg.name || ''
   const groupName = pkg.group_name || ''
   if (name === '六套六弹') return { ...pkg, group_id: -10, group_name: GROUP_RECOMMEND }
-  if (isDefaultRecommendGroup(groupName)) return { ...pkg, group_name: GROUP_RECOMMEND }
+  if (isDefaultRecommendGroup(groupName)) return { ...pkg, group_id: -10, group_name: GROUP_RECOMMEND }
   if (name.includes('体验单') || name.includes('猛攻单') || name.includes('体验')) {
     return { ...pkg, group_id: -20, group_name: GROUP_BASIC }
   }
