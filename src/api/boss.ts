@@ -8,6 +8,15 @@ function isTestEntry(name: string): boolean {
   return false
 }
 
+export interface BossPackageSpec {
+  id: number | string
+  name: string
+  price: number
+  description?: string
+  guarantee_amount?: string
+  sort_order?: number
+}
+
 export interface BossPackage {
   id: number
   name: string
@@ -21,12 +30,19 @@ export interface BossPackage {
   image_url?: string
   thumb_url?: string
   picture_url?: string
+  detail_images?: string[]
+  product_type?: 'normal' | 'guarantee' | 'escort' | string
+  specs?: BossPackageSpec[]
   price?: number
   original_price?: number
+  market_price?: number
   sold_count?: number
   sales_count?: number
   sales?: number
   order_count?: number
+  sort_order?: number
+  is_active?: boolean
+  is_frontend_preset?: boolean
 }
 
 export interface BossAddon {
@@ -96,9 +112,80 @@ export interface OrderCreatePayload {
   booked_hours?: number
 }
 
+export const guaranteeSpecs: BossPackageSpec[] = [
+  { id: 'tv-888', name: '电视台保底 888w', price: 58, guarantee_amount: '888w', sort_order: 1 },
+  { id: 'tv-1088', name: '电视台保底 1088w', price: 68, guarantee_amount: '1088w', sort_order: 2 },
+  { id: 'tv-1288', name: '电视台保底 1288w', price: 88, guarantee_amount: '1288w', sort_order: 3 },
+  { id: 'tv-1488', name: '电视台保底 1488w', price: 98, guarantee_amount: '1488w', sort_order: 4 },
+  { id: 'tv-1688', name: '电视台保底 1688w', price: 128, guarantee_amount: '1688w', sort_order: 5 },
+  { id: 'tv-2688', name: '电视台保底 2688w', price: 188, guarantee_amount: '2688w', sort_order: 6 },
+  { id: 'tv-3988', name: '电视台保底 3988w', price: 288, guarantee_amount: '3988w', sort_order: 7 },
+  { id: 'tv-5888', name: '电视台保底 5888w', price: 399, guarantee_amount: '5888w', sort_order: 8 },
+  { id: 'tv-10001', name: '电视台保底 10001w', price: 688, guarantee_amount: '10001w', sort_order: 9 }
+]
+
+const frontendPresetPackages: BossPackage[] = [
+  {
+    id: -6606,
+    name: '六套六弹',
+    player_count: 1,
+    base_price: 60,
+    description: '基础套餐 · 6套6弹配置',
+    is_custom: false,
+    group_id: -100,
+    group_name: '基础套餐',
+    product_type: 'normal',
+    sort_order: 6606,
+    is_active: true,
+    is_frontend_preset: true
+  },
+  {
+    id: -8801,
+    name: '暗区突围端游保底单',
+    player_count: 1,
+    base_price: 58,
+    description: '电视台保底明细可选，按规格下单',
+    is_custom: false,
+    group_id: -200,
+    group_name: '保底单 / 护航单',
+    product_type: 'guarantee',
+    specs: guaranteeSpecs,
+    sort_order: 8801,
+    is_active: true,
+    is_frontend_preset: true
+  }
+]
+
+function patchPackagePreset(pkg: BossPackage): BossPackage {
+  if (pkg.name === '暗区突围端游保底单') {
+    return {
+      ...pkg,
+      product_type: pkg.product_type || 'guarantee',
+      base_price: Number(pkg.base_price || pkg.price || guaranteeSpecs[0].price),
+      specs: pkg.specs?.length ? pkg.specs : guaranteeSpecs
+    }
+  }
+  if (pkg.name === '六套六弹') {
+    return {
+      ...pkg,
+      product_type: pkg.product_type || 'normal',
+      player_count: pkg.player_count || 1,
+      base_price: Number(pkg.base_price || pkg.price || 60),
+      description: pkg.description || '基础套餐 · 6套6弹配置'
+    }
+  }
+  return pkg
+}
+
+function mergeFrontendPresets(source: BossPackage[]) {
+  const byName = new Set(source.map(item => item.name))
+  const missingPresets = frontendPresetPackages.filter(item => !byName.has(item.name))
+  return [...source.map(patchPackagePreset), ...missingPresets]
+}
+
 export function getPackages() {
   return api.get<BossPackage[]>('/boss/packages').then(list => {
-    const filtered = list.filter(p => !isTestEntry(p.name))
+    const filtered = mergeFrontendPresets(list.filter(p => !isTestEntry(p.name)))
     // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除
     const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
     if (firstGroupId !== null) {
