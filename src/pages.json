@@ -27,6 +27,14 @@
       }
     },
     {
+      "path": "pages/shop/cart/index",
+      "style": {
+        "navigationBarTitleText": "购物车",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/shop/checkout/index",
       "style": {
         "navigationBarTitleText": "确认下单",
