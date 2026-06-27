@@ -4,7 +4,7 @@
       <view class="cart-header">
         <view>
           <text class="cart-title">购物车</text>
-          <text class="cart-subtitle">已加入 {{ cartCount }} 件商品</text>
+          <text class="cart-subtitle">{{ loading ? '正在同步购物车...' : `已加入 ${cartCount} 件商品` }}</text>
         </view>
         <button v-if="items.length" class="clear-btn" @tap="handleClearCart">清空</button>
       </view>
@@ -29,15 +29,15 @@
                 <text>{{ formatMoney(item.price) }}</text>
               </view>
               <view class="stepper">
-                <button class="step-btn" @tap="adjustQuantity(item, -1)">−</button>
+                <button class="step-btn" :disabled="operating" @tap="adjustQuantity(item, -1)">−</button>
                 <text class="step-value">{{ item.quantity }}</text>
-                <button class="step-btn plus" @tap="adjustQuantity(item, 1)">＋</button>
+                <button class="step-btn plus" :disabled="operating" @tap="adjustQuantity(item, 1)">＋</button>
               </view>
             </view>
           </view>
 
           <view class="card-actions">
-            <button class="remove-btn" @tap="removeItem(item.id)">删除</button>
+            <button class="remove-btn" :disabled="operating" @tap="removeItem(item.id)">删除</button>
             <button class="buy-btn" @tap="checkoutItem(item)">去下单</button>
           </view>
         </view>
@@ -45,9 +45,9 @@
 
       <view v-else class="empty-state">
         <view class="empty-icon">🛒</view>
-        <text class="empty-title">购物车还是空的</text>
-        <text class="empty-desc">先去挑选一个套餐或规格吧</text>
-        <button class="shop-btn" @tap="goShop">去点单</button>
+        <text class="empty-title">{{ loading ? '正在加载购物车' : '购物车还是空的' }}</text>
+        <text class="empty-desc">{{ loading ? '请稍等' : '先去挑选一个套餐或规格吧' }}</text>
+        <button v-if="!loading" class="shop-btn" @tap="goShop">去点单</button>
       </view>
 
       <view class="bottom-spacer"></view>
@@ -71,32 +71,56 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { clearShopCart, getShopCart, removeShopCartItem, updateShopCartItemQuantity, type ShopCartItem } from '@/utils/shopCart'
 import { go, goMain } from '@/utils/nav'
-import { success, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 
 const items = ref<ShopCartItem[]>([])
+const loading = ref(false)
+const operating = ref(false)
 const cartCount = computed(() => items.value.reduce((sum, item) => sum + Number(item.quantity || 1), 0))
 const totalPrice = computed(() => items.value.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0))
 
-function refreshCart() {
-  items.value = getShopCart()
+async function refreshCart() {
+  loading.value = true
+  try {
+    items.value = await getShopCart()
+  } catch (error) {
+    toast(getErrorMessage(error, '购物车加载失败'))
+  } finally {
+    loading.value = false
+  }
 }
 
 function formatMoney(value: number) {
   return Number.isInteger(value) ? `${value}` : Number(value || 0).toFixed(2)
 }
 
-function adjustQuantity(item: ShopCartItem, delta: number) {
+async function adjustQuantity(item: ShopCartItem, delta: number) {
   const next = Number(item.quantity || 1) + delta
-  if (next <= 0) {
-    removeItem(item.id)
-    return
+  operating.value = true
+  try {
+    if (next <= 0) {
+      items.value = await removeShopCartItem(item.id)
+      toast('已删除')
+      return
+    }
+    items.value = await updateShopCartItemQuantity(item.id, next)
+  } catch (error) {
+    toast(getErrorMessage(error, '数量更新失败'))
+  } finally {
+    operating.value = false
   }
-  items.value = updateShopCartItemQuantity(item.id, next)
 }
 
-function removeItem(id: string) {
-  items.value = removeShopCartItem(id)
-  toast('已删除')
+async function removeItem(id: string | number) {
+  operating.value = true
+  try {
+    items.value = await removeShopCartItem(id)
+    toast('已删除')
+  } catch (error) {
+    toast(getErrorMessage(error, '删除失败'))
+  } finally {
+    operating.value = false
+  }
 }
 
 function handleClearCart() {
@@ -104,11 +128,17 @@ function handleClearCart() {
     title: '清空购物车',
     content: '确定要清空购物车吗？',
     confirmColor: '#ef4f5f',
-    success: (res) => {
+    success: async (res) => {
       if (!res.confirm) return
-      clearShopCart()
-      refreshCart()
-      success('已清空')
+      operating.value = true
+      try {
+        items.value = await clearShopCart()
+        success('已清空')
+      } catch (error) {
+        toast(getErrorMessage(error, '清空失败'))
+      } finally {
+        operating.value = false
+      }
     }
   })
 }
