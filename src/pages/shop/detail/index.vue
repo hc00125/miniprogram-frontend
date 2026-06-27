@@ -57,13 +57,13 @@
       <view class="detail-card option-card">
         <view class="option-row" @tap="openSpecPopup('buy')">
           <text class="option-label">选择</text>
-          <text class="option-value">{{ selectedSpec ? `已选：${selectedSpec.name}` : '请选择规格' }}</text>
+          <text class="option-value">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           <text class="option-arrow">›</text>
         </view>
 
         <view v-if="specs.length" class="option-preview">
           <view class="preview-chip" v-for="spec in previewSpecs" :key="spec.id">
-            {{ spec.name }}
+            {{ getSpecDisplayName(spec) }}
           </view>
           <view class="preview-chip preview-chip--more">共{{ specs.length }}个规格可选</view>
         </view>
@@ -171,7 +171,7 @@
               <text>{{ formatMoney(productPrice) }}</text>
             </view>
             <text class="spec-popup-stock">{{ specs.length ? `共${specs.length}个规格可选` : '无规格可选' }}</text>
-            <text class="spec-popup-selected">{{ selectedSpec ? `已选：${selectedSpec.name}` : '请选择规格' }}</text>
+            <text class="spec-popup-selected">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           </view>
           <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
         </view>
@@ -190,9 +190,7 @@
                 :class="{ active: selectedSpec?.id === spec.id }"
                 @tap="selectSpec(spec)"
               >
-                <text>{{ spec.name }}</text>
-                <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
-                <text>¥{{ formatMoney(Number(spec.price)) }}</text>
+                <text>{{ getSpecDisplayName(spec) }}</text>
               </view>
             </view>
           </view>
@@ -282,6 +280,19 @@ function getSoldCount(item: BossPackage) {
 
 function formatMoney(value: number) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(2)
+}
+
+function getSpecDisplayName(spec: BossPackageSpec) {
+  const specItem = spec as BossPackageSpec & Record<string, any>
+  if (specItem.short_name) return String(specItem.short_name)
+  if (specItem.display_name) return String(specItem.display_name)
+  if (isGuaranteeProduct.value) {
+    if (spec.guarantee_amount) return `${spec.guarantee_amount}档`
+    const matched = String(spec.name || '').match(/(\d+\s*w)/i)
+    if (matched?.[1]) return `${matched[1].replace(/\s+/g, '')}档`
+    return String(spec.name || '').replace(/^电视台保底\s*/i, '').trim() || String(spec.name || '')
+  }
+  return String(spec.name || '').trim()
 }
 
 function selectSpec(spec: BossPackageSpec) {
@@ -413,11 +424,11 @@ onLoad((query) => {
 .option-row { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #f2f2f2; box-sizing: border-box; }
 .option-row:last-child { border-bottom: none; }
 .option-label { width: 72rpx; flex-shrink: 0; color: #858585; font-size: 25rpx; font-weight: 800; }
-.option-value { flex: 1; min-width: 0; color: #333; font-size: 25rpx; }
+.option-value { flex: 1; min-width: 0; color: #333; font-size: 25rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .option-arrow { color: #aaa; font-size: 36rpx; }
 .tag { padding: 3rpx 8rpx; margin-right: 14rpx; border: 1rpx solid #ef4f5f; border-radius: 4rpx; color: #ef4f5f; font-size: 20rpx; }
 .option-preview { display: flex; gap: 12rpx; padding: 18rpx 0; overflow: hidden; border-bottom: 1rpx solid #f2f2f2; }
-.preview-chip { flex-shrink: 0; max-width: 180rpx; padding: 10rpx 16rpx; border-radius: 10rpx; color: #888; font-size: 22rpx; background: #f6f6f6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.preview-chip { flex-shrink: 0; max-width: 180rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; padding: 0 18rpx; border-radius: 10rpx; color: #888; font-size: 22rpx; background: #f6f6f6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; box-sizing: border-box; }
 .preview-chip--more { color: #999; background: #f9f9f9; }
 .guarantee-rule-card { background: linear-gradient(180deg, #fff, #fff8e7); }
 .rule-list { margin-top: 18rpx; }
@@ -472,13 +483,10 @@ onLoad((query) => {
 .spec-popup-title { color: #333; font-size: 29rpx; font-weight: 900; }
 .spec-popup-title-tip { color: #999; font-size: 23rpx; }
 .spec-popup-grid { display: flex; flex-wrap: wrap; gap: 16rpx; }
-.spec-popup-chip { min-width: 204rpx; flex: 1; padding: 18rpx 18rpx; border-radius: 14rpx; border: 1rpx solid #ececec; background: #f7f7f7; box-sizing: border-box; }
-.spec-popup-chip text { display: block; }
-.spec-popup-chip text:first-child { color: #333; font-size: 24rpx; font-weight: 800; line-height: 1.32; }
-.spec-popup-chip text:nth-child(2) { margin-top: 8rpx; color: #8b6a27; font-size: 22rpx; }
-.spec-popup-chip text:last-child { margin-top: 8rpx; color: #ef4f5f; font-size: 30rpx; font-weight: 900; }
-.spec-popup-chip.active { border-color: #ef4f5f; background: #fff1f3; box-shadow: 0 8rpx 20rpx rgba(239, 79, 95, 0.14); }
-.spec-popup-chip.active text:first-child, .spec-popup-chip.active text:nth-child(2), .spec-popup-chip.active text:last-child { color: #ef4f5f; }
+.spec-popup-chip { flex: 0 0 calc((100% - 32rpx) / 3); max-width: calc((100% - 32rpx) / 3); min-height: 72rpx; display: flex; align-items: center; justify-content: center; padding: 0 12rpx; border-radius: 12rpx; border: 1rpx solid #ececec; background: #f7f7f7; text-align: center; box-sizing: border-box; }
+.spec-popup-chip text { display: block; width: 100%; color: #555; font-size: 24rpx; font-weight: 500; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.spec-popup-chip.active { border-color: #ef4f5f; background: #fff1f3; }
+.spec-popup-chip.active text { color: #ef4f5f; font-weight: 700; }
 .spec-popup-footer { display: flex; gap: 18rpx; margin-top: 28rpx; }
 .popup-cart-btn, .popup-buy-btn { flex: 1; height: 84rpx; display: flex; align-items: center; justify-content: center; padding: 0 20rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 28rpx; font-weight: 900; }
 .popup-cart-btn::after, .popup-buy-btn::after { border: none; }
