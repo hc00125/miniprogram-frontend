@@ -304,8 +304,12 @@ function selectSpec(spec: BossPackageSpec) {
   selectedSpec.value = spec
 }
 
-function refreshCartCount() {
-  cartCount.value = getShopCartCount()
+async function refreshCartCount() {
+  try {
+    cartCount.value = await getShopCartCount()
+  } catch {
+    cartCount.value = 0
+  }
 }
 
 async function fetchProduct() {
@@ -360,19 +364,23 @@ function confirmSpecAction(action?: 'cart' | 'buy') {
   go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id })
 }
 
-function handleCartTap() {
+async function handleCartTap() {
   if (!product.value) return
-  addShopCartItem({
-    product: product.value,
-    spec: selectedSpec.value,
-    spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined,
-    image_url: specPopupImage.value,
-    price: productPrice.value,
-    description: productSummary.value,
-    quantity: 1
-  })
-  refreshCartCount()
-  success('已加入购物车')
+  try {
+    await addShopCartItem({
+      product: product.value,
+      spec: selectedSpec.value,
+      spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined,
+      image_url: specPopupImage.value,
+      price: productPrice.value,
+      description: productSummary.value,
+      quantity: 1
+    })
+    await refreshCartCount()
+    success('已加入购物车')
+  } catch (error) {
+    toast(getErrorMessage(error, '加入购物车失败'))
+  }
 }
 
 function handleCollectTap() {
