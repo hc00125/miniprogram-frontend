@@ -1,10 +1,8 @@
+import api from '@/utils/request'
 import type { BossPackage, BossPackageSpec } from '@/api/boss'
 
-const CART_KEY = 'shop_cart'
-const MAX_CART_QUANTITY = 99
-
 export interface ShopCartItem {
-  id: string
+  id: number | string
   package_id: number
   package_name: string
   group_name?: string | null
@@ -16,8 +14,8 @@ export interface ShopCartItem {
   spec_display_name?: string
   price: number
   quantity: number
-  added_at: number
-  updated_at: number
+  created_at?: string
+  updated_at?: string
 }
 
 export interface AddShopCartPayload {
@@ -30,83 +28,58 @@ export interface AddShopCartPayload {
   quantity?: number
 }
 
-function makeCartItemId(packageId: number, specId?: string | number | null) {
-  return `${packageId}:${specId === undefined || specId === null || specId === '' ? 'default' : String(specId)}`
+export interface AddShopCartRequest {
+  package_id: number
+  spec_id?: string | number | null
+  spec_name?: string
+  spec_display_name?: string
+  price: number
+  quantity?: number
+  image_url?: string
+  description?: string
 }
 
 function normalizeQuantity(value: number) {
   if (!Number.isFinite(value)) return 1
-  return Math.max(1, Math.min(MAX_CART_QUANTITY, Math.floor(value)))
+  return Math.max(1, Math.min(99, Math.floor(value)))
 }
 
-export function getShopCart(): ShopCartItem[] {
-  const value = uni.getStorageSync(CART_KEY)
-  return Array.isArray(value) ? value : []
+export async function getShopCart(): Promise<ShopCartItem[]> {
+  return api.get<ShopCartItem[]>('/boss/cart')
 }
 
-export function saveShopCart(items: ShopCartItem[]) {
-  uni.setStorageSync(CART_KEY, items)
+export async function getShopCartCount() {
+  const items = await getShopCart()
+  return items.reduce((sum, item) => sum + normalizeQuantity(Number(item.quantity || 1)), 0)
 }
 
-export function getShopCartCount() {
-  return getShopCart().reduce((sum, item) => sum + normalizeQuantity(Number(item.quantity || 1)), 0)
-}
-
-export function addShopCartItem(payload: AddShopCartPayload) {
+export async function addShopCartItem(payload: AddShopCartPayload) {
   const product = payload.product
   const spec = payload.spec || null
-  const quantity = normalizeQuantity(payload.quantity || 1)
-  const now = Date.now()
-  const id = makeCartItemId(product.id, spec?.id)
-  const items = getShopCart()
-  const current = items.find(item => item.id === id)
-
-  if (current) {
-    current.quantity = normalizeQuantity(current.quantity + quantity)
-    current.price = Number(payload.price || current.price || 0)
-    current.image_url = payload.image_url || current.image_url
-    current.description = payload.description || current.description
-    current.spec_name = spec?.name || current.spec_name
-    current.spec_display_name = payload.spec_display_name || current.spec_display_name
-    current.updated_at = now
-    saveShopCart(items)
-    return current
-  }
-
-  const item: ShopCartItem = {
-    id,
+  const body: AddShopCartRequest = {
     package_id: product.id,
-    package_name: product.name,
-    group_name: product.group_name,
-    product_type: product.product_type,
-    image_url: payload.image_url,
-    description: payload.description || product.description,
     spec_id: spec?.id ?? null,
     spec_name: spec?.name,
     spec_display_name: payload.spec_display_name || spec?.name,
     price: Number(payload.price || product.base_price || 0),
-    quantity,
-    added_at: now,
-    updated_at: now
+    quantity: normalizeQuantity(payload.quantity || 1),
+    image_url: payload.image_url,
+    description: payload.description || product.description
   }
-  items.unshift(item)
-  saveShopCart(items)
-  return item
+  return api.post<ShopCartItem>('/boss/cart', body)
 }
 
-export function updateShopCartItemQuantity(id: string, quantity: number) {
-  const nextQuantity = normalizeQuantity(quantity)
-  const items = getShopCart().map(item => item.id === id ? { ...item, quantity: nextQuantity, updated_at: Date.now() } : item)
-  saveShopCart(items)
-  return items
+export async function updateShopCartItemQuantity(id: string | number, quantity: number) {
+  await api.put<ShopCartItem>(`/boss/cart/${id}`, { quantity: normalizeQuantity(quantity) })
+  return getShopCart()
 }
 
-export function removeShopCartItem(id: string) {
-  const items = getShopCart().filter(item => item.id !== id)
-  saveShopCart(items)
-  return items
+export async function removeShopCartItem(id: string | number) {
+  await api.delete<{ message: string }>(`/boss/cart/${id}`)
+  return getShopCart()
 }
 
-export function clearShopCart() {
-  saveShopCart([])
+export async function clearShopCart() {
+  await api.delete<{ message: string }>('/boss/cart/clear')
+  return [] as ShopCartItem[]
 }
