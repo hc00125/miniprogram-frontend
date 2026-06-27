@@ -153,9 +153,12 @@
         <text>⌂</text>
         <text>首页</text>
       </view>
-      <view class="bottom-icon" @tap="handleCollectTap">
-        <text>♡</text>
-        <text>收藏</text>
+      <view class="bottom-icon" @tap="openCart">
+        <view class="cart-icon-wrap">
+          <text>🛒</text>
+          <text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text>
+        </view>
+        <text>购物车</text>
       </view>
       <button class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
       <button class="buy-action" @tap="openSpecPopup('buy')">立即购买</button>
@@ -207,10 +210,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
-import { getErrorMessage, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
+import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
 
 const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
@@ -220,6 +224,7 @@ const allProducts = ref<BossPackage[]>([])
 const selectedSpec = ref<BossPackageSpec | null>(null)
 const specPopupVisible = ref(false)
 const pendingAction = ref<'cart' | 'buy'>('buy')
+const cartCount = ref(0)
 
 const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 const previewSpecs = computed(() => specs.value.slice(0, 3))
@@ -299,6 +304,10 @@ function selectSpec(spec: BossPackageSpec) {
   selectedSpec.value = spec
 }
 
+function refreshCartCount() {
+  cartCount.value = getShopCartCount()
+}
+
 async function fetchProduct() {
   if (!packageId.value) return
   loading.value = true
@@ -352,7 +361,18 @@ function confirmSpecAction(action?: 'cart' | 'buy') {
 }
 
 function handleCartTap() {
-  toast('第一阶段暂不做复杂购物车')
+  if (!product.value) return
+  addShopCartItem({
+    product: product.value,
+    spec: selectedSpec.value,
+    spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined,
+    image_url: specPopupImage.value,
+    price: productPrice.value,
+    description: productSummary.value,
+    quantity: 1
+  })
+  refreshCartCount()
+  success('已加入购物车')
 }
 
 function handleCollectTap() {
@@ -361,6 +381,10 @@ function handleCollectTap() {
 
 function handleBuyTap() {
   openSpecPopup('buy')
+}
+
+function openCart() {
+  go('/pages/shop/cart/index')
 }
 
 function goHome() {
@@ -376,6 +400,8 @@ onLoad((query) => {
   packageId.value = Number.isFinite(id) ? id : null
   fetchProduct()
 })
+
+onShow(refreshCartCount)
 </script>
 
 <style lang="scss" scoped>
@@ -463,6 +489,8 @@ onLoad((query) => {
 .bottom-icon { width: 72rpx; display: flex; flex-direction: column; align-items: center; gap: 4rpx; color: #7c7c7c; }
 .bottom-icon text:first-child { font-size: 34rpx; line-height: 1; }
 .bottom-icon text:last-child { font-size: 20rpx; }
+.cart-icon-wrap { position: relative; line-height: 1; }
+.cart-badge { position: absolute; right: -14rpx; top: -10rpx; min-width: 28rpx; height: 28rpx; display: flex; align-items: center; justify-content: center; padding: 0 7rpx; border-radius: 999rpx; color: #fff; font-size: 18rpx !important; font-weight: 900; background: #ef4f5f; box-sizing: border-box; }
 .cart-action, .buy-action { flex: 1; height: 76rpx; display: flex; align-items: center; justify-content: center; padding: 0 18rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; }
 .cart-action::after, .buy-action::after { border: none; }
 .cart-action { background: linear-gradient(135deg, #ffbd27, #ff9e00); }
