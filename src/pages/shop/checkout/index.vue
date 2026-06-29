@@ -298,6 +298,7 @@ async function submitOrder() {
       boss_wechat: bossWechat,
       game_id: form.gameId.trim(),
       package_id: product.value.id,
+      spec_id: selectedSpec.value ? Number(selectedSpec.value.id) : null,
       required_players: isSpecProduct.value ? 1 : form.playerCount,
       addon_details: null,
       designated_players: null,
