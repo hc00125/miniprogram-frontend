@@ -1,17 +1,11 @@
 import api from '@/utils/request'
-/** 过滤后端残留的测试数据（名称以 test / group_ 开头，或纯英文 slug 的条目） */
+/** 过滤后端残留的测试数据（名称以 test / group_ 开头的条目） */
 function isTestEntry(name: string): boolean {
   const n = (name || '').trim().toLowerCase()
   if (!n) return true
   if (n.startsWith('test') || n.startsWith('group_')) return true
-  if (/^[a-z0-9_\-]+$/.test(n)) return true
   return false
 }
-
-const GROUP_RECOMMEND = '推荐套餐'
-const GROUP_BASIC = '基础陪玩套餐'
-const GROUP_FUN = '趣味单'
-const GROUP_SPECIAL = '特色单'
 
 export interface BossPackageSpec {
   id: number | string
@@ -111,6 +105,7 @@ export interface OrderCreatePayload {
   boss_wechat: string
   game_id?: string | null
   package_id: number
+  spec_id?: number | null
   required_players?: number
   addon_details?: { addon_id: number; count: number }[] | null
   designated_players?: number[] | null
@@ -131,45 +126,17 @@ export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-10001', name: '电视台保底 10001w', price: 688, guarantee_amount: '10001w', sort_order: 9 }
 ]
 
-function isDefaultRecommendGroup(groupName?: string | null) {
-  return groupName === '默认推荐' || groupName === '默认 推荐'
-}
-
-function assignProductGroup(pkg: BossPackage): BossPackage {
-  const name = pkg.name || ''
-  const groupName = pkg.group_name || ''
-  if (name === '六套六弹') return { ...pkg, group_id: -10, group_name: GROUP_RECOMMEND }
-  if (isDefaultRecommendGroup(groupName)) return { ...pkg, group_id: -10, group_name: GROUP_RECOMMEND }
-  if (name.includes('体验单') || name.includes('猛攻单') || name.includes('体验')) {
-    return { ...pkg, group_id: -20, group_name: GROUP_BASIC }
-  }
-  if (name.includes('趣味')) return { ...pkg, group_id: -30, group_name: GROUP_FUN }
-  if (
-    pkg.product_type === 'guarantee' ||
-    pkg.product_type === 'escort' ||
-    name.includes('保底') ||
-    name.includes('护航') ||
-    name.includes('大金') ||
-    name.includes('清图') ||
-    name.includes('课程') ||
-    name.includes('收集')
-  ) {
-    return { ...pkg, group_id: -40, group_name: GROUP_SPECIAL }
-  }
-  return pkg
-}
-
 function normalizePackageFromApi(pkg: BossPackage): BossPackage {
   const specs = [...(pkg.specs || [])]
     .filter(spec => spec.is_active !== false)
     .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
 
-  return assignProductGroup({
+  return {
     ...pkg,
     specs,
     player_count: Math.max(1, Number(pkg.player_count || 1)),
     base_price: Math.max(0, Number(pkg.base_price ?? pkg.price ?? 0))
-  })
+  }
 }
 
 export function getPackages() {
