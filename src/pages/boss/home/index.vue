@@ -1,14 +1,5 @@
 <template>
   <view class="club-page home-page">
-    <view class="custom-navbar" :style="{ paddingTop: `${statusBarHeight}px` }">
-      <view class="nav-left">
-        <text class="nav-brand">偷吃电竞</text>
-      </view>
-      <view class="nav-right" @tap="goProfile">
-        <text>···</text>
-      </view>
-    </view>
-
     <scroll-view scroll-y class="home-scroll">
       <view class="landing">
         <view class="hero-section">
@@ -158,7 +149,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onShow } from '@dcloudio/uni-app'
 import { getPackages, getPlayerList, type BossPackage, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
@@ -214,7 +205,6 @@ const fallbackPackages: BossPackage[] = [
   { id: 1002, name: '五套五弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
 ]
 
-const statusBarHeight = ref(20)
 const currentHeroIndex = ref(0)
 const packages = ref<BossPackage[]>([])
 const players = ref<OnlinePlayer[]>([])
@@ -330,15 +320,6 @@ async function fetchHomeData() {
   }
 }
 
-onLoad(() => {
-  try {
-    const info = uni.getSystemInfoSync()
-    statusBarHeight.value = info.statusBarHeight || 20
-  } catch (_error) {
-    statusBarHeight.value = 20
-  }
-})
-
 onShow(fetchHomeData)
 </script>
 
@@ -355,46 +336,12 @@ onShow(fetchHomeData)
   box-sizing: border-box;
 }
 
-.custom-navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 28rpx;
-  background: rgba(251, 247, 239, 0.94);
-  backdrop-filter: blur(12rpx);
-  box-sizing: border-box;
-}
-
-.nav-brand {
-  color: #172116;
-  font-size: 34rpx;
-  font-weight: 900;
-}
-
-.nav-right {
-  min-width: 104rpx;
-  height: 54rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16rpx;
-  border-radius: 999rpx;
-  color: #172116;
-  font-size: 28rpx;
-  letter-spacing: 4rpx;
-  background: rgba(255, 255, 255, 0.82);
-}
-
 .home-scroll {
-  height: calc(100vh - 88rpx - env(safe-area-inset-bottom));
+  height: 100vh;
 }
 
 .landing {
-  padding: 0 24rpx 40rpx;
+  padding: 16rpx 24rpx 40rpx;
 }
 
 .hero-section {
