@@ -251,7 +251,7 @@ const guaranteeRules = computed(() => {
   return [
     amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位',
     '下单后客服会按所选规格确认局数、规则和开局时间',
-    '当前后端暂未建立规格表，前端会把所选规格自动写入订单备注'
+    '规格价格以后端配置为准，提交后会自动记录所选规格'
   ]
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
