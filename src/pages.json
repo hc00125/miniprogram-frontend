@@ -3,7 +3,6 @@
     {
       "path": "pages/boss/home/index",
       "style": {
-        "navigationStyle": "custom",
         "navigationBarTitleText": "偷吃电竞",
         "navigationBarBackgroundColor": "#fbf7ef",
         "navigationBarTextStyle": "black"
