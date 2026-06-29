@@ -123,7 +123,12 @@ const filteredProducts = computed(() => {
   const q = keyword.value.trim().toLowerCase()
   let list = products.value
   const category = activeCategory.value
-  if (category) list = list.filter(item => item.group_id === category.id || item.group_name === category.name)
+  if (category) {
+    list = list.filter(item => {
+      if (item.group_id !== null && item.group_id !== undefined) return item.group_id === category.id
+      return item.group_name === category.name
+    })
+  }
   if (q) {
     list = list.filter(item => {
       const text = `${item.name || ''} ${item.description || ''} ${item.group_name || ''}`.toLowerCase()
@@ -142,27 +147,38 @@ function selectCategory(id: number) {
 }
 
 function normalizeCategories(groupList: PackageGroup[], packageList: BossPackage[]) {
-  const merged = new Map<string, ShopCategory>()
-  const addCategory = (category: ShopCategory) => {
-    const key = category.name || String(category.id)
-    if (!merged.has(key)) merged.set(key, category)
-  }
-
-  packageList.forEach(item => {
-    if (item.group_id === null && !item.group_name) return
-    addCategory({
-      id: item.group_id ?? Math.abs(hashName(item.group_name || '推荐套餐')),
-      name: item.group_name || '推荐套餐',
-      sort_order: 0
-    })
-  })
+  const backendGroupsById = new Map(groupList.map(group => [group.id, group]))
+  const categoriesById = new Map<number, ShopCategory>()
+  const fallbackCategoriesByName = new Map<string, ShopCategory>()
 
   groupList.forEach(group => {
-    const hasProducts = packageList.some(item => item.group_id === group.id || item.group_name === group.name)
-    if (hasProducts) addCategory(group)
+    const hasProducts = packageList.some(item => item.group_id === group.id || (item.group_id == null && item.group_name === group.name))
+    if (hasProducts) categoriesById.set(group.id, group)
   })
 
-  const result = sortCategories(Array.from(merged.values()))
+  packageList.forEach(item => {
+    if (item.group_id !== null && item.group_id !== undefined) {
+      if (categoriesById.has(item.group_id)) return
+      const backendGroup = backendGroupsById.get(item.group_id)
+      categoriesById.set(item.group_id, backendGroup || {
+        id: item.group_id,
+        name: item.group_name || '推荐套餐',
+        sort_order: 0
+      })
+      return
+    }
+
+    if (!item.group_name) return
+    if (!fallbackCategoriesByName.has(item.group_name)) {
+      fallbackCategoriesByName.set(item.group_name, {
+        id: -Math.abs(hashName(item.group_name)),
+        name: item.group_name,
+        sort_order: 0
+      })
+    }
+  })
+
+  const result = sortCategories([...categoriesById.values(), ...fallbackCategoriesByName.values()])
   return result.length ? result : [fallbackCategory]
 }
 
