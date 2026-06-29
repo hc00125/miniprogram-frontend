@@ -129,7 +129,7 @@
           </view>
           <button @tap="goShopCategory">更多套餐 ›</button>
         </view>
-        <view class="hot-packages">
+        <view v-if="hotPackages.length" class="hot-packages">
           <view
             v-for="(pkg, index) in hotPackages"
             :key="pkg.id"
@@ -148,6 +148,7 @@
             </view>
           </view>
         </view>
+        <view v-else class="player-showcase-empty">暂无套餐</view>
       </view>
     </scroll-view>
 
@@ -162,6 +163,7 @@ import { getPackages, getPlayerList, type BossPackage, type OnlinePlayer } from 
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
+import { toast } from '@/utils/feedback'
 
 type HeroTarget = 'shop' | 'query' | 'players'
 
@@ -214,9 +216,9 @@ const fallbackPackages: BossPackage[] = [
 
 const statusBarHeight = ref(20)
 const currentHeroIndex = ref(0)
-const packages = ref<BossPackage[]>([...fallbackPackages])
+const packages = ref<BossPackage[]>([])
 const players = ref<OnlinePlayer[]>([])
-const hotPackages = computed(() => (packages.value.length ? packages.value : fallbackPackages).slice(0, 2))
+const hotPackages = computed(() => packages.value.slice(0, 2))
 const featuredPlayers = computed(() => players.value.slice(0, 6))
 
 function toSafeNumber(value: unknown, fallback: number) {
@@ -314,9 +316,10 @@ function handleMainTabSelect(tab: MainTab) {
 async function fetchHomeData() {
   try {
     const list = await getPackages()
-    packages.value = list.length ? list : fallbackPackages
+    packages.value = list
   } catch {
     packages.value = fallbackPackages
+    toast('网络异常，当前为默认展示数据')
   }
 
   try {
