@@ -20,6 +20,7 @@ export interface BossPackageSpec {
   description?: string
   guarantee_amount?: string
   sort_order?: number
+  is_active?: boolean
 }
 
 export interface BossPackage {
@@ -117,6 +118,7 @@ export interface OrderCreatePayload {
   booked_hours?: number
 }
 
+/** 保留规格类型示例，页面展示不再自动注入这些前端预设商品。 */
 export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-888', name: '电视台保底 888w', price: 58, guarantee_amount: '888w', sort_order: 1 },
   { id: 'tv-1088', name: '电视台保底 1088w', price: 68, guarantee_amount: '1088w', sort_order: 2 },
@@ -127,38 +129,6 @@ export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-3988', name: '电视台保底 3988w', price: 288, guarantee_amount: '3988w', sort_order: 7 },
   { id: 'tv-5888', name: '电视台保底 5888w', price: 399, guarantee_amount: '5888w', sort_order: 8 },
   { id: 'tv-10001', name: '电视台保底 10001w', price: 688, guarantee_amount: '10001w', sort_order: 9 }
-]
-
-const frontendPresetPackages: BossPackage[] = [
-  {
-    id: -6606,
-    name: '六套六弹',
-    player_count: 1,
-    base_price: 60,
-    description: '推荐套餐 · 6套6弹配置',
-    is_custom: false,
-    group_id: -10,
-    group_name: GROUP_RECOMMEND,
-    product_type: 'normal',
-    sort_order: 6606,
-    is_active: true,
-    is_frontend_preset: true
-  },
-  {
-    id: -8801,
-    name: '暗区突围端游保底单',
-    player_count: 1,
-    base_price: 58,
-    description: '电视台保底明细可选，按规格下单',
-    is_custom: false,
-    group_id: -40,
-    group_name: GROUP_SPECIAL,
-    product_type: 'guarantee',
-    specs: guaranteeSpecs,
-    sort_order: 8801,
-    is_active: true,
-    is_frontend_preset: true
-  }
 ]
 
 function isDefaultRecommendGroup(groupName?: string | null) {
@@ -189,37 +159,29 @@ function assignProductGroup(pkg: BossPackage): BossPackage {
   return pkg
 }
 
-function patchPackagePreset(pkg: BossPackage): BossPackage {
-  if (pkg.name === '暗区突围端游保底单') {
-    return assignProductGroup({
-      ...pkg,
-      product_type: pkg.product_type || 'guarantee',
-      base_price: Number(pkg.base_price || pkg.price || guaranteeSpecs[0].price),
-      specs: pkg.specs?.length ? pkg.specs : guaranteeSpecs
-    })
-  }
-  if (pkg.name === '六套六弹') {
-    return assignProductGroup({
-      ...pkg,
-      product_type: pkg.product_type || 'normal',
-      player_count: pkg.player_count || 1,
-      base_price: Number(pkg.base_price || pkg.price || 60),
-      description: pkg.description || '推荐套餐 · 6套6弹配置'
-    })
-  }
-  return assignProductGroup(pkg)
-}
+function normalizePackageFromApi(pkg: BossPackage): BossPackage {
+  const specs = [...(pkg.specs || [])]
+    .filter(spec => spec.is_active !== false)
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
 
-function mergeFrontendPresets(source: BossPackage[]) {
-  const byName = new Set(source.map(item => item.name))
-  const missingPresets = frontendPresetPackages.filter(item => !byName.has(item.name))
-  return [...source.map(patchPackagePreset), ...missingPresets]
+  return assignProductGroup({
+    ...pkg,
+    specs,
+    player_count: Math.max(1, Number(pkg.player_count || 1)),
+    base_price: Math.max(0, Number(pkg.base_price ?? pkg.price ?? 0))
+  })
 }
 
 export function getPackages() {
   return api.get<BossPackage[]>('/boss/packages').then(list => {
-    const filtered = mergeFrontendPresets(list.filter(p => !isTestEntry(p.name)))
-    // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除
+    const filtered = list
+      .filter(p => p.is_active !== false)
+      .filter(p => !isTestEntry(p.name))
+      .map(normalizePackageFromApi)
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || a.id - b.id)
+
+    // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除；
+    // 如果后端返回空数组，这里保持空数组，不再补前端假商品。
     const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
     if (firstGroupId !== null) {
       filtered.forEach(p => {
