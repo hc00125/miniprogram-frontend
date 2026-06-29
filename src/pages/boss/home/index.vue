@@ -9,8 +9,6 @@
             autoplay
             interval="4200"
             duration="480"
-            previous-margin="14rpx"
-            next-margin="110rpx"
             @change="handleHeroChange"
           >
             <swiper-item v-for="banner in heroBanners" :key="banner.id">
@@ -37,7 +35,6 @@
                 :class="{ active: currentHeroIndex === index }"
               ></text>
             </view>
-            <text class="hero-hint">左右滑动查看更多海报</text>
           </view>
 
           <view class="hero-shortcuts">
@@ -426,7 +423,7 @@ onShow(fetchHomeData)
 .hero-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 14rpx;
   padding: 0 6rpx;
 }
@@ -447,11 +444,6 @@ onShow(fetchHomeData)
 .hero-dots text.active {
   width: 40rpx;
   background: #2f9b63;
-}
-
-.hero-hint {
-  color: #8a887d;
-  font-size: 22rpx;
 }
 
 .hero-shortcuts {
