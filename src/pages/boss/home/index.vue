@@ -36,12 +36,6 @@
               ></text>
             </view>
           </view>
-
-          <view class="hero-shortcuts">
-            <button class="hero-chip hero-chip--primary" @tap="goShopCategory">立即点单</button>
-            <button class="hero-chip" @tap="goQuery">我的订单</button>
-            <button class="hero-chip" @tap="goProfile">个人中心</button>
-          </view>
         </view>
 
         <view class="function-row">
@@ -353,10 +347,6 @@ onShow(fetchHomeData)
 .hero-dots { display: flex; gap: 10rpx; }
 .hero-dots text { width: 22rpx; height: 6rpx; border-radius: 999rpx; background: rgba(47, 155, 99, 0.18); transition: all 0.2s ease; }
 .hero-dots text.active { width: 40rpx; background: #2f9b63; }
-.hero-shortcuts { display: flex; gap: 16rpx; margin-top: 18rpx; }
-.hero-chip { flex: 1; height: 68rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #38503f; font-size: 25rpx; font-weight: 800; line-height: 68rpx; text-align: center; background: rgba(255, 255, 255, 0.82); border: 1rpx solid rgba(61, 97, 74, 0.12); }
-.hero-chip::after { border: none; }
-.hero-chip--primary { color: #fff; background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
 .function-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6rpx; margin-top: 24rpx; padding: 22rpx 12rpx 18rpx; border-radius: 22rpx; background: rgba(255, 255, 255, 0.72); border: 1rpx solid rgba(61, 97, 74, 0.08); box-shadow: 0 12rpx 30rpx rgba(31, 55, 40, 0.05); box-sizing: border-box; }
 .function-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-width: 0; }
 .function-item text { color: #2e3b32; font-size: 23rpx; font-weight: 800; line-height: 1.2; }
