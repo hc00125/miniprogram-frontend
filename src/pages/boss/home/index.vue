@@ -39,53 +39,39 @@
 
           <view class="hero-shortcuts">
             <button class="hero-chip hero-chip--primary" @tap="goShopCategory">立即点单</button>
-            <button class="hero-chip" @tap="goOrderNotice">点单须知</button>
             <button class="hero-chip" @tap="goQuery">我的订单</button>
+            <button class="hero-chip" @tap="goProfile">个人中心</button>
           </view>
         </view>
 
-        <view class="quick-grid">
-          <view class="quick-card" @tap="goShopCategory">
-            <view class="quick-icon quick-icon--order">✓</view>
-            <view class="quick-main">
-              <text>点单大厅</text>
-              <text>海量陪玩，快速响应</text>
-            </view>
-            <text class="quick-arrow">›</text>
+        <view class="function-row">
+          <view class="function-item" @tap="goShopCategory">
+            <view class="function-icon function-icon--order">单</view>
+            <text>点单大厅</text>
           </view>
-          <view class="quick-card" @tap="goOrderNotice">
-            <view class="quick-icon quick-icon--notice">知</view>
-            <view class="quick-main">
-              <text>点单须知</text>
-              <text>下单前先看规则流程</text>
-            </view>
-            <text class="quick-arrow">›</text>
+          <view class="function-item" @tap="goQuery">
+            <view class="function-icon function-icon--query">进</view>
+            <text>订单进度</text>
           </view>
-          <view class="quick-card" @tap="goQuery">
-            <view class="quick-icon quick-icon--query">◷</view>
-            <view class="quick-main">
-              <text>订单进度</text>
-              <text>实时查看，进度跟踪</text>
-            </view>
-            <text class="quick-arrow">›</text>
+          <view class="function-item" @tap="goPlayerList">
+            <view class="function-icon function-icon--player">驻</view>
+            <text>陪玩入驻</text>
           </view>
-          <view class="quick-card" @tap="goPlayerList">
-            <view class="quick-icon quick-icon--player">驻</view>
-            <view class="quick-main">
-              <text>陪玩入驻</text>
-              <text>加入我们，收益更多</text>
-            </view>
-            <text class="quick-arrow">›</text>
+          <view class="function-item" @tap="goProfile">
+            <view class="function-icon function-icon--profile">我</view>
+            <text>个人中心</text>
           </view>
         </view>
 
         <view class="order-notice-banner" @tap="goOrderNotice">
+          <view class="order-notice-bg order-notice-bg--left"></view>
+          <view class="order-notice-bg order-notice-bg--right"></view>
           <view class="order-notice-copy">
             <text class="order-notice-kicker">下单前必看</text>
             <text class="order-notice-title">点单须知</text>
-            <text class="order-notice-sub">营业时间、服务流程、下单前客服确认说明</text>
+            <text class="order-notice-sub">下单前请先阅读服务流程，联系客服确认后再开单</text>
           </view>
-          <view class="order-notice-action">立即查看 ›</view>
+          <view class="order-notice-action">查看须知 ›</view>
         </view>
 
         <view class="notice-bar">
@@ -178,15 +164,6 @@ const assetBase = '/images/home-redesign'
 const homeHero = `${assetBase}/hero-lounge.jpg`
 const packageVisuals = [`${assetBase}/package-five.png`, `${assetBase}/package-six.png`]
 const heroBanners: HeroBanner[] = [
-  {
-    id: 'notice',
-    image: homeHero,
-    badge: '下单前必看',
-    title: '点单须知，先看再下单',
-    subtitle: '营业时间、服务流程、客服确认说明都在这里',
-    cta: '查看须知',
-    target: 'notice'
-  },
   {
     id: 'lounge',
     image: homeHero,
@@ -380,25 +357,27 @@ onShow(fetchHomeData)
 .hero-chip { flex: 1; height: 68rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #38503f; font-size: 25rpx; font-weight: 800; line-height: 68rpx; text-align: center; background: rgba(255, 255, 255, 0.82); border: 1rpx solid rgba(61, 97, 74, 0.12); }
 .hero-chip::after { border: none; }
 .hero-chip--primary { color: #fff; background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
-.quick-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18rpx; margin-top: 24rpx; }
-.quick-card { display: flex; align-items: center; gap: 18rpx; min-height: 116rpx; padding: 18rpx; border-radius: 18rpx; background: rgba(255, 255, 255, 0.88); box-shadow: 0 12rpx 30rpx rgba(31, 55, 40, 0.06); box-sizing: border-box; }
-.quick-icon { width: 58rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; border-radius: 16rpx; color: #1f7c4b; font-size: 30rpx; font-weight: 900; background: #f5f0df; }
-.quick-icon--notice { color: #ef4444; background: #fff1f2; }
-.quick-icon--query { color: #8f6b31; }
-.quick-icon--player { color: #2f7c63; }
-.quick-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
-.quick-main text:first-child { color: #222; font-size: 29rpx; font-weight: 900; }
-.quick-main text:last-child { color: #777; font-size: 23rpx; }
-.quick-arrow, .notice-arrow { color: #ad7a35; font-size: 36rpx; }
-.order-notice-banner { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 154rpx; margin-top: 22rpx; padding: 24rpx 26rpx; border-radius: 24rpx; color: #fff; background: radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.24), transparent 30%), linear-gradient(135deg, #111827 0%, #7f1d1d 58%, #ef4444 100%); box-shadow: 0 14rpx 32rpx rgba(127, 29, 29, 0.16); box-sizing: border-box; }
-.order-notice-copy { display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
-.order-notice-kicker { color: rgba(255, 255, 255, 0.78); font-size: 21rpx; font-weight: 900; letter-spacing: 1.4rpx; }
-.order-notice-title { color: #fff; font-size: 40rpx; font-weight: 900; line-height: 1.2; }
-.order-notice-sub { color: rgba(255, 255, 255, 0.82); font-size: 23rpx; font-weight: 600; line-height: 1.35; }
-.order-notice-action { flex-shrink: 0; padding: 12rpx 18rpx; border-radius: 999rpx; color: #7f1d1d; font-size: 23rpx; font-weight: 900; background: rgba(255, 255, 255, 0.92); }
+.function-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6rpx; margin-top: 24rpx; padding: 22rpx 12rpx 18rpx; border-radius: 22rpx; background: rgba(255, 255, 255, 0.72); border: 1rpx solid rgba(61, 97, 74, 0.08); box-shadow: 0 12rpx 30rpx rgba(31, 55, 40, 0.05); box-sizing: border-box; }
+.function-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-width: 0; }
+.function-item text { color: #2e3b32; font-size: 23rpx; font-weight: 800; line-height: 1.2; }
+.function-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 900; box-shadow: 0 8rpx 18rpx rgba(31, 55, 40, 0.12); }
+.function-icon--order { background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
+.function-icon--query { background: linear-gradient(135deg, #d8a144, #a87520); }
+.function-icon--player { background: linear-gradient(135deg, #55a2d8, #2563a8); }
+.function-icon--profile { background: linear-gradient(135deg, #ef6b77, #b91c1c); }
+.order-notice-banner { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 176rpx; margin-top: 18rpx; padding: 28rpx 28rpx; border-radius: 26rpx; color: #fff; background: linear-gradient(135deg, #3b0b10 0%, #b91c1c 58%, #ff6b35 100%); box-shadow: 0 16rpx 34rpx rgba(185, 28, 28, 0.22); box-sizing: border-box; }
+.order-notice-bg { position: absolute; border-radius: 50%; pointer-events: none; opacity: 0.32; }
+.order-notice-bg--left { left: -60rpx; top: -60rpx; width: 210rpx; height: 210rpx; background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent 62%); }
+.order-notice-bg--right { right: -70rpx; bottom: -80rpx; width: 250rpx; height: 250rpx; background: radial-gradient(circle, rgba(255, 236, 179, 0.9), transparent 64%); }
+.order-notice-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
+.order-notice-kicker { color: rgba(255, 255, 255, 0.80); font-size: 22rpx; font-weight: 900; letter-spacing: 2rpx; }
+.order-notice-title { color: #fff; font-size: 48rpx; font-weight: 900; line-height: 1.15; }
+.order-notice-sub { max-width: 450rpx; color: rgba(255, 255, 255, 0.88); font-size: 24rpx; font-weight: 700; line-height: 1.38; }
+.order-notice-action { position: relative; z-index: 1; flex-shrink: 0; padding: 14rpx 18rpx; border-radius: 999rpx; color: #9f1239; font-size: 23rpx; font-weight: 900; background: rgba(255, 255, 255, 0.94); box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.10); }
 .notice-bar { display: flex; align-items: center; gap: 18rpx; min-height: 78rpx; padding: 0 24rpx; margin-top: 22rpx; border-radius: 18rpx; border: 1rpx solid rgba(173, 122, 53, 0.20); background: rgba(255, 255, 255, 0.72); box-sizing: border-box; }
 .notice-avatar { color: #2f9b63; font-size: 22rpx; }
 .notice-text { flex: 1; color: #666; font-size: 26rpx; }
+.notice-arrow { color: #ad7a35; font-size: 36rpx; }
 .section-head { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 30rpx; margin-bottom: 16rpx; }
 .section-head > view { display: flex; align-items: baseline; gap: 14rpx; }
 .section-head text:first-child { color: #171717; font-size: 34rpx; font-weight: 900; }
