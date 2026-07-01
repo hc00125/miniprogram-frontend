@@ -58,14 +58,7 @@
         </view>
 
         <view class="order-notice-banner" @tap="goOrderNotice">
-          <view class="order-notice-bg order-notice-bg--left"></view>
-          <view class="order-notice-bg order-notice-bg--right"></view>
-          <view class="order-notice-copy">
-            <text class="order-notice-kicker">下单前必看</text>
-            <text class="order-notice-title">点单须知</text>
-            <text class="order-notice-sub">下单前请先阅读服务流程，联系客服确认后再开单</text>
-          </view>
-          <view class="order-notice-action">查看须知 ›</view>
+          <image class="order-notice-image" :src="orderNoticeBannerUrl" mode="widthFix" />
         </view>
 
         <view class="notice-bar">
@@ -156,6 +149,7 @@ type HeroBanner = {
 
 const assetBase = '/images/home-redesign'
 const homeHero = `${assetBase}/hero-lounge.jpg`
+const orderNoticeBannerUrl = 'https://api.huc125.cn/media/order-notice/order-guide-banner.jpg'
 const packageVisuals = [`${assetBase}/package-five.png`, `${assetBase}/package-six.png`]
 const heroBanners: HeroBanner[] = [
   {
@@ -355,15 +349,8 @@ onShow(fetchHomeData)
 .function-icon--query { background: linear-gradient(135deg, #d8a144, #a87520); }
 .function-icon--player { background: linear-gradient(135deg, #55a2d8, #2563a8); }
 .function-icon--profile { background: linear-gradient(135deg, #ef6b77, #b91c1c); }
-.order-notice-banner { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; min-height: 176rpx; margin-top: 18rpx; padding: 28rpx 28rpx; border-radius: 26rpx; color: #fff; background: linear-gradient(135deg, #3b0b10 0%, #b91c1c 58%, #ff6b35 100%); box-shadow: 0 16rpx 34rpx rgba(185, 28, 28, 0.22); box-sizing: border-box; }
-.order-notice-bg { position: absolute; border-radius: 50%; pointer-events: none; opacity: 0.32; }
-.order-notice-bg--left { left: -60rpx; top: -60rpx; width: 210rpx; height: 210rpx; background: radial-gradient(circle, rgba(255, 255, 255, 0.8), transparent 62%); }
-.order-notice-bg--right { right: -70rpx; bottom: -80rpx; width: 250rpx; height: 250rpx; background: radial-gradient(circle, rgba(255, 236, 179, 0.9), transparent 64%); }
-.order-notice-copy { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
-.order-notice-kicker { color: rgba(255, 255, 255, 0.80); font-size: 22rpx; font-weight: 900; letter-spacing: 2rpx; }
-.order-notice-title { color: #fff; font-size: 48rpx; font-weight: 900; line-height: 1.15; }
-.order-notice-sub { max-width: 450rpx; color: rgba(255, 255, 255, 0.88); font-size: 24rpx; font-weight: 700; line-height: 1.38; }
-.order-notice-action { position: relative; z-index: 1; flex-shrink: 0; padding: 14rpx 18rpx; border-radius: 999rpx; color: #9f1239; font-size: 23rpx; font-weight: 900; background: rgba(255, 255, 255, 0.94); box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.10); }
+.order-notice-banner { overflow: hidden; margin-top: 18rpx; border-radius: 26rpx; background: #fffaf0; box-shadow: 0 14rpx 30rpx rgba(35, 42, 30, 0.08); }
+.order-notice-image { width: 100%; display: block; }
 .notice-bar { display: flex; align-items: center; gap: 18rpx; min-height: 78rpx; padding: 0 24rpx; margin-top: 22rpx; border-radius: 18rpx; border: 1rpx solid rgba(173, 122, 53, 0.20); background: rgba(255, 255, 255, 0.72); box-sizing: border-box; }
 .notice-avatar { color: #2f9b63; font-size: 22rpx; }
 .notice-text { flex: 1; color: #666; font-size: 26rpx; }
