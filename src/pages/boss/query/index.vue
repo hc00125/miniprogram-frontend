@@ -174,7 +174,7 @@ const activeTab = ref('all')
 const orders = ref<BossOrderListItem[]>([])
 const loaded = ref(false)
 const cartCount = ref(0)
-const isLoggedIn = computed(() => Boolean(getStorage<string>('token')))
+const isLoggedIn = ref(false)
 
 const runningCount = computed(() => orders.value.filter(o => o.status === '进行中').length)
 const waitingCount = computed(() => orders.value.filter(o => o.status === '待接单').length)
@@ -198,7 +198,6 @@ const filteredOrders = computed(() => {
 const fallbackCover = '/static/images/home-redesign/hero-lounge.jpg'
 
 function orderCover(order: BossOrderListItem) {
-  // 后端可下发 cover_url；演示使用 hero 海报
   return (order as any).cover_url || fallbackCover
 }
 
@@ -237,8 +236,20 @@ function openOrder(order: BossOrderListItem) {
   }
 }
 
+function syncLoginState() {
+  const token = getStorage<string>('token')
+  isLoggedIn.value = Boolean(token)
+  return token
+}
+
+function resetOrderCenter() {
+  orders.value = []
+  cartCount.value = 0
+  activeTab.value = 'all'
+}
+
 function openCart() {
-  if (!isLoggedIn.value) {
+  if (!syncLoginState()) {
     go('/pages/client/login/index')
     return
   }
@@ -246,11 +257,11 @@ function openCart() {
 }
 
 async function fetchOrders() {
-  const token = getStorage<string>('token')
+  const token = syncLoginState()
   try {
     loaded.value = false
     if (!token) {
-      orders.value = []
+      resetOrderCenter()
       return
     }
     orders.value = await getMyBossOrders()
@@ -262,7 +273,8 @@ async function fetchOrders() {
 }
 
 async function fetchCartCount() {
-  if (!getStorage<string>('token')) {
+  const token = syncLoginState()
+  if (!token) {
     cartCount.value = 0
     return
   }
@@ -274,6 +286,12 @@ async function fetchCartCount() {
 }
 
 function refreshCenter() {
+  const token = syncLoginState()
+  if (!token) {
+    resetOrderCenter()
+    loaded.value = true
+    return
+  }
   fetchOrders()
   fetchCartCount()
 }
@@ -307,7 +325,6 @@ function goMain(tab: MainTab = 'home') {
     linear-gradient(180deg, #fbf7ef 0%, #f7f3ea 48%, #fffaf2 100%);
 }
 
-/* ========== 顶部 Hero ========== */
 .query-hero {
   position: relative;
   min-height: 200rpx;
@@ -324,49 +341,18 @@ function goMain(tab: MainTab = 'home') {
     linear-gradient(135deg, #fff8ed 0%, #fef5dc 56%, #edf6f0 100%);
   box-shadow: 0 16rpx 40rpx rgba(176, 134, 60, 0.10);
 }
-
 .hero-bg { position: absolute; inset: 0; pointer-events: none; }
 .ambient-glow { position: absolute; border-radius: 50%; filter: blur(40rpx); opacity: 0.4; }
 .ambient-glow--left { top: -60rpx; left: -60rpx; width: 220rpx; height: 220rpx; background: radial-gradient(circle, rgba(216, 161, 68, 0.50), transparent 70%); }
 .ambient-glow--right { bottom: -80rpx; right: -80rpx; width: 240rpx; height: 240rpx; background: radial-gradient(circle, rgba(47, 155, 99, 0.40), transparent 70%); }
-
 .hero-content { position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
 .hero-eyebrow { color: #a87520; font-size: 21rpx; font-weight: 900; letter-spacing: 1.5rpx; }
 .hero-title { color: #14291f; font-size: 42rpx; font-weight: 900; line-height: 1.16; letter-spacing: -0.5rpx; }
 .hero-sub { color: #5a6b5b; font-size: 23rpx; font-weight: 600; line-height: 1.4; }
-
-.refresh-btn {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  min-width: 116rpx;
-  height: 56rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.92);
-  color: #1f7c4b;
-  font-size: 24rpx;
-  font-weight: 900;
-  flex-shrink: 0;
-  box-shadow: 0 8rpx 18rpx rgba(31, 124, 75, 0.10);
-  border: 1px solid rgba(47, 155, 99, 0.12);
-}
+.refresh-btn { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6rpx; min-width: 116rpx; height: 56rpx; padding: 0 20rpx; border-radius: 999rpx; background: rgba(255, 255, 255, 0.92); color: #1f7c4b; font-size: 24rpx; font-weight: 900; flex-shrink: 0; box-shadow: 0 8rpx 18rpx rgba(31, 124, 75, 0.10); border: 1px solid rgba(47, 155, 99, 0.12); }
 .refresh-icon { font-size: 26rpx; line-height: 1; }
 
-/* ========== 统计三联 ========== */
-.summary-row {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr;
-  align-items: center;
-  margin: 22rpx 0 0;
-  padding: 22rpx 24rpx;
-  border: 1px solid rgba(47, 155, 99, 0.10);
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12rpx 28rpx rgba(38, 69, 54, 0.05);
-}
+.summary-row { display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center; margin: 22rpx 0 0; padding: 22rpx 24rpx; border: 1px solid rgba(47, 155, 99, 0.10); border-radius: 24rpx; background: rgba(255, 255, 255, 0.96); box-shadow: 0 12rpx 28rpx rgba(38, 69, 54, 0.05); }
 .summary-item { display: flex; flex-direction: column; align-items: center; gap: 4rpx; }
 .summary-value { color: #1f7c4b; font-size: 44rpx; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .summary-value--warn { color: #c8821a; }
@@ -374,72 +360,27 @@ function goMain(tab: MainTab = 'home') {
 .summary-label { color: #828a7e; font-size: 22rpx; font-weight: 600; }
 .summary-divider { width: 1px; height: 56rpx; background: rgba(42, 63, 48, 0.08); }
 
-.cart-entry-card {
-  margin-top: 18rpx;
-  padding: 22rpx 24rpx;
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  border-radius: 24rpx;
-  border: 1px solid rgba(47, 155, 99, 0.12);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 251, 244, 0.96));
-  box-shadow: 0 12rpx 28rpx rgba(38, 69, 54, 0.05);
-  box-sizing: border-box;
-}
-.cart-entry-icon {
-  width: 78rpx;
-  height: 78rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 22rpx;
-  color: #1f7c4b;
-  font-size: 34rpx;
-  background: rgba(47, 155, 99, 0.10);
-}
+.cart-entry-card { margin-top: 18rpx; padding: 22rpx 24rpx; display: flex; align-items: center; gap: 18rpx; border-radius: 24rpx; border: 1px solid rgba(47, 155, 99, 0.12); background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 251, 244, 0.96)); box-shadow: 0 12rpx 28rpx rgba(38, 69, 54, 0.05); box-sizing: border-box; }
+.cart-entry-icon { width: 78rpx; height: 78rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #1f7c4b; font-size: 34rpx; background: rgba(47, 155, 99, 0.10); }
 .cart-entry-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6rpx; }
 .cart-entry-title { color: #14291f; font-size: 30rpx; font-weight: 900; }
 .cart-entry-sub { color: #5a6b5b; font-size: 22rpx; font-weight: 600; line-height: 1.4; }
-.cart-entry-btn {
-  min-width: 132rpx;
-  height: 62rpx;
-  padding: 0 22rpx;
-  margin: 0;
-  border-radius: 999rpx;
-  color: #fff;
-  font-size: 24rpx;
-  font-weight: 900;
-  background: linear-gradient(135deg, #2f9b63, #1f7c4b);
-}
+.cart-entry-btn { min-width: 132rpx; height: 62rpx; padding: 0 22rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 24rpx; font-weight: 900; background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
 .cart-entry-btn::after { border: none; }
 
-/* ========== 登录卡 ========== */
-.login-card {
-  margin-top: 22rpx;
-  padding: 24rpx 26rpx;
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-  border: 1px solid rgba(216, 161, 68, 0.20);
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #fff7e6 0%, #fffaf0 100%);
-  box-shadow: 0 10rpx 26rpx rgba(216, 161, 68, 0.08);
-}
+.login-card { margin-top: 22rpx; padding: 24rpx 26rpx; display: flex; align-items: center; gap: 18rpx; border: 1px solid rgba(216, 161, 68, 0.20); border-radius: 24rpx; background: linear-gradient(135deg, #fff7e6 0%, #fffaf0 100%); box-shadow: 0 10rpx 26rpx rgba(216, 161, 68, 0.08); }
 .login-icon { width: 80rpx; height: 80rpx; flex-shrink: 0; border-radius: 24rpx; background: linear-gradient(135deg, #5fb78a, #1f7c4b); color: #fff; font-size: 36rpx; font-weight: 900; display: flex; align-items: center; justify-content: center; }
 .login-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .login-title { color: #14291f; font-size: 28rpx; font-weight: 900; }
 .login-sub { color: #8b7649; font-size: 22rpx; font-weight: 600; line-height: 1.4; }
 .login-btn { min-width: 144rpx; min-height: 64rpx; font-size: 26rpx; }
 
-/* ========== Tabs ========== */
 .tabs { white-space: nowrap; margin: 22rpx 0 18rpx; }
 .tab { display: inline-flex; align-items: center; gap: 6rpx; min-width: 110rpx; height: 64rpx; margin-right: 12rpx; padding: 0 22rpx; border-radius: 999rpx; background: #fff; color: #687665; font-size: 25rpx; font-weight: 800; border: 1px solid rgba(36, 55, 39, 0.10); transition: all 0.2s ease; }
 .tab.active { background: linear-gradient(135deg, #173426, #1f7c4b); color: #fff; border-color: transparent; box-shadow: 0 8rpx 18rpx rgba(31, 124, 75, 0.22); }
 .tab-count { display: inline-flex; min-width: 28rpx; height: 28rpx; padding: 0 8rpx; border-radius: 999rpx; background: rgba(42, 63, 48, 0.10); color: #828a7e; font-size: 20rpx; font-weight: 800; align-items: center; justify-content: center; line-height: 1; }
 .tab.active .tab-count { background: rgba(255, 255, 255, 0.22); color: #fff; }
 
-/* ========== 订单卡片 ========== */
 .order-list { display: flex; flex-direction: column; gap: 18rpx; }
 .order-card { position: relative; border: 1px solid rgba(42, 63, 48, 0.06); border-radius: 26rpx; background: rgba(255, 255, 255, 0.96); overflow: hidden; box-shadow: 0 14rpx 32rpx rgba(38, 69, 54, 0.06); }
 .order-cover { position: relative; width: 100%; height: 180rpx; overflow: hidden; }
@@ -451,7 +392,6 @@ function goMain(tab: MainTab = 'home') {
 .cover-status--paying { color: #c46b16; background: rgba(255, 241, 224, 0.92); }
 .cover-status--done { color: #26753a; background: rgba(220, 248, 224, 0.92); }
 .cover-status--cancel { color: #6f6f6f; background: rgba(232, 232, 232, 0.92); }
-
 .order-body { padding: 20rpx 22rpx 22rpx; display: flex; flex-direction: column; gap: 14rpx; }
 .order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
 .order-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
@@ -474,7 +414,6 @@ function goMain(tab: MainTab = 'home') {
 .order-actions .club-btn { min-height: 76rpx; font-size: 26rpx; font-weight: 800; border-radius: 20rpx; }
 .order-actions .club-btn--ghost { color: #5a6b5b; background: #f7faf4; border: 1px solid rgba(36, 55, 39, 0.10); }
 
-/* ========== 空状态 ========== */
 .empty-card { margin-top: 22rpx; padding: 56rpx 32rpx; display: flex; flex-direction: column; align-items: center; gap: 14rpx; border: 1px solid rgba(42, 63, 48, 0.06); border-radius: 28rpx; background: rgba(255, 255, 255, 0.96); box-shadow: 0 14rpx 36rpx rgba(38, 69, 54, 0.06); }
 .empty-orb { position: relative; width: 156rpx; height: 156rpx; display: flex; align-items: center; justify-content: center; margin-bottom: 8rpx; }
 .empty-ring { position: absolute; inset: 0; border-radius: 50%; border: 2rpx solid rgba(47, 155, 99, 0.18); }
@@ -485,8 +424,6 @@ function goMain(tab: MainTab = 'home') {
 .empty-title { color: #14291f; font-size: 32rpx; font-weight: 900; letter-spacing: 0; }
 .empty-sub { color: #5a6b5b; font-size: 24rpx; font-weight: 600; line-height: 1.4; margin-bottom: 12rpx; }
 .empty-card .club-btn { min-width: 240rpx; min-height: 78rpx; font-size: 28rpx; font-weight: 900; border-radius: 24rpx; }
-
-/* ========== 加载中 ========== */
 .loading-card { margin-top: 22rpx; padding: 80rpx 32rpx; display: flex; flex-direction: column; align-items: center; gap: 18rpx; color: #5a6b5b; font-size: 24rpx; font-weight: 600; }
 .loading-spinner { width: 56rpx; height: 56rpx; border: 4rpx solid rgba(47, 155, 99, 0.18); border-top-color: #1f7c4b; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
