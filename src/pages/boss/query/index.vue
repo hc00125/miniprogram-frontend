@@ -286,16 +286,7 @@ async function fetchCartCount() {
 }
 
 function refreshCenter() {
-<<<<<<< HEAD
-  const token = syncLoginState()
-  if (!token) {
-    resetOrderCenter()
-    loaded.value = true
-    return
-  }
-=======
-  isLoggedIn.value = Boolean(getStorage<string>('token'))
->>>>>>> e195c97 (fix: loadProfile cache fallback + isLoggedIn ref in onShow)
+  syncLoginState()
   fetchOrders()
   fetchCartCount()
 }
