@@ -106,6 +106,7 @@ export interface OrderCreatePayload {
   game_id?: string | null
   package_id: number
   spec_id?: number | null
+  quantity?: number
   required_players?: number
   addon_details?: { addon_id: number; count: number }[] | null
   designated_players?: number[] | null
