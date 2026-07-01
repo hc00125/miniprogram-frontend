@@ -94,6 +94,7 @@ export interface PackageGroup {
 export interface BossOrderListItem {
   order_no: string
   package_name: string
+  item_count?: number
   status: string
   total_price_per_hour: number
   total_amount: number
@@ -101,12 +102,22 @@ export interface BossOrderListItem {
   created_at: string
 }
 
-export interface OrderCreatePayload {
-  boss_wechat: string
-  game_id?: string | null
+export interface OrderCreateItemPayload {
   package_id: number
   spec_id?: number | null
   quantity?: number
+  spec_display_name?: string | null
+  image_url?: string | null
+  description?: string | null
+}
+
+export interface OrderCreatePayload {
+  boss_wechat: string
+  game_id?: string | null
+  package_id?: number | null
+  spec_id?: number | null
+  quantity?: number
+  items?: OrderCreateItemPayload[]
   required_players?: number
   addon_details?: { addon_id: number; count: number }[] | null
   designated_players?: number[] | null
