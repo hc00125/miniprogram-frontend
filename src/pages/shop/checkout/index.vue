@@ -27,13 +27,7 @@
           <text class="spec-count">{{ specs.length }}档</text>
         </view>
         <view class="spec-grid">
-          <view
-            v-for="spec in specs"
-            :key="spec.id"
-            class="spec-chip"
-            :class="{ active: selectedSpec?.id === spec.id }"
-            @tap="selectSpec(spec)"
-          >
+          <view v-for="spec in specs" :key="spec.id" class="spec-chip" :class="{ active: selectedSpec?.id === spec.id }" @tap="selectSpec(spec)">
             <text>{{ spec.name }}</text>
             <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
             <text>¥{{ formatMoney(Number(spec.price)) }}</text>
@@ -44,18 +38,9 @@
       <view v-if="isGuaranteeProduct" class="checkout-card notice-card">
         <view class="card-title">下单说明</view>
         <view class="notice-list">
-          <view class="notice-item">
-            <text></text>
-            <text>{{ selectedSpec ? `当前规格：${selectedSpec.name}` : '请选择一个保底规格' }}</text>
-          </view>
-          <view class="notice-item">
-            <text></text>
-            <text>保底单按单计价，不需要选择人数和时长。</text>
-          </view>
-          <view class="notice-item">
-            <text></text>
-            <text>提交后客服会根据所选规格确认规则和开局时间。</text>
-          </view>
+          <view class="notice-item"><text></text><text>{{ selectedSpec ? `当前规格：${selectedSpec.name}` : '请选择一个保底规格' }}</text></view>
+          <view class="notice-item"><text></text><text>保底单按单计价，不需要选择人数和时长。</text></view>
+          <view class="notice-item"><text></text><text>提交后客服会根据所选规格确认规则和开局时间。</text></view>
         </view>
       </view>
 
@@ -68,6 +53,16 @@
         <view class="input-row">
           <text class="input-label">游戏ID / 队伍码</text>
           <input v-model="form.gameId" class="checkout-input" placeholder="请输入游戏ID或队伍码" />
+        </view>
+        <view class="control-row control-row--quantity">
+          <view class="control-item">
+            <text class="input-label">数量</text>
+            <view class="stepper stepper--quantity">
+              <button class="step-btn" :disabled="form.quantity <= 1" @tap="adjustQuantity(-1)">−</button>
+              <text class="step-value">{{ form.quantity }}</text>
+              <button class="step-btn plus" @tap="adjustQuantity(1)">＋</button>
+            </view>
+          </view>
         </view>
         <view v-if="!isSpecProduct" class="control-row">
           <view class="control-item">
@@ -96,26 +91,12 @@
 
       <view v-if="product" class="checkout-card detail-card">
         <view class="card-title">费用明细</view>
-        <view v-if="selectedSpec" class="detail-row">
-          <text>已选规格</text>
-          <text>{{ selectedSpec.name }}</text>
-        </view>
-        <view class="detail-row">
-          <text>{{ isSpecProduct ? '规格价格' : '套餐单价' }}</text>
-          <text>¥{{ formatMoney(basePrice) }}{{ isSpecProduct ? '/单' : '/时/人' }}</text>
-        </view>
-        <view v-if="!isSpecProduct" class="detail-row">
-          <text>人数</text>
-          <text>{{ form.playerCount }}人</text>
-        </view>
-        <view v-if="!isSpecProduct" class="detail-row">
-          <text>预订时长</text>
-          <text>{{ formatHours(form.bookedHours) }}</text>
-        </view>
-        <view class="detail-row total-row">
-          <text>预计总额</text>
-          <text>¥{{ formatMoney(totalAmount) }}</text>
-        </view>
+        <view v-if="selectedSpec" class="detail-row"><text>已选规格</text><text>{{ selectedSpec.name }}</text></view>
+        <view class="detail-row"><text>{{ isSpecProduct ? '规格价格' : '套餐单价' }}</text><text>¥{{ formatMoney(basePrice) }}{{ isSpecProduct ? '/单' : '/时/人' }}</text></view>
+        <view class="detail-row"><text>购买数量</text><text>x{{ form.quantity }}</text></view>
+        <view v-if="!isSpecProduct" class="detail-row"><text>人数</text><text>{{ form.playerCount }}人</text></view>
+        <view v-if="!isSpecProduct" class="detail-row"><text>预订时长</text><text>{{ formatHours(form.bookedHours) }}</text></view>
+        <view class="detail-row total-row"><text>预计总额</text><text>¥{{ formatMoney(totalAmount) }}</text></view>
       </view>
 
       <view v-if="!product" class="empty-state">
@@ -127,13 +108,8 @@
     </scroll-view>
 
     <view v-if="product" class="bottom-bar">
-      <view class="bottom-price">
-        <text>预计总额</text>
-        <text>¥{{ formatMoney(totalAmount) }}</text>
-      </view>
-      <button class="submit-btn" :disabled="submitting" @tap="submitOrder">
-        {{ submitting ? '提交中...' : '立即下单' }}
-      </button>
+      <view class="bottom-price"><text>预计总额</text><text>¥{{ formatMoney(totalAmount) }}</text></view>
+      <button class="submit-btn" :disabled="submitting" @tap="submitOrder">{{ submitting ? '提交中...' : '立即下单' }}</button>
     </view>
   </view>
 </template>
@@ -158,7 +134,7 @@ const loading = ref(false)
 const submitting = ref(false)
 const product = ref<BossPackage | null>(null)
 const selectedSpec = ref<BossPackageSpec | null>(null)
-const form = reactive({ contact: '', gameId: '', note: '', bookedHours: 1, playerCount: 1 })
+const form = reactive({ contact: '', gameId: '', note: '', bookedHours: 1, playerCount: 1, quantity: 1 })
 
 const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
@@ -169,7 +145,14 @@ const productDesc = computed(() => {
   return selectedSpec.value?.name || product.value?.description || '精选套餐，平台保障，快速匹配陪玩。'
 })
 const basePrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
-const totalAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
+const unitAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
+const totalAmount = computed(() => unitAmount.value * form.quantity)
+
+function normalizeQuantity(value: unknown) {
+  const num = Math.floor(Number(value || 1))
+  if (!Number.isFinite(num)) return 1
+  return Math.max(1, Math.min(99, num))
+}
 
 function getProductImage(item: BossPackage) {
   const productItem = item as BossPackage & Record<string, any>
@@ -249,8 +232,13 @@ async function fetchProduct() {
   }
 }
 
-function selectSpec(spec: BossPackageSpec) {
-  selectedSpec.value = spec
+function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
+
+function adjustQuantity(delta: number) {
+  const next = form.quantity + delta
+  if (next < 1) return
+  if (next > 99) return toast('单次最多选择 99 件')
+  form.quantity = next
 }
 
 function adjustPlayerCount(delta: number) {
@@ -268,6 +256,7 @@ function adjustHours(delta: number) {
 function buildBossNote() {
   const parts = []
   if (selectedSpec.value) parts.push(`规格：${selectedSpec.value.name}，价格：¥${formatMoney(Number(selectedSpec.value.price || 0))}`)
+  if (form.quantity > 1) parts.push(`购买数量：${form.quantity}`)
   if (form.note.trim()) parts.push(form.note.trim())
   return parts.join('\n') || null
 }
@@ -299,6 +288,7 @@ async function submitOrder() {
       game_id: form.gameId.trim(),
       package_id: product.value.id,
       spec_id: selectedSpec.value ? Number(selectedSpec.value.id) : null,
+      quantity: form.quantity,
       required_players: isSpecProduct.value ? 1 : form.playerCount,
       addon_details: null,
       designated_players: null,
@@ -315,14 +305,13 @@ async function submitOrder() {
   }
 }
 
-function goBack() {
-  uni.navigateBack({ delta: 1 })
-}
+function goBack() { uni.navigateBack({ delta: 1 }) }
 
 onLoad((query) => {
   const id = Number(query?.packageId)
   packageId.value = Number.isFinite(id) ? id : null
   initialSpecId.value = query?.specId ? String(query.specId) : ''
+  form.quantity = normalizeQuantity(query?.quantity)
   form.contact = getStorage<string>('boss_wechat') || getClientProfile()?.nickname || ''
   fetchProduct()
 })
@@ -359,10 +348,14 @@ onLoad((query) => {
 .textarea-row { position: relative; }
 .textarea-count { position: absolute; right: 18rpx; bottom: 14rpx; color: #aaa; font-size: 22rpx; }
 .control-row { display: flex; gap: 18rpx; margin-top: 22rpx; }
+.control-row--quantity { justify-content: flex-end; }
+.control-row--quantity .control-item { flex: 0 0 320rpx; }
 .control-item { flex: 1; min-width: 0; }
 .stepper { height: 88rpx; display: flex; align-items: center; justify-content: space-between; padding: 0 12rpx; border-radius: 18rpx; border: 1rpx solid #ededed; background: #fafafa; box-sizing: border-box; }
+.stepper--quantity { height: 76rpx; }
 .step-btn { width: 54rpx; height: 54rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 50%; color: #555; font-size: 26rpx; background: #fff; }
 .step-btn.plus { color: #fff; background: #ef4f5f; }
+.step-btn[disabled] { opacity: 0.4; }
 .step-btn::after { border: none; }
 .step-value { color: #222; font-size: 26rpx; font-weight: 900; }
 .spec-grid { display: flex; flex-wrap: wrap; gap: 14rpx; }
