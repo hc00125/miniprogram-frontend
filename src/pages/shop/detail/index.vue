@@ -127,7 +127,7 @@
           <image class="spec-popup-image" :src="specPopupImage" mode="aspectFill" @tap="previewProductImage(specPopupImage)" />
           <view class="spec-popup-info">
             <view class="spec-popup-price"><text>¥</text><text>{{ formatMoney(productPrice) }}</text></view>
-            <text class="spec-popup-stock">库存：996</text>
+            <text class="spec-popup-stock">数量：{{ selectedQuantity }}</text>
             <text class="spec-popup-selected">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           </view>
           <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
@@ -204,157 +204,31 @@ const detailText = computed(() => isGuaranteeProduct.value ? '九档电视台保
 const memberStripText = computed(() => isGuaranteeProduct.value ? '保底规格可选，价格按单计算' : '加入会员，享会员价')
 const guaranteeRules = computed(() => {
   const amount = selectedSpec.value?.guarantee_amount
-  return [
-    amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位',
-    '下单后客服会按所选规格确认局数、规则和开局时间',
-    '规格价格以后端配置为准，提交后会自动记录所选规格'
-  ]
+  return [amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '规格价格以后端配置为准，提交后会自动记录所选规格']
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 
-function getRawProductImage(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || ''
-}
-
-function getDisplayPrice(item: BossPackage) {
-  const itemSpecs = item.specs || []
-  if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0))
-  return getProductPrice(item)
-}
-
-function getProductPrice(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return Math.max(0, Number(productItem.price ?? productItem.base_price ?? 0))
-}
-
-function getOriginalPrice(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  const price = getDisplayPrice(item)
-  return Math.max(price, Number(productItem.original_price ?? productItem.market_price ?? price))
-}
-
-function getSoldCount(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return Number(productItem.sold_count ?? productItem.sales_count ?? productItem.sales ?? productItem.order_count ?? 0)
-}
-
-function formatMoney(value: number) {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(2)
-}
-
-function getSpecDisplayName(spec: BossPackageSpec) {
-  const specItem = spec as BossPackageSpec & Record<string, any>
-  if (specItem.short_name) return String(specItem.short_name)
-  if (specItem.display_name) return String(specItem.display_name)
-  if (isGuaranteeProduct.value) {
-    if (spec.guarantee_amount) return `${spec.guarantee_amount}档`
-    const matched = String(spec.name || '').match(/(\d+\s*w)/i)
-    if (matched?.[1]) return `${matched[1].replace(/\s+/g, '')}档`
-    return String(spec.name || '').replace(/^电视台保底\s*/i, '').trim() || String(spec.name || '')
-  }
-  return String(spec.name || '').trim()
-}
-
-function selectSpec(spec: BossPackageSpec) {
-  selectedSpec.value = spec
-}
-
-function adjustQuantity(delta: number) {
-  const next = selectedQuantity.value + delta
-  if (next < 1) return
-  if (next > 99) return toast('单次最多选择 99 件')
-  selectedQuantity.value = next
-}
-
-function previewProductImage(url: string) {
-  if (!url) return
-  const urls = previewImages.value.length ? previewImages.value : [url]
-  uni.previewImage({ urls, current: url })
-}
-
-async function refreshCartCount() {
-  try {
-    cartCount.value = await getShopCartCount()
-  } catch {
-    cartCount.value = 0
-  }
-}
-
-async function fetchProduct() {
-  if (!packageId.value) return
-  loading.value = true
-  try {
-    const list = await getPackages()
-    allProducts.value = list
-    product.value = list.find(item => item.id === packageId.value) || null
-    selectedSpec.value = product.value?.specs?.[0] || null
-    selectedQuantity.value = 1
-  } catch (error) {
-    toast(getErrorMessage(error, '商品详情加载失败'))
-  } finally {
-    loading.value = false
-  }
-}
-
-function openProduct(nextPackageId: number) {
-  go('/pages/shop/detail/index', { packageId: nextPackageId })
-}
-
-function openSpecPopup(action: 'cart' | 'buy' = 'buy') {
-  if (!product.value) return
-  pendingAction.value = action
-  specPopupVisible.value = true
-}
-
-function closeSpecPopup() {
-  specPopupVisible.value = false
-}
-
-function confirmSpecAction(action?: 'cart' | 'buy') {
-  const finalAction = action || pendingAction.value
-  if (specs.value.length && !selectedSpec.value) {
-    toast('请选择规格')
-    return
-  }
-  closeSpecPopup()
-  if (finalAction === 'cart') {
-    handleCartTap()
-    return
-  }
-  if (!product.value) return
-  go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id, quantity: selectedQuantity.value })
-}
-
-async function handleCartTap() {
-  if (!product.value) return
-  try {
-    await addShopCartItem({
-      product: product.value,
-      spec: selectedSpec.value,
-      spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined,
-      image_url: specPopupImage.value,
-      price: productPrice.value,
-      description: productSummary.value,
-      quantity: selectedQuantity.value
-    })
-    await refreshCartCount()
-    success(`已加入购物车 x${selectedQuantity.value}`)
-  } catch (error) {
-    toast(getErrorMessage(error, '加入购物车失败'))
-  }
-}
-
+function getRawProductImage(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || '' }
+function getDisplayPrice(item: BossPackage) { const itemSpecs = item.specs || []; if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0)); return getProductPrice(item) }
+function getProductPrice(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return Math.max(0, Number(productItem.price ?? productItem.base_price ?? 0)) }
+function getOriginalPrice(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; const price = getDisplayPrice(item); return Math.max(price, Number(productItem.original_price ?? productItem.market_price ?? price)) }
+function getSoldCount(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return Number(productItem.sold_count ?? productItem.sales_count ?? productItem.sales ?? productItem.order_count ?? 0) }
+function formatMoney(value: number) { return Number.isInteger(value) ? `${value}` : value.toFixed(2) }
+function getSpecDisplayName(spec: BossPackageSpec) { const specItem = spec as BossPackageSpec & Record<string, any>; if (specItem.short_name) return String(specItem.short_name); if (specItem.display_name) return String(specItem.display_name); if (isGuaranteeProduct.value) { if (spec.guarantee_amount) return `${spec.guarantee_amount}档`; const matched = String(spec.name || '').match(/(\d+\s*w)/i); if (matched?.[1]) return `${matched[1].replace(/\s+/g, '')}档`; return String(spec.name || '').replace(/^电视台保底\s*/i, '').trim() || String(spec.name || '') } return String(spec.name || '').trim() }
+function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
+function adjustQuantity(delta: number) { const next = selectedQuantity.value + delta; if (next < 1) return; if (next > 99) return toast('单次最多选择 99 件'); selectedQuantity.value = next }
+function previewProductImage(url: string) { if (!url) return; const urls = previewImages.value.length ? previewImages.value : [url]; uni.previewImage({ urls, current: url }) }
+async function refreshCartCount() { try { cartCount.value = await getShopCartCount() } catch { cartCount.value = 0 } }
+async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = await getPackages(); allProducts.value = list; product.value = list.find(item => item.id === packageId.value) || null; selectedSpec.value = product.value?.specs?.[0] || null; selectedQuantity.value = 1 } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
+function openProduct(nextPackageId: number) { go('/pages/shop/detail/index', { packageId: nextPackageId }) }
+function openSpecPopup(action: 'cart' | 'buy' = 'buy') { if (!product.value) return; pendingAction.value = action; specPopupVisible.value = true }
+function closeSpecPopup() { specPopupVisible.value = false }
+function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') { handleCartTap(); return } if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id, quantity: selectedQuantity.value }) }
+async function handleCartTap() { if (!product.value) return; try { await addShopCartItem({ product: product.value, spec: selectedSpec.value, spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined, image_url: specPopupImage.value, price: productPrice.value, description: productSummary.value, quantity: selectedQuantity.value }); await refreshCartCount(); success(`已加入购物车 x${selectedQuantity.value}`) } catch (error) { toast(getErrorMessage(error, '加入购物车失败')) } }
 function openCart() { go('/pages/shop/cart/index') }
 function goHome() { goMain('home') }
 function goBack() { uni.navigateBack({ delta: 1 }) }
-
-onLoad((query) => {
-  const id = Number(query?.packageId)
-  packageId.value = Number.isFinite(id) ? id : null
-  fetchProduct()
-})
-
+onLoad((query) => { const id = Number(query?.packageId); packageId.value = Number.isFinite(id) ? id : null; fetchProduct() })
 onShow(refreshCartCount)
 </script>
 
