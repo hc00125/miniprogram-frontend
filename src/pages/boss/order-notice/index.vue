@@ -22,14 +22,14 @@
         <image
           v-if="!flowImageError"
           class="notice-flow-image"
-          src="/images/order-notice/order-notice-flow.jpg"
+          :src="flowImageUrl"
           mode="widthFix"
           @tap="previewFlowImage"
           @error="flowImageError = true"
         />
         <view v-else class="image-placeholder">
-          <view class="placeholder-title">下单流程图待上传</view>
-          <view class="placeholder-desc">图片路径已预留：/images/order-notice/order-notice-flow.jpg</view>
+          <view class="placeholder-title">下单流程图加载失败</view>
+          <view class="placeholder-desc">请检查图片地址是否可以访问：{{ flowImageUrl }}</view>
         </view>
       </view>
 
@@ -77,7 +77,7 @@
 import { ref } from 'vue'
 
 const flowImageError = ref(false)
-const flowImageUrl = '/images/order-notice/order-notice-flow.jpg'
+const flowImageUrl = 'https://api.huc125.cn/media/order-notice/order-notice-flow.jpg'
 
 const serviceFlow = [
   '下单前请先联系官方客服，确认所需服务内容、当前是否可接单、排期情况及相关注意事项。',
