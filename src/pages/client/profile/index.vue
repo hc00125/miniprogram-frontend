@@ -33,8 +33,8 @@
     <view v-if="profile?.player" class="player-summary-card">
       <view class="card-head player-summary-head">
         <text class="card-eyebrow">陪玩师信息</text>
-        <view class="online-toggle" :class="{ off: !isPlayerOnline }">
-          <text class="online-text">{{ isPlayerOnline ? '在线' : '离线' }}</text>
+        <view class="online-toggle" :class="{ off: !isPlayerOnline, syncing: onlineUpdating }" @tap="togglePlayerOnline">
+          <text class="online-text">{{ onlineUpdating ? '同步中' : (isPlayerOnline ? '在线' : '离线') }}</text>
           <view class="online-dot"></view>
         </view>
       </view>
@@ -106,9 +106,9 @@
       </view>
       <view class="player-empty">
         <text class="empty-emoji">陪</text>
-        <text class="empty-title">还不是陪玩师</text>
-        <text class="empty-sub">提交申请后，审核通过即可进入抢单大厅</text>
-        <view class="club-btn club-btn--primary empty-btn" hover-class="hover-class" @tap="handlePlayerAction">立即申请</view>
+        <text class="empty-title">{{ playerEmptyTitle }}</text>
+        <text class="empty-sub">{{ playerEmptySub }}</text>
+        <view class="club-btn club-btn--primary empty-btn" hover-class="hover-class" @tap="handlePlayerAction">{{ playerActionTitle }}</view>
       </view>
     </view>
 
@@ -147,12 +147,14 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
+import { updatePlayerOnlineStatus } from '@/api/player'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
-import { getClientProfile, normalizeAvatarUrl, syncClientProfile, type ClientProfile } from '@/utils/client'
+import { getClientProfile, normalizeAvatarUrl, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { go, relaunch, navigateToTab, type MainTab } from '@/utils/nav'
-import { toast } from '@/utils/feedback'
+import { getErrorMessage, toast } from '@/utils/feedback'
 
 const profile = ref<ClientProfile | null>(null)
+const onlineUpdating = ref(false)
 const displayAvatarUrl = computed(() => normalizeAvatarUrl(profile.value?.avatarUrl || profile.value?.avatar_url))
 
 const displayName = computed(() => {
@@ -169,11 +171,6 @@ const profileIdText = computed(() => {
 })
 
 const isPlayerOnline = computed(() => {
-  const cachedOnline = uni.getStorageSync<string | boolean>('player_online_status')
-  if (cachedOnline !== '' && cachedOnline !== null && cachedOnline !== undefined) {
-    return cachedOnline === '1' || cachedOnline === true
-  }
-  if (profile.value?.player_status === 'approved') return true
   return Boolean(profile.value?.player?.is_online)
 })
 
@@ -199,17 +196,57 @@ const playerActionSub = computed(() => {
   if (profile.value?.player_status === 'pending') return '请等待管理员审核'
   return '提交资料后审核'
 })
+const playerEmptyTitle = computed(() => {
+  if (profile.value?.player_status === 'pending') return '申请审核中'
+  if (profile.value?.player_status === 'rejected') return '申请未通过'
+  return '还不是陪玩师'
+})
+const playerEmptySub = computed(() => {
+  if (profile.value?.player_status === 'pending') return '审核通过后即可进入抢单大厅'
+  if (profile.value?.player_status === 'rejected') return '可重新提交申请资料'
+  return '提交申请后，审核通过即可进入抢单大厅'
+})
 
 async function loadProfile() {
   try {
     profile.value = await syncClientProfile()
   } catch (error) {
-    profile.value = getClientProfile()
-    if (!profile.value) {
+    const cached = getClientProfile()
+    if (!cached) {
       go('/pages/client/login/index')
       return
     }
+    // 修复：如果缓存里有已批准的 application，就修正 player_status
+    if (cached.application?.status === 'approved') {
+      cached.player_status = 'approved'
+    } else if (cached.application && cached.player_status !== 'pending') {
+      cached.player_status = 'pending'
+    }
+    profile.value = cached
     toast('个人信息刷新失败')
+  }
+}
+
+async function togglePlayerOnline() {
+  if (!profile.value?.player || onlineUpdating.value) return
+  const nextOnline = !isPlayerOnline.value
+  onlineUpdating.value = true
+  try {
+    const res = await updatePlayerOnlineStatus(nextOnline)
+    const isOnline = Boolean(res.is_online)
+    profile.value = {
+      ...profile.value,
+      player: {
+        ...profile.value.player,
+        is_online: isOnline
+      }
+    }
+    setPlayerOnlineStatus(isOnline)
+    toast(isOnline ? '已上线，开始接单' : '已离线，停止接单')
+  } catch (error) {
+    toast(getErrorMessage(error, '在线状态更新失败'))
+  } finally {
+    onlineUpdating.value = false
   }
 }
 
@@ -576,7 +613,8 @@ function goMain(tab: MainTab = 'home') {
   display: inline-flex;
   align-items: center;
   gap: 6rpx;
-  padding: 6rpx 12rpx;
+  min-width: 96rpx;
+  padding: 8rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(47, 155, 99, 0.12);
   color: #1f7c4b;
@@ -584,12 +622,17 @@ function goMain(tab: MainTab = 'home') {
   font-weight: 800;
   border: 1px solid rgba(47, 155, 99, 0.20);
   flex-shrink: 0;
+  justify-content: center;
 }
 
 .online-toggle.off {
   background: rgba(42, 63, 48, 0.06);
   color: #5a6b5b;
   border-color: rgba(42, 63, 48, 0.12);
+}
+
+.online-toggle.syncing {
+  opacity: 0.72;
 }
 
 .online-dot {

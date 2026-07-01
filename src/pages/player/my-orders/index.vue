@@ -43,7 +43,7 @@ import { completeOrder, getMyOrders, logoutPlayer } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { go, replace, backToRoute } from '@/utils/nav'
+import { go, goMain, replace, backToRoute } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
 const player = ref<any>(null)
@@ -105,7 +105,7 @@ onMounted(async () => {
   }
   if (!playerInfo) {
     toast('陪玩师信息未同步，请刷新个人中心')
-    replace('/pages/client/profile/index')
+    goMain('profile')
     return
   }
   player.value = playerInfo

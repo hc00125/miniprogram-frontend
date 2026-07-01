@@ -19,6 +19,10 @@ export function getCurrentPlayer() {
   return api.get<any>('/player/me')
 }
 
+export function updatePlayerOnlineStatus(is_online: boolean) {
+  return api.post<{ id: number; name: string; is_online: boolean; status: string }>('/player/online-status', { is_online })
+}
+
 export function logoutPlayer() {
   return api.post('/player/logout')
 }

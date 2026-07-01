@@ -1,4 +1,21 @@
 import api from '@/utils/request'
+/** 过滤后端残留的测试数据（名称以 test / group_ 开头的条目） */
+function isTestEntry(name: string): boolean {
+  const n = (name || '').trim().toLowerCase()
+  if (!n) return true
+  if (n.startsWith('test') || n.startsWith('group_')) return true
+  return false
+}
+
+export interface BossPackageSpec {
+  id: number | string
+  name: string
+  price: number
+  description?: string
+  guarantee_amount?: string
+  sort_order?: number
+  is_active?: boolean
+}
 
 export interface BossPackage {
   id: number
@@ -9,6 +26,23 @@ export interface BossPackage {
   is_custom: boolean
   group_id: number | null
   group_name: string | null
+  cover_url?: string
+  image_url?: string
+  thumb_url?: string
+  picture_url?: string
+  detail_images?: string[]
+  product_type?: 'normal' | 'guarantee' | 'escort' | string
+  specs?: BossPackageSpec[]
+  price?: number
+  original_price?: number
+  market_price?: number
+  sold_count?: number
+  sales_count?: number
+  sales?: number
+  order_count?: number
+  sort_order?: number
+  is_active?: boolean
+  is_frontend_preset?: boolean
 }
 
 export interface BossAddon {
@@ -71,6 +105,7 @@ export interface OrderCreatePayload {
   boss_wechat: string
   game_id?: string | null
   package_id: number
+  spec_id?: number | null
   required_players?: number
   addon_details?: { addon_id: number; count: number }[] | null
   designated_players?: number[] | null
@@ -78,12 +113,54 @@ export interface OrderCreatePayload {
   booked_hours?: number
 }
 
+/** 保留规格类型示例，页面展示不再自动注入这些前端预设商品。 */
+export const guaranteeSpecs: BossPackageSpec[] = [
+  { id: 'tv-888', name: '电视台保底 888w', price: 58, guarantee_amount: '888w', sort_order: 1 },
+  { id: 'tv-1088', name: '电视台保底 1088w', price: 68, guarantee_amount: '1088w', sort_order: 2 },
+  { id: 'tv-1288', name: '电视台保底 1288w', price: 88, guarantee_amount: '1288w', sort_order: 3 },
+  { id: 'tv-1488', name: '电视台保底 1488w', price: 98, guarantee_amount: '1488w', sort_order: 4 },
+  { id: 'tv-1688', name: '电视台保底 1688w', price: 128, guarantee_amount: '1688w', sort_order: 5 },
+  { id: 'tv-2688', name: '电视台保底 2688w', price: 188, guarantee_amount: '2688w', sort_order: 6 },
+  { id: 'tv-3988', name: '电视台保底 3988w', price: 288, guarantee_amount: '3988w', sort_order: 7 },
+  { id: 'tv-5888', name: '电视台保底 5888w', price: 399, guarantee_amount: '5888w', sort_order: 8 },
+  { id: 'tv-10001', name: '电视台保底 10001w', price: 688, guarantee_amount: '10001w', sort_order: 9 }
+]
+
+function normalizePackageFromApi(pkg: BossPackage): BossPackage {
+  const specs = [...(pkg.specs || [])]
+    .filter(spec => spec.is_active !== false)
+    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
+
+  return {
+    ...pkg,
+    specs,
+    player_count: Math.max(1, Number(pkg.player_count || 1)),
+    base_price: Math.max(0, Number(pkg.base_price ?? pkg.price ?? 0))
+  }
+}
+
 export function getPackages() {
-  return api.get<BossPackage[]>('/boss/packages')
+  return api.get<BossPackage[]>('/boss/packages').then(list => {
+    const filtered = list
+      .filter(p => p.is_active !== false)
+      .filter(p => !isTestEntry(p.name))
+      .map(normalizePackageFromApi)
+      .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || a.id - b.id)
+
+    // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除；
+    // 如果后端返回空数组，这里保持空数组，不再补前端假商品。
+    const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
+    if (firstGroupId !== null) {
+      filtered.forEach(p => {
+        if (p.group_id === null) { p.group_id = firstGroupId; p.group_name = '' }
+      })
+    }
+    return filtered
+  })
 }
 
 export function getPackageGroups() {
-  return api.get<PackageGroup[]>('/boss/package-groups')
+  return api.get<PackageGroup[]>('/boss/package-groups').then(list => list.filter(g => !isTestEntry(g.name)))
 }
 
 export function getAddons() {
@@ -91,7 +168,7 @@ export function getAddons() {
 }
 
 export function getPlayerTypes() {
-  return api.get<PlayerType[]>('/boss/player-types')
+  return api.get<PlayerType[]>('/boss/player-types').then(list => list.filter(t => !isTestEntry(t.name)))
 }
 
 export function getOnlinePlayers() {

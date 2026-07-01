@@ -3,10 +3,60 @@
     {
       "path": "pages/boss/home/index",
       "style": {
-        "navigationStyle": "custom",
         "navigationBarTitleText": "偷吃电竞",
         "navigationBarBackgroundColor": "#fbf7ef",
         "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/shop/category/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "商品分类",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/shop/detail/index",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/shop/cart/index",
+      "style": {
+        "navigationBarTitleText": "购物车",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/shop/checkout/index",
+      "style": {
+        "navigationBarTitleText": "确认下单",
+        "navigationBarBackgroundColor": "#f7f7f7",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/boss/query/index",
+      "style": {
+        "navigationBarTitleText": "订单查询"
+      }
+    },
+    {
+      "path": "pages/player/list/index",
+      "style": {
+        "navigationBarTitleText": "已入驻陪玩"
+      }
+    },
+    {
+      "path": "pages/client/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人中心"
       }
     },
     {
@@ -28,21 +78,9 @@
       }
     },
     {
-      "path": "pages/boss/query/index",
-      "style": {
-        "navigationBarTitleText": "订单查询"
-      }
-    },
-    {
       "path": "pages/client/login/index",
       "style": {
         "navigationBarTitleText": "微信登录"
-      }
-    },
-    {
-      "path": "pages/client/profile/index",
-      "style": {
-        "navigationBarTitleText": "个人中心"
       }
     },
     {
@@ -70,12 +108,6 @@
       }
     },
     {
-      "path": "pages/player/list/index",
-      "style": {
-        "navigationBarTitleText": "已入驻陪玩"
-      }
-    },
-    {
       "path": "pages/player/my-orders/index",
       "style": {
         "navigationBarTitleText": "我的订单"
@@ -88,6 +120,44 @@
       }
     }
   ],
+  "tabBar": {
+    "color": "#7c847d",
+    "selectedColor": "#2f9b63",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/boss/home/index",
+        "text": "首页",
+        "iconPath": "/icons/tab-home.png",
+        "selectedIconPath": "/icons/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/shop/category/index",
+        "text": "点单",
+        "iconPath": "/icons/tab-order.png",
+        "selectedIconPath": "/icons/tab-order-active.png"
+      },
+      {
+        "pagePath": "pages/boss/query/index",
+        "text": "订单",
+        "iconPath": "/icons/tab-query.png",
+        "selectedIconPath": "/icons/tab-query-active.png"
+      },
+      {
+        "pagePath": "pages/player/list/index",
+        "text": "陪玩",
+        "iconPath": "/icons/tab-players.png",
+        "selectedIconPath": "/icons/tab-players-active.png"
+      },
+      {
+        "pagePath": "pages/client/profile/index",
+        "text": "我的",
+        "iconPath": "/icons/tab-profile.png",
+        "selectedIconPath": "/icons/tab-profile-active.png"
+      }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "偷吃电竞",

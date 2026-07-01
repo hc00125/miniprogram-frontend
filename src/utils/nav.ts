@@ -9,72 +9,79 @@ export function toPageUrl(path: string, params: Record<string, string | number |
   return `${path}${toQueryString(params)}`
 }
 
-export function openPage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
+
+const mainTabPaths: Record<MainTab, string> = {
+  home: '/pages/boss/home/index',
+  order: '/pages/shop/category/index',
+  query: '/pages/boss/query/index',
+  players: '/pages/player/list/index',
+  profile: '/pages/client/profile/index'
+}
+
+const mainTabPathSet = new Set(Object.values(mainTabPaths))
+
+function normalizePath(path: string) {
+  return path.split('?')[0]
+}
+
+function isMainTab(value: unknown): value is MainTab {
+  return typeof value === 'string' && value in mainTabPaths
+}
+
+function resolveMainTabPath(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  const normalized = normalizePath(path)
+  if (normalized === mainTabPaths.home && isMainTab(params.tab)) return mainTabPaths[params.tab]
+  return normalized
+}
+
+function isMainTabPath(path: string) {
+  return mainTabPathSet.has(normalizePath(path))
+}
+
+/** Switch to a main tab page via native tabBar. */
+function switchMainTab(path: string) {
+  uni.switchTab({ url: normalizePath(path) })
+}
+
+export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
+    return
+  }
   uni.navigateTo({ url: toPageUrl(path, params) })
 }
 
-export function replacePage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
+    return
+  }
   uni.redirectTo({ url: toPageUrl(path, params) })
 }
 
 export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  const targetPath = resolveMainTabPath(path, params)
+  if (isMainTabPath(targetPath)) {
+    switchMainTab(targetPath)
+    return
+  }
   uni.reLaunch({ url: toPageUrl(path, params) })
 }
 
-export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  openPage(path, params)
-}
-
-export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  replacePage(path, params)
-}
-
-export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
-
-interface MainRoute {
-  path: string
-  params?: Record<string, string>
-}
-
-const MAIN_ROUTES: Record<MainTab, MainRoute> = {
-  home: {
-    path: '/pages/boss/home/index',
-    params: { tab: 'home' }
-  },
-  order: {
-    path: '/pages/boss/home/index',
-    params: { tab: 'order' }
-  },
-  query: {
-    path: '/pages/boss/query/index'
-  },
-  players: {
-    path: '/pages/player/list/index'
-  },
-  profile: {
-    path: '/pages/client/profile/index'
-  }
-}
-
-export function switchMainTab(tab: MainTab) {
-  const route = MAIN_ROUTES[tab]
-  relaunch(route.path, route.params)
-}
-
 export function goMain(tab: MainTab = 'home') {
-  switchMainTab(tab)
+  switchMainTab(mainTabPaths[tab])
 }
 
-export function navigateToTab(tab: 'query' | 'players' | 'profile') {
-  switchMainTab(tab)
-}
-
-export function back(delta = 1) {
-  uni.navigateBack({ delta })
-}
-
+/**
+ * Navigate back to a target route if it exists in the page stack.
+ * Falls back to redirectTo (or switchTab for main-tab targets).
+ * Prevents page stack accumulation when jumping between sub-pages and tabs.
+ */
 export function backToRoute(routePath: string) {
-  const targetRoute = routePath.replace(/^\//, '').split('?')[0]
+  const targetRoute = normalizePath(routePath).replace(/^\//, '')
   const pages = getCurrentPages()
   const currentRoutes = pages.map((p) => (p as any).route || '')
   for (let i = currentRoutes.length - 2; i >= 0; i--) {
@@ -84,5 +91,28 @@ export function backToRoute(routePath: string) {
       return
     }
   }
-  replacePage(routePath)
+  // Target not in stack: redirect to it
+  if (isMainTabPath(routePath)) {
+    switchMainTab(routePath)
+  } else {
+    uni.redirectTo({ url: normalizePath(routePath) })
+  }
+}
+
+/** Direct navigateTo without main-tab detection. Prefer go() unless you need raw navigateTo. */
+export function openPage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  uni.navigateTo({ url: toPageUrl(path, params) })
+}
+
+/** Direct redirectTo without main-tab detection. Prefer replace() unless you need raw redirectTo. */
+export function replacePage(path: string, params: Record<string, string | number | undefined | null> = {}) {
+  uni.redirectTo({ url: toPageUrl(path, params) })
+}
+
+export function navigateToTab(tab: 'query' | 'players' | 'profile') {
+  goMain(tab)
+}
+
+export function back(delta = 1) {
+  uni.navigateBack({ delta })
 }
