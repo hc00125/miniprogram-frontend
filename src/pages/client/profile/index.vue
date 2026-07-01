@@ -106,9 +106,9 @@
       </view>
       <view class="player-empty">
         <text class="empty-emoji">陪</text>
-        <text class="empty-title">还不是陪玩师</text>
-        <text class="empty-sub">提交申请后，审核通过即可进入抢单大厅</text>
-        <view class="club-btn club-btn--primary empty-btn" hover-class="hover-class" @tap="handlePlayerAction">立即申请</view>
+        <text class="empty-title">{{ playerEmptyTitle }}</text>
+        <text class="empty-sub">{{ playerEmptySub }}</text>
+        <view class="club-btn club-btn--primary empty-btn" hover-class="hover-class" @tap="handlePlayerAction">{{ playerActionTitle }}</view>
       </view>
     </view>
 
@@ -196,16 +196,33 @@ const playerActionSub = computed(() => {
   if (profile.value?.player_status === 'pending') return '请等待管理员审核'
   return '提交资料后审核'
 })
+const playerEmptyTitle = computed(() => {
+  if (profile.value?.player_status === 'pending') return '申请审核中'
+  if (profile.value?.player_status === 'rejected') return '申请未通过'
+  return '还不是陪玩师'
+})
+const playerEmptySub = computed(() => {
+  if (profile.value?.player_status === 'pending') return '审核通过后即可进入抢单大厅'
+  if (profile.value?.player_status === 'rejected') return '可重新提交申请资料'
+  return '提交申请后，审核通过即可进入抢单大厅'
+})
 
 async function loadProfile() {
   try {
     profile.value = await syncClientProfile()
   } catch (error) {
-    profile.value = getClientProfile()
-    if (!profile.value) {
+    const cached = getClientProfile()
+    if (!cached) {
       go('/pages/client/login/index')
       return
     }
+    // 修复：如果缓存里有已批准的 application，就修正 player_status
+    if (cached.application?.status === 'approved') {
+      cached.player_status = 'approved'
+    } else if (cached.application && cached.player_status !== 'pending') {
+      cached.player_status = 'pending'
+    }
+    profile.value = cached
     toast('个人信息刷新失败')
   }
 }

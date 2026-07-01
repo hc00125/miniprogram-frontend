@@ -171,10 +171,10 @@ import { getStorage } from '@/utils/storage'
 import { getShopCartCount } from '@/utils/shopCart'
 
 const activeTab = ref('all')
-const orders = ref<BossOrderListItem[]>([])
-const loaded = ref(false)
 const cartCount = ref(0)
 const isLoggedIn = ref(false)
+const orders = ref<BossOrderListItem[]>([])
+const loaded = ref(false)
 
 const runningCount = computed(() => orders.value.filter(o => o.status === '进行中').length)
 const waitingCount = computed(() => orders.value.filter(o => o.status === '待接单').length)
@@ -286,12 +286,16 @@ async function fetchCartCount() {
 }
 
 function refreshCenter() {
+<<<<<<< HEAD
   const token = syncLoginState()
   if (!token) {
     resetOrderCenter()
     loaded.value = true
     return
   }
+=======
+  isLoggedIn.value = Boolean(getStorage<string>('token'))
+>>>>>>> e195c97 (fix: loadProfile cache fallback + isLoggedIn ref in onShow)
   fetchOrders()
   fetchCartCount()
 }
