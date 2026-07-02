@@ -9,6 +9,14 @@
       }
     },
     {
+      "path": "pages/boss/order-notice/index",
+      "style": {
+        "navigationBarTitleText": "点单须知",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/shop/category/index",
       "style": {
         "navigationStyle": "custom",

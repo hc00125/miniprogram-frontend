@@ -2,7 +2,7 @@
   <view class="shop-detail-page">
     <scroll-view v-if="product" scroll-y class="detail-scroll">
       <view class="hero-section" :class="{ 'hero-section--guarantee': isGuaranteeProduct }">
-        <image v-if="rawProductImage" class="hero-image" :src="rawProductImage" mode="aspectFill" />
+        <image v-if="rawProductImage" class="hero-image" :src="rawProductImage" mode="aspectFill" @tap="previewProductImage(rawProductImage)" />
         <view v-else class="hero-placeholder">
           <view class="hero-brand">偷吃俱乐部 <text>CLUB</text></view>
           <view class="hero-title">{{ heroTitle }}</view>
@@ -13,6 +13,7 @@
         <view class="hero-float hero-float--left" @tap="goBack">‹</view>
         <view class="hero-float hero-float--right">•••</view>
         <view class="hero-sold">{{ soldCountText }}</view>
+        <view v-if="rawProductImage" class="image-preview-tip" @tap="previewProductImage(rawProductImage)">点击查看大图</view>
       </view>
 
       <view class="detail-card product-card">
@@ -35,18 +36,9 @@
           <text>{{ isGuaranteeProduct ? '查看规则 ›' : '了解更多 ›' }}</text>
         </view>
         <view v-if="isGuaranteeProduct" class="guarantee-overview">
-          <view class="overview-item">
-            <text>起步价</text>
-            <text>¥58</text>
-          </view>
-          <view class="overview-item">
-            <text>规格档位</text>
-            <text>{{ specs.length || 9 }}档</text>
-          </view>
-          <view class="overview-item">
-            <text>计价方式</text>
-            <text>按单</text>
-          </view>
+          <view class="overview-item"><text>起步价</text><text>¥58</text></view>
+          <view class="overview-item"><text>规格档位</text><text>{{ specs.length || 9 }}档</text></view>
+          <view class="overview-item"><text>计价方式</text><text>按单</text></view>
         </view>
         <view class="product-meta">
           <text>已售{{ soldCount }}件</text>
@@ -60,14 +52,10 @@
           <text class="option-value">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           <text class="option-arrow">›</text>
         </view>
-
         <view v-if="specs.length" class="option-preview">
-          <view class="preview-chip" v-for="spec in previewSpecs" :key="spec.id">
-            {{ getSpecDisplayName(spec) }}
-          </view>
+          <view class="preview-chip" v-for="spec in previewSpecs" :key="spec.id">{{ getSpecDisplayName(spec) }}</view>
           <view class="preview-chip preview-chip--more">共{{ specs.length }}个规格可选</view>
         </view>
-
         <view class="option-row">
           <text class="option-label">活动</text>
           <text class="tag">送积分</text>
@@ -81,29 +69,19 @@
           <text class="card-more">客服确认后开局</text>
         </view>
         <view class="rule-list">
-          <view v-for="rule in guaranteeRules" :key="rule" class="rule-item">
-            <text></text>
-            <text>{{ rule }}</text>
-          </view>
+          <view v-for="rule in guaranteeRules" :key="rule" class="rule-item"><text></text><text>{{ rule }}</text></view>
         </view>
       </view>
 
       <view class="detail-card review-card">
-        <view class="card-head">
-          <text class="card-title">暂无评价</text>
-          <text class="card-more">查看全部 ›</text>
-        </view>
+        <view class="card-head"><text class="card-title">暂无评价</text><text class="card-more">查看全部 ›</text></view>
       </view>
 
-      <view class="graphic-title">
-        <text></text>
-        <text>图文详情</text>
-        <text></text>
-      </view>
-
+      <view class="graphic-title"><text></text><text>图文详情</text><text></text></view>
       <view class="graphic-card">
         <template v-if="detailImages.length">
-          <image v-for="url in detailImages" :key="url" class="graphic-image" :src="url" mode="widthFix" />
+          <image v-for="url in detailImages" :key="url" class="graphic-image" :src="url" mode="widthFix" @tap="previewProductImage(url)" />
+          <view class="graphic-preview-tip">点击图片可查看大图</view>
         </template>
         <view v-else class="graphic-placeholder">
           <view class="hero-brand">偷吃俱乐部 <text>CLUB</text></view>
@@ -114,32 +92,17 @@
       </view>
 
       <view v-if="recommendProducts.length" class="recommend-section">
-        <view class="graphic-title recommend-title">
-          <text></text>
-          <text>您或许会喜欢</text>
-          <text></text>
-        </view>
+        <view class="graphic-title recommend-title"><text></text><text>您或许会喜欢</text><text></text></view>
         <view class="recommend-grid">
-          <view
-            v-for="item in recommendProducts"
-            :key="item.id"
-            class="recommend-card"
-            @tap="openProduct(item.id)"
-          >
+          <view v-for="item in recommendProducts" :key="item.id" class="recommend-card" @tap="openProduct(item.id)">
             <image v-if="getRawProductImage(item)" class="recommend-image" :src="getRawProductImage(item)" mode="aspectFill" />
-            <view v-else class="recommend-image recommend-image--placeholder">
-              <text>{{ item.name.slice(0, 1) }}</text>
-            </view>
+            <view v-else class="recommend-image recommend-image--placeholder"><text>{{ item.name.slice(0, 1) }}</text></view>
             <text class="recommend-name">{{ item.name }}</text>
-            <view class="recommend-price">
-              <text>¥</text>
-              <text>{{ formatMoney(getDisplayPrice(item)) }}</text>
-            </view>
+            <view class="recommend-price"><text>¥</text><text>{{ formatMoney(getDisplayPrice(item)) }}</text></view>
             <text class="recommend-cart">🛒</text>
           </view>
         </view>
       </view>
-
       <view class="bottom-spacer"></view>
     </scroll-view>
 
@@ -149,15 +112,9 @@
     </view>
 
     <view v-if="product" class="bottom-bar">
-      <view class="bottom-icon" @tap="goHome">
-        <text>⌂</text>
-        <text>首页</text>
-      </view>
+      <view class="bottom-icon" @tap="goHome"><text>⌂</text><text>首页</text></view>
       <view class="bottom-icon" @tap="openCart">
-        <view class="cart-icon-wrap">
-          <text>🛒</text>
-          <text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text>
-        </view>
+        <view class="cart-icon-wrap"><text>🛒</text><text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text></view>
         <text>购物车</text>
       </view>
       <button class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
@@ -167,38 +124,35 @@
     <view v-if="product && specPopupVisible" class="spec-popup-mask" @tap="closeSpecPopup">
       <view class="spec-popup" @tap.stop>
         <view class="spec-popup-header">
-          <image class="spec-popup-image" :src="specPopupImage" mode="aspectFill" />
+          <image class="spec-popup-image" :src="specPopupImage" mode="aspectFill" @tap="previewProductImage(specPopupImage)" />
           <view class="spec-popup-info">
-            <view class="spec-popup-price">
-              <text>¥</text>
-              <text>{{ formatMoney(productPrice) }}</text>
-            </view>
-            <text class="spec-popup-stock">{{ specs.length ? `共${specs.length}个规格可选` : '无规格可选' }}</text>
+            <view class="spec-popup-price"><text>¥</text><text>{{ formatMoney(productPrice) }}</text></view>
+            <text class="spec-popup-stock">数量：{{ selectedQuantity }}</text>
             <text class="spec-popup-selected">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           </view>
           <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
         </view>
-
         <view class="spec-popup-body">
-          <view class="spec-popup-group">
+          <view v-if="specs.length" class="spec-popup-group">
             <view class="spec-popup-title-row">
               <text class="spec-popup-title">{{ isGuaranteeProduct ? '保底规格' : '商品规格' }}</text>
               <text class="spec-popup-title-tip">{{ isGuaranteeProduct ? '按保底金额选择' : '请选择规格' }}</text>
             </view>
             <view class="spec-popup-grid">
-              <view
-                v-for="spec in specs"
-                :key="spec.id"
-                class="spec-popup-chip"
-                :class="{ active: selectedSpec?.id === spec.id }"
-                @tap="selectSpec(spec)"
-              >
+              <view v-for="spec in specs" :key="spec.id" class="spec-popup-chip" :class="{ active: selectedSpec?.id === spec.id }" @tap="selectSpec(spec)">
                 <text>{{ getSpecDisplayName(spec) }}</text>
               </view>
             </view>
           </view>
+          <view class="quantity-row">
+            <text class="quantity-title">数量</text>
+            <view class="quantity-stepper">
+              <button class="quantity-btn" :disabled="selectedQuantity <= 1" @tap="adjustQuantity(-1)">−</button>
+              <text class="quantity-value">{{ selectedQuantity }}</text>
+              <button class="quantity-btn quantity-btn--plus" @tap="adjustQuantity(1)">＋</button>
+            </view>
+          </view>
         </view>
-
         <view class="spec-popup-footer">
           <button class="popup-cart-btn" @tap="confirmSpecAction('cart')">加入购物车</button>
           <button class="popup-buy-btn" @tap="confirmSpecAction('buy')">立即购买</button>
@@ -222,6 +176,7 @@ const loading = ref(false)
 const product = ref<BossPackage | null>(null)
 const allProducts = ref<BossPackage[]>([])
 const selectedSpec = ref<BossPackageSpec | null>(null)
+const selectedQuantity = ref(1)
 const specPopupVisible = ref(false)
 const pendingAction = ref<'cart' | 'buy'>('buy')
 const cartCount = ref(0)
@@ -231,6 +186,7 @@ const previewSpecs = computed(() => specs.value.slice(0, 3))
 const rawProductImage = computed(() => product.value ? getRawProductImage(product.value) : '')
 const specPopupImage = computed(() => rawProductImage.value || fallbackImage)
 const detailImages = computed(() => product.value?.detail_images?.length ? product.value.detail_images : (rawProductImage.value ? [rawProductImage.value] : []))
+const previewImages = computed(() => Array.from(new Set([rawProductImage.value, ...detailImages.value].filter(Boolean))))
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(specs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
 const productPrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
@@ -248,167 +204,31 @@ const detailText = computed(() => isGuaranteeProduct.value ? '九档电视台保
 const memberStripText = computed(() => isGuaranteeProduct.value ? '保底规格可选，价格按单计算' : '加入会员，享会员价')
 const guaranteeRules = computed(() => {
   const amount = selectedSpec.value?.guarantee_amount
-  return [
-    amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位',
-    '下单后客服会按所选规格确认局数、规则和开局时间',
-    '规格价格以后端配置为准，提交后会自动记录所选规格'
-  ]
+  return [amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '规格价格以后端配置为准，提交后会自动记录所选规格']
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 
-function getRawProductImage(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || ''
-}
-
-function getDisplayPrice(item: BossPackage) {
-  const itemSpecs = item.specs || []
-  if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0))
-  return getProductPrice(item)
-}
-
-function getProductPrice(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return Math.max(0, Number(productItem.price ?? productItem.base_price ?? 0))
-}
-
-function getOriginalPrice(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  const price = getDisplayPrice(item)
-  return Math.max(price, Number(productItem.original_price ?? productItem.market_price ?? price))
-}
-
-function getSoldCount(item: BossPackage) {
-  const productItem = item as BossPackage & Record<string, any>
-  return Number(productItem.sold_count ?? productItem.sales_count ?? productItem.sales ?? productItem.order_count ?? 0)
-}
-
-function formatMoney(value: number) {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(2)
-}
-
-function getSpecDisplayName(spec: BossPackageSpec) {
-  const specItem = spec as BossPackageSpec & Record<string, any>
-  if (specItem.short_name) return String(specItem.short_name)
-  if (specItem.display_name) return String(specItem.display_name)
-  if (isGuaranteeProduct.value) {
-    if (spec.guarantee_amount) return `${spec.guarantee_amount}档`
-    const matched = String(spec.name || '').match(/(\d+\s*w)/i)
-    if (matched?.[1]) return `${matched[1].replace(/\s+/g, '')}档`
-    return String(spec.name || '').replace(/^电视台保底\s*/i, '').trim() || String(spec.name || '')
-  }
-  return String(spec.name || '').trim()
-}
-
-function selectSpec(spec: BossPackageSpec) {
-  selectedSpec.value = spec
-}
-
-async function refreshCartCount() {
-  try {
-    cartCount.value = await getShopCartCount()
-  } catch {
-    cartCount.value = 0
-  }
-}
-
-async function fetchProduct() {
-  if (!packageId.value) return
-  loading.value = true
-  try {
-    const list = await getPackages()
-    allProducts.value = list
-    product.value = list.find(item => item.id === packageId.value) || null
-    selectedSpec.value = product.value?.specs?.[0] || null
-  } catch (error) {
-    toast(getErrorMessage(error, '商品详情加载失败'))
-  } finally {
-    loading.value = false
-  }
-}
-
-function openProduct(nextPackageId: number) {
-  go('/pages/shop/detail/index', { packageId: nextPackageId })
-}
-
-function openSpecPopup(action: 'cart' | 'buy' = 'buy') {
-  if (!product.value) return
-  pendingAction.value = action
-  if (!specs.value.length) {
-    if (action === 'cart') {
-      handleCartTap()
-      return
-    }
-    go('/pages/shop/checkout/index', { packageId: product.value.id })
-    return
-  }
-  specPopupVisible.value = true
-}
-
-function closeSpecPopup() {
-  specPopupVisible.value = false
-}
-
-function confirmSpecAction(action?: 'cart' | 'buy') {
-  const finalAction = action || pendingAction.value
-  if (specs.value.length && !selectedSpec.value) {
-    toast('请选择规格')
-    return
-  }
-  closeSpecPopup()
-  if (finalAction === 'cart') {
-    handleCartTap()
-    return
-  }
-  if (!product.value) return
-  go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id })
-}
-
-async function handleCartTap() {
-  if (!product.value) return
-  try {
-    await addShopCartItem({
-      product: product.value,
-      spec: selectedSpec.value,
-      spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined,
-      image_url: specPopupImage.value,
-      price: productPrice.value,
-      description: productSummary.value,
-      quantity: 1
-    })
-    await refreshCartCount()
-    success('已加入购物车')
-  } catch (error) {
-    toast(getErrorMessage(error, '加入购物车失败'))
-  }
-}
-
-function handleCollectTap() {
-  toast('收藏功能开发中')
-}
-
-function handleBuyTap() {
-  openSpecPopup('buy')
-}
-
-function openCart() {
-  go('/pages/shop/cart/index')
-}
-
-function goHome() {
-  goMain('home')
-}
-
-function goBack() {
-  uni.navigateBack({ delta: 1 })
-}
-
-onLoad((query) => {
-  const id = Number(query?.packageId)
-  packageId.value = Number.isFinite(id) ? id : null
-  fetchProduct()
-})
-
+function getRawProductImage(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || '' }
+function getDisplayPrice(item: BossPackage) { const itemSpecs = item.specs || []; if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0)); return getProductPrice(item) }
+function getProductPrice(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return Math.max(0, Number(productItem.price ?? productItem.base_price ?? 0)) }
+function getOriginalPrice(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; const price = getDisplayPrice(item); return Math.max(price, Number(productItem.original_price ?? productItem.market_price ?? price)) }
+function getSoldCount(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return Number(productItem.sold_count ?? productItem.sales_count ?? productItem.sales ?? productItem.order_count ?? 0) }
+function formatMoney(value: number) { return Number.isInteger(value) ? `${value}` : value.toFixed(2) }
+function getSpecDisplayName(spec: BossPackageSpec) { const specItem = spec as BossPackageSpec & Record<string, any>; if (specItem.short_name) return String(specItem.short_name); if (specItem.display_name) return String(specItem.display_name); if (isGuaranteeProduct.value) { if (spec.guarantee_amount) return `${spec.guarantee_amount}档`; const matched = String(spec.name || '').match(/(\d+\s*w)/i); if (matched?.[1]) return `${matched[1].replace(/\s+/g, '')}档`; return String(spec.name || '').replace(/^电视台保底\s*/i, '').trim() || String(spec.name || '') } return String(spec.name || '').trim() }
+function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
+function adjustQuantity(delta: number) { const next = selectedQuantity.value + delta; if (next < 1) return; if (next > 99) return toast('单次最多选择 99 件'); selectedQuantity.value = next }
+function previewProductImage(url: string) { if (!url) return; const urls = previewImages.value.length ? previewImages.value : [url]; uni.previewImage({ urls, current: url }) }
+async function refreshCartCount() { try { cartCount.value = await getShopCartCount() } catch { cartCount.value = 0 } }
+async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = await getPackages(); allProducts.value = list; product.value = list.find(item => item.id === packageId.value) || null; selectedSpec.value = product.value?.specs?.[0] || null; selectedQuantity.value = 1 } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
+function openProduct(nextPackageId: number) { go('/pages/shop/detail/index', { packageId: nextPackageId }) }
+function openSpecPopup(action: 'cart' | 'buy' = 'buy') { if (!product.value) return; pendingAction.value = action; specPopupVisible.value = true }
+function closeSpecPopup() { specPopupVisible.value = false }
+function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') { handleCartTap(); return } if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id, quantity: selectedQuantity.value }) }
+async function handleCartTap() { if (!product.value) return; try { await addShopCartItem({ product: product.value, spec: selectedSpec.value, spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined, image_url: specPopupImage.value, price: productPrice.value, description: productSummary.value, quantity: selectedQuantity.value }); await refreshCartCount(); success(`已加入购物车 x${selectedQuantity.value}`) } catch (error) { toast(getErrorMessage(error, '加入购物车失败')) } }
+function openCart() { go('/pages/shop/cart/index') }
+function goHome() { goMain('home') }
+function goBack() { uni.navigateBack({ delta: 1 }) }
+onLoad((query) => { const id = Number(query?.packageId); packageId.value = Number.isFinite(id) ? id : null; fetchProduct() })
 onShow(refreshCartCount)
 </script>
 
@@ -429,10 +249,11 @@ onShow(refreshCartCount)
 .hero-subtitle { margin-top: 22rpx; color: #20ff9a; font-size: 40rpx; line-height: 1.45; font-weight: 900; }
 .hero-note { margin-top: 36rpx; color: #fff; font-size: 24rpx; font-weight: 800; opacity: 0.88; }
 .hero-mask { position: absolute; left: 0; right: 0; bottom: 0; height: 160rpx; background: linear-gradient(180deg, transparent, rgba(246, 246, 246, 0.95)); pointer-events: none; }
-.hero-float { position: absolute; top: calc(22rpx + env(safe-area-inset-top)); width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 38rpx; font-weight: 900; background: rgba(0, 0, 0, 0.36); backdrop-filter: blur(8rpx); }
+.hero-float { position: absolute; top: calc(22rpx + env(safe-area-inset-top)); width: 64rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 38rpx; font-weight: 900; background: rgba(0, 0, 0, 0.36); backdrop-filter: blur(8rpx); z-index: 3; }
 .hero-float--left { left: 24rpx; }
 .hero-float--right { right: 24rpx; font-size: 28rpx; letter-spacing: 3rpx; }
 .hero-sold { position: absolute; left: 24rpx; bottom: 34rpx; z-index: 2; padding: 10rpx 18rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; background: rgba(0, 0, 0, 0.42); }
+.image-preview-tip { position: absolute; right: 24rpx; bottom: 34rpx; z-index: 3; padding: 10rpx 18rpx; border-radius: 999rpx; color: #fff; font-size: 22rpx; background: rgba(0, 0, 0, 0.42); }
 .detail-card { margin: 18rpx 22rpx 0; padding: 24rpx; border-radius: 18rpx; background: #fff; box-sizing: border-box; }
 .product-card { margin-top: -18rpx; position: relative; z-index: 2; }
 .price-line { display: flex; align-items: baseline; gap: 18rpx; }
@@ -475,8 +296,9 @@ onShow(refreshCartCount)
 .card-more { color: #999; font-size: 24rpx; }
 .graphic-title { display: flex; align-items: center; justify-content: center; gap: 18rpx; margin: 38rpx 0 18rpx; color: #777; font-size: 25rpx; }
 .graphic-title text:first-child, .graphic-title text:last-child { width: 70rpx; height: 1rpx; background: #d7d7d7; }
-.graphic-card { margin: 0 22rpx; overflow: hidden; border-radius: 8rpx; background: #2d2d22; }
+.graphic-card { position: relative; margin: 0 22rpx; overflow: hidden; border-radius: 8rpx; background: #2d2d22; }
 .graphic-image { width: 100%; display: block; }
+.graphic-preview-tip { position: absolute; right: 16rpx; bottom: 16rpx; z-index: 2; padding: 8rpx 14rpx; border-radius: 999rpx; color: #fff; font-size: 20rpx; background: rgba(0, 0, 0, 0.45); }
 .graphic-placeholder { min-height: 680rpx; }
 .recommend-section { padding: 0 22rpx; }
 .recommend-title { margin-top: 40rpx; }
@@ -523,6 +345,14 @@ onShow(refreshCartCount)
 .spec-popup-chip text { display: block; width: 100%; color: #555; font-size: 24rpx; font-weight: 500; line-height: 1.3; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .spec-popup-chip.active { border-color: #ef4f5f; background: #fff1f3; }
 .spec-popup-chip.active text { color: #ef4f5f; font-weight: 700; }
+.quantity-row { margin-top: 34rpx; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.quantity-title { color: #333; font-size: 28rpx; font-weight: 900; }
+.quantity-stepper { display: flex; align-items: center; height: 64rpx; border-radius: 8rpx; overflow: hidden; background: #f7f7f7; }
+.quantity-btn { width: 72rpx; height: 64rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 0; color: #999; font-size: 34rpx; background: #f0f0f0; }
+.quantity-btn::after { border: none; }
+.quantity-btn[disabled] { color: #d5d5d5; background: #f6f6f6; opacity: 1; }
+.quantity-btn--plus { color: #777; background: #f0f0f0; }
+.quantity-value { width: 92rpx; text-align: center; color: #333; font-size: 27rpx; font-weight: 900; }
 .spec-popup-footer { display: flex; gap: 18rpx; margin-top: 28rpx; }
 .popup-cart-btn, .popup-buy-btn { flex: 1; height: 84rpx; display: flex; align-items: center; justify-content: center; padding: 0 20rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 28rpx; font-weight: 900; }
 .popup-cart-btn::after, .popup-buy-btn::after { border: none; }

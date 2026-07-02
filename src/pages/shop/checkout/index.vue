@@ -1,7 +1,24 @@
 <template>
   <view class="shop-checkout-page">
     <scroll-view scroll-y class="checkout-scroll">
-      <view v-if="product" class="product-card" :class="{ 'product-card--guarantee': isGuaranteeProduct }">
+      <view v-if="isCartCheckout" class="checkout-card merge-card">
+        <view class="card-title">合并结算</view>
+        <view class="merge-subtitle">本次将 {{ cartItems.length }} 个商品合并为一个订单</view>
+        <view class="merge-list">
+          <view v-for="item in cartItems" :key="item.id" class="merge-item">
+            <image v-if="item.image_url" class="merge-image" :src="item.image_url" mode="aspectFill" />
+            <view v-else class="merge-image merge-image--placeholder">{{ item.package_name.slice(0, 1) }}</view>
+            <view class="merge-main">
+              <view class="merge-name">{{ item.package_name }}</view>
+              <view v-if="item.spec_display_name || item.spec_name" class="merge-spec">{{ item.spec_display_name || item.spec_name }}</view>
+              <view class="merge-price">¥{{ formatMoney(item.price) }} × {{ item.quantity }}</view>
+            </view>
+            <view class="merge-amount">¥{{ formatMoney(itemAmount(item)) }}</view>
+          </view>
+        </view>
+      </view>
+
+      <view v-else-if="product" class="product-card" :class="{ 'product-card--guarantee': isGuaranteeProduct }">
         <image class="product-image" :src="productImage" mode="aspectFill" />
         <view class="product-main">
           <view class="product-title-row">
@@ -18,7 +35,7 @@
         </view>
       </view>
 
-      <view v-if="product && specs.length" class="checkout-card spec-card">
+      <view v-if="!isCartCheckout && product && specs.length" class="checkout-card spec-card">
         <view class="card-head-row">
           <view>
             <view class="card-title">{{ isGuaranteeProduct ? '选择保底规格' : '选择规格' }}</view>
@@ -27,13 +44,7 @@
           <text class="spec-count">{{ specs.length }}档</text>
         </view>
         <view class="spec-grid">
-          <view
-            v-for="spec in specs"
-            :key="spec.id"
-            class="spec-chip"
-            :class="{ active: selectedSpec?.id === spec.id }"
-            @tap="selectSpec(spec)"
-          >
+          <view v-for="spec in specs" :key="spec.id" class="spec-chip" :class="{ active: selectedSpec?.id === spec.id }" @tap="selectSpec(spec)">
             <text>{{ spec.name }}</text>
             <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
             <text>¥{{ formatMoney(Number(spec.price)) }}</text>
@@ -41,25 +52,16 @@
         </view>
       </view>
 
-      <view v-if="isGuaranteeProduct" class="checkout-card notice-card">
+      <view v-if="!isCartCheckout && isGuaranteeProduct" class="checkout-card notice-card">
         <view class="card-title">下单说明</view>
         <view class="notice-list">
-          <view class="notice-item">
-            <text></text>
-            <text>{{ selectedSpec ? `当前规格：${selectedSpec.name}` : '请选择一个保底规格' }}</text>
-          </view>
-          <view class="notice-item">
-            <text></text>
-            <text>保底单按单计价，不需要选择人数和时长。</text>
-          </view>
-          <view class="notice-item">
-            <text></text>
-            <text>提交后客服会根据所选规格确认规则和开局时间。</text>
-          </view>
+          <view class="notice-item"><text></text><text>{{ selectedSpec ? `当前规格：${selectedSpec.name}` : '请选择一个保底规格' }}</text></view>
+          <view class="notice-item"><text></text><text>保底单按单计价，不需要选择人数和时长。</text></view>
+          <view class="notice-item"><text></text><text>提交后客服会根据所选规格确认规则和开局时间。</text></view>
         </view>
       </view>
 
-      <view v-if="product" class="checkout-card">
+      <view v-if="hasCheckoutData" class="checkout-card">
         <view class="card-title">下单信息</view>
         <view class="input-row">
           <text class="input-label">联系昵称</text>
@@ -69,7 +71,17 @@
           <text class="input-label">游戏ID / 队伍码</text>
           <input v-model="form.gameId" class="checkout-input" placeholder="请输入游戏ID或队伍码" />
         </view>
-        <view v-if="!isSpecProduct" class="control-row">
+        <view v-if="!isCartCheckout" class="control-row control-row--quantity">
+          <view class="control-item">
+            <text class="input-label">数量</text>
+            <view class="stepper stepper--quantity">
+              <button class="step-btn" :disabled="form.quantity <= 1" @tap="adjustQuantity(-1)">−</button>
+              <text class="step-value">{{ form.quantity }}</text>
+              <button class="step-btn plus" @tap="adjustQuantity(1)">＋</button>
+            </view>
+          </view>
+        </view>
+        <view v-if="!isCartCheckout && !isSpecProduct" class="control-row">
           <view class="control-item">
             <text class="input-label">人数</text>
             <view class="stepper">
@@ -94,46 +106,33 @@
         </view>
       </view>
 
-      <view v-if="product" class="checkout-card detail-card">
+      <view v-if="hasCheckoutData" class="checkout-card detail-card">
         <view class="card-title">费用明细</view>
-        <view v-if="selectedSpec" class="detail-row">
-          <text>已选规格</text>
-          <text>{{ selectedSpec.name }}</text>
-        </view>
-        <view class="detail-row">
-          <text>{{ isSpecProduct ? '规格价格' : '套餐单价' }}</text>
-          <text>¥{{ formatMoney(basePrice) }}{{ isSpecProduct ? '/单' : '/时/人' }}</text>
-        </view>
-        <view v-if="!isSpecProduct" class="detail-row">
-          <text>人数</text>
-          <text>{{ form.playerCount }}人</text>
-        </view>
-        <view v-if="!isSpecProduct" class="detail-row">
-          <text>预订时长</text>
-          <text>{{ formatHours(form.bookedHours) }}</text>
-        </view>
-        <view class="detail-row total-row">
-          <text>预计总额</text>
-          <text>¥{{ formatMoney(totalAmount) }}</text>
-        </view>
+        <template v-if="isCartCheckout">
+          <view class="detail-row"><text>合并商品</text><text>{{ cartItems.length }} 项</text></view>
+          <view class="detail-row"><text>商品数量</text><text>x{{ cartQuantity }}</text></view>
+        </template>
+        <template v-else>
+          <view v-if="selectedSpec" class="detail-row"><text>已选规格</text><text>{{ selectedSpec.name }}</text></view>
+          <view class="detail-row"><text>{{ isSpecProduct ? '规格价格' : '套餐单价' }}</text><text>¥{{ formatMoney(basePrice) }}{{ isSpecProduct ? '/单' : '/时/人' }}</text></view>
+          <view class="detail-row"><text>购买数量</text><text>x{{ form.quantity }}</text></view>
+          <view v-if="!isSpecProduct" class="detail-row"><text>人数</text><text>{{ form.playerCount }}人</text></view>
+          <view v-if="!isSpecProduct" class="detail-row"><text>预订时长</text><text>{{ formatHours(form.bookedHours) }}</text></view>
+        </template>
+        <view class="detail-row total-row"><text>预计总额</text><text>¥{{ formatMoney(totalAmount) }}</text></view>
       </view>
 
-      <view v-if="!product" class="empty-state">
-        <text>{{ loading ? '商品加载中...' : '商品不存在' }}</text>
+      <view v-if="!hasCheckoutData" class="empty-state">
+        <text>{{ loading ? '商品加载中...' : '商品不存在或购物车已变化' }}</text>
         <button v-if="!loading" class="back-btn" @tap="goBack">返回</button>
       </view>
 
       <view class="bottom-spacer"></view>
     </scroll-view>
 
-    <view v-if="product" class="bottom-bar">
-      <view class="bottom-price">
-        <text>预计总额</text>
-        <text>¥{{ formatMoney(totalAmount) }}</text>
-      </view>
-      <button class="submit-btn" :disabled="submitting" @tap="submitOrder">
-        {{ submitting ? '提交中...' : '立即下单' }}
-      </button>
+    <view v-if="hasCheckoutData" class="bottom-bar">
+      <view class="bottom-price"><text>预计总额</text><text>¥{{ formatMoney(totalAmount) }}</text></view>
+      <button class="submit-btn" :disabled="submitting" @tap="submitOrder">{{ submitting ? '提交中...' : '立即下单' }}</button>
     </view>
   </view>
 </template>
@@ -141,12 +140,13 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { createOrder, getMyBossOrders, getPackages, type BossOrderListItem, type BossPackage, type BossPackageSpec } from '@/api/boss'
+import { createOrder, getMyBossOrders, getPackages, type BossOrderListItem, type BossPackage, type BossPackageSpec, type OrderCreateItemPayload } from '@/api/boss'
 import { getClientProfile, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { formatHours } from '@/utils/format'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { getStorage, setStorage } from '@/utils/storage'
+import { getShopCart, removeShopCartItem, type ShopCartItem } from '@/utils/shopCart'
 
 const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
 const MAX_PLAYER_COUNT = 3
@@ -154,12 +154,16 @@ const unfinishedStatuses = ['待接单', '进行中', '待支付']
 
 const packageId = ref<number | null>(null)
 const initialSpecId = ref<string>('')
+const cartItemIds = ref<string[]>([])
 const loading = ref(false)
 const submitting = ref(false)
 const product = ref<BossPackage | null>(null)
 const selectedSpec = ref<BossPackageSpec | null>(null)
-const form = reactive({ contact: '', gameId: '', note: '', bookedHours: 1, playerCount: 1 })
+const cartItems = ref<ShopCartItem[]>([])
+const form = reactive({ contact: '', gameId: '', note: '', bookedHours: 1, playerCount: 1, quantity: 1 })
 
+const isCartCheckout = computed(() => cartItemIds.value.length > 0)
+const hasCheckoutData = computed(() => isCartCheckout.value ? cartItems.value.length > 0 : Boolean(product.value))
 const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(specs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
@@ -169,7 +173,27 @@ const productDesc = computed(() => {
   return selectedSpec.value?.name || product.value?.description || '精选套餐，平台保障，快速匹配陪玩。'
 })
 const basePrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
-const totalAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
+const unitAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
+const singleTotalAmount = computed(() => unitAmount.value * form.quantity)
+const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + normalizeQuantity(item.quantity), 0))
+const cartTotalAmount = computed(() => cartItems.value.reduce((sum, item) => sum + itemAmount(item), 0))
+const totalAmount = computed(() => isCartCheckout.value ? cartTotalAmount.value : singleTotalAmount.value)
+
+function normalizeQuantity(value: unknown) {
+  const num = Math.floor(Number(value || 1))
+  if (!Number.isFinite(num)) return 1
+  return Math.max(1, Math.min(99, num))
+}
+
+function itemAmount(item: ShopCartItem) {
+  return Number(item.price || 0) * normalizeQuantity(item.quantity)
+}
+
+function itemSpecId(item: ShopCartItem) {
+  const raw = item.spec_id || item.spec_id_snapshot || null
+  const specId = Number(raw)
+  return Number.isFinite(specId) && specId > 0 ? specId : null
+}
 
 function getProductImage(item: BossPackage) {
   const productItem = item as BossPackage & Record<string, any>
@@ -192,7 +216,7 @@ function getPackagePlayerCount(item: BossPackage | null | undefined) {
 }
 
 function formatMoney(value: number) {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(2)
+  return Number.isInteger(value) ? `${value}` : Number(value || 0).toFixed(2)
 }
 
 function getBossOpenid(profile: ClientProfile | null = getClientProfile()) {
@@ -216,21 +240,26 @@ function getUnfinishedOrders(orders: BossOrderListItem[]) {
 function showUnfinishedOrders(orders: BossOrderListItem[]) {
   const orderLines = orders.slice(0, 5).map(order => `${order.order_no}（${order.status}）`).join('\n')
   const moreText = orders.length > 5 ? `\n等 ${orders.length} 个未完成订单` : ''
-  uni.showModal({
-    title: '无法下单',
-    content: `您有未完成的订单，请先完成后再下单\n${orderLines}${moreText}`,
-    showCancel: false,
-    confirmColor: '#2f9b63'
-  })
+  uni.showModal({ title: '无法下单', content: `您有未完成的订单，请先完成后再下单\n${orderLines}${moreText}`, showCancel: false, confirmColor: '#2f9b63' })
 }
 
 function syncSelectedSpec(nextSpecs = specs.value) {
-  if (!nextSpecs.length) {
-    selectedSpec.value = null
-    return
-  }
+  if (!nextSpecs.length) { selectedSpec.value = null; return }
   const matched = nextSpecs.find(item => String(item.id) === initialSpecId.value)
   selectedSpec.value = matched || nextSpecs[0]
+}
+
+async function fetchCartCheckout() {
+  loading.value = true
+  try {
+    const idSet = new Set(cartItemIds.value)
+    cartItems.value = (await getShopCart()).filter(item => idSet.has(String(item.id)))
+    if (!cartItems.value.length) toast('选中的购物车商品不存在或已删除')
+  } catch (error) {
+    toast(getErrorMessage(error, '购物车加载失败'))
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchProduct() {
@@ -249,8 +278,13 @@ async function fetchProduct() {
   }
 }
 
-function selectSpec(spec: BossPackageSpec) {
-  selectedSpec.value = spec
+function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
+
+function adjustQuantity(delta: number) {
+  const next = form.quantity + delta
+  if (next < 1) return
+  if (next > 99) return toast('单次最多选择 99 件')
+  form.quantity = next
 }
 
 function adjustPlayerCount(delta: number) {
@@ -267,20 +301,34 @@ function adjustHours(delta: number) {
 
 function buildBossNote() {
   const parts = []
-  if (selectedSpec.value) parts.push(`规格：${selectedSpec.value.name}，价格：¥${formatMoney(Number(selectedSpec.value.price || 0))}`)
+  if (!isCartCheckout.value && selectedSpec.value) parts.push(`规格：${selectedSpec.value.name}，价格：¥${formatMoney(Number(selectedSpec.value.price || 0))}`)
+  if (!isCartCheckout.value && form.quantity > 1) parts.push(`购买数量：${form.quantity}`)
   if (form.note.trim()) parts.push(form.note.trim())
   return parts.join('\n') || null
 }
 
-async function submitOrder() {
-  if (!product.value) return toast('商品不存在')
-  if (product.value.is_frontend_preset) return toast('该商品已在前端展示，请先在后端创建同名商品后再下单')
-  if (specs.value.length && !selectedSpec.value) return toast('请选择规格')
-  if (!getStorage<string>('token')) {
-    toast('请先微信登录')
-    go('/pages/client/login/index')
-    return
+function buildMergedItems(): OrderCreateItemPayload[] {
+  return cartItems.value.map(item => ({
+    package_id: Number(item.package_id),
+    spec_id: itemSpecId(item),
+    quantity: normalizeQuantity(item.quantity),
+    spec_display_name: item.spec_display_name || item.spec_name || '',
+    image_url: item.image_url || '',
+    description: item.description || ''
+  }))
+}
+
+async function removeMergedCartItems() {
+  for (const item of cartItems.value) {
+    try { await removeShopCartItem(item.id) } catch {}
   }
+}
+
+async function submitOrder() {
+  if (!hasCheckoutData.value) return toast('商品不存在')
+  if (!isCartCheckout.value && product.value?.is_frontend_preset) return toast('该商品已在前端展示，请先在后端创建同名商品后再下单')
+  if (!isCartCheckout.value && specs.value.length && !selectedSpec.value) return toast('请选择规格')
+  if (!getStorage<string>('token')) { toast('请先微信登录'); go('/pages/client/login/index'); return }
   if (!form.contact.trim()) return toast('请填写联系昵称')
   if (!form.gameId.trim()) return toast('请填写游戏ID/队伍码')
 
@@ -290,21 +338,26 @@ async function submitOrder() {
   submitting.value = true
   try {
     const unfinishedOrders = getUnfinishedOrders(await getMyBossOrders())
-    if (unfinishedOrders.length) {
-      showUnfinishedOrders(unfinishedOrders)
-      return
-    }
+    if (unfinishedOrders.length) { showUnfinishedOrders(unfinishedOrders); return }
+
+    const mergedItems = isCartCheckout.value ? buildMergedItems() : undefined
+    if (isCartCheckout.value && (!mergedItems || !mergedItems.length)) return toast('请选择要结算的商品')
+
     const res = await createOrder({
       boss_wechat: bossWechat,
       game_id: form.gameId.trim(),
-      package_id: product.value.id,
-      spec_id: selectedSpec.value ? Number(selectedSpec.value.id) : null,
-      required_players: isSpecProduct.value ? 1 : form.playerCount,
+      package_id: isCartCheckout.value ? mergedItems?.[0]?.package_id : product.value?.id,
+      spec_id: !isCartCheckout.value && selectedSpec.value ? Number(selectedSpec.value.id) : null,
+      quantity: form.quantity,
+      items: mergedItems,
+      required_players: isCartCheckout.value || isSpecProduct.value ? 1 : form.playerCount,
       addon_details: null,
       designated_players: null,
       boss_note: buildBossNote(),
-      booked_hours: isSpecProduct.value ? 1 : form.bookedHours
+      booked_hours: isCartCheckout.value || isSpecProduct.value ? 1 : form.bookedHours
     })
+
+    if (isCartCheckout.value) await removeMergedCartItems()
     setStorage('boss_wechat', form.contact.trim())
     success('下单成功')
     replace('/pages/boss/waiting/index', { orderNo: res.order_no })
@@ -315,16 +368,17 @@ async function submitOrder() {
   }
 }
 
-function goBack() {
-  uni.navigateBack({ delta: 1 })
-}
+function goBack() { uni.navigateBack({ delta: 1 }) }
 
 onLoad((query) => {
+  cartItemIds.value = query?.cartItemIds ? String(query.cartItemIds).split(',').filter(Boolean) : []
   const id = Number(query?.packageId)
   packageId.value = Number.isFinite(id) ? id : null
   initialSpecId.value = query?.specId ? String(query.specId) : ''
+  form.quantity = normalizeQuantity(query?.quantity)
   form.contact = getStorage<string>('boss_wechat') || getClientProfile()?.nickname || ''
-  fetchProduct()
+  if (cartItemIds.value.length) fetchCartCheckout()
+  else fetchProduct()
 })
 </script>
 
@@ -333,8 +387,8 @@ onLoad((query) => {
 .checkout-scroll { height: 100vh; }
 .product-card, .checkout-card { margin: 22rpx; padding: 24rpx; border-radius: 22rpx; background: #fff; box-sizing: border-box; }
 .product-card { display: flex; gap: 20rpx; }
-.product-card--guarantee { background: linear-gradient(135deg, #fff, #fff7e8); }
-.product-image { width: 150rpx; height: 150rpx; flex-shrink: 0; border-radius: 12rpx; background: #f0f0f0; }
+.product-card--guarantee, .merge-card { background: linear-gradient(135deg, #fff, #fff7e8); }
+.product-image, .merge-image { width: 150rpx; height: 150rpx; flex-shrink: 0; border-radius: 12rpx; background: #f0f0f0; }
 .product-main { min-width: 0; flex: 1; display: flex; flex-direction: column; }
 .product-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14rpx; }
 .product-name { flex: 1; min-width: 0; color: #262626; font-size: 32rpx; font-weight: 900; line-height: 1.35; }
@@ -348,7 +402,15 @@ onLoad((query) => {
 .card-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; margin-bottom: 22rpx; }
 .card-title { margin-bottom: 22rpx; color: #222; font-size: 30rpx; font-weight: 900; }
 .card-head-row .card-title { margin-bottom: 6rpx; }
-.card-subtitle { color: #999; font-size: 23rpx; }
+.card-subtitle, .merge-subtitle { color: #999; font-size: 23rpx; }
+.merge-list { display: flex; flex-direction: column; gap: 16rpx; margin-top: 22rpx; }
+.merge-item { display: flex; align-items: center; gap: 16rpx; padding: 16rpx; border-radius: 18rpx; background: rgba(255,255,255,0.78); }
+.merge-image { width: 112rpx; height: 112rpx; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 40rpx; font-weight: 900; background: linear-gradient(135deg, #2f2f20, #1f2118); }
+.merge-main { flex: 1; min-width: 0; }
+.merge-name { color: #222; font-size: 27rpx; font-weight: 900; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.merge-spec { margin-top: 6rpx; color: #8b6a27; font-size: 22rpx; }
+.merge-price { margin-top: 6rpx; color: #777; font-size: 22rpx; }
+.merge-amount { color: #ef4f5f; font-size: 26rpx; font-weight: 900; }
 .spec-count { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; color: #8b6a27; font-size: 22rpx; background: #fff4d9; }
 .input-row { margin-top: 22rpx; }
 .input-row:first-of-type { margin-top: 0; }
@@ -359,10 +421,14 @@ onLoad((query) => {
 .textarea-row { position: relative; }
 .textarea-count { position: absolute; right: 18rpx; bottom: 14rpx; color: #aaa; font-size: 22rpx; }
 .control-row { display: flex; gap: 18rpx; margin-top: 22rpx; }
+.control-row--quantity { justify-content: flex-end; }
+.control-row--quantity .control-item { flex: 0 0 320rpx; }
 .control-item { flex: 1; min-width: 0; }
 .stepper { height: 88rpx; display: flex; align-items: center; justify-content: space-between; padding: 0 12rpx; border-radius: 18rpx; border: 1rpx solid #ededed; background: #fafafa; box-sizing: border-box; }
+.stepper--quantity { height: 76rpx; }
 .step-btn { width: 54rpx; height: 54rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 50%; color: #555; font-size: 26rpx; background: #fff; }
 .step-btn.plus { color: #fff; background: #ef4f5f; }
+.step-btn[disabled] { opacity: 0.4; }
 .step-btn::after { border: none; }
 .step-value { color: #222; font-size: 26rpx; font-weight: 900; }
 .spec-grid { display: flex; flex-wrap: wrap; gap: 14rpx; }

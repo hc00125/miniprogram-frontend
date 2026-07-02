@@ -4,13 +4,25 @@
       <view class="cart-header">
         <view>
           <text class="cart-title">购物车</text>
-          <text class="cart-subtitle">{{ loading ? '正在同步购物车...' : `已加入 ${cartCount} 件商品` }}</text>
+          <text class="cart-subtitle">{{ loading ? '正在同步购物车...' : `已加入 ${cartCount} 件商品，已选 ${selectedCount} 件` }}</text>
         </view>
-        <button v-if="items.length" class="clear-btn" @tap="handleClearCart">清空</button>
+        <button v-if="items.length" class="clear-btn" :disabled="operating" @tap="handleClearCart">清空</button>
+      </view>
+
+      <view v-if="items.length" class="select-row">
+        <view class="select-all" @tap="toggleSelectAll">
+          <view class="check-circle" :class="{ checked: isAllSelected }">✓</view>
+          <text>全选</text>
+        </view>
+        <text class="select-tip">可多选后合并结算成一个订单</text>
       </view>
 
       <view v-if="items.length" class="cart-list">
-        <view v-for="item in items" :key="item.id" class="cart-card">
+        <view v-for="item in items" :key="item.id" class="cart-card" :class="{ selected: isSelected(item) }">
+          <view class="item-check" @tap="toggleItem(item)">
+            <view class="check-circle" :class="{ checked: isSelected(item) }">✓</view>
+          </view>
+
           <image v-if="item.image_url" class="cart-image" :src="item.image_url" mode="aspectFill" />
           <view v-else class="cart-image cart-image--placeholder">
             <text>{{ item.package_name.slice(0, 1) }}</text>
@@ -55,13 +67,14 @@
 
     <view v-if="items.length" class="bottom-bar">
       <view class="total-box">
-        <text>合计</text>
+        <text>{{ selectedCount ? `已选 ${selectedCount} 件` : '请选择商品' }}</text>
         <view>
           <text>¥</text>
-          <text>{{ formatMoney(totalPrice) }}</text>
+          <text>{{ formatMoney(selectedTotalPrice) }}</text>
         </view>
       </view>
       <button class="bottom-shop-btn" @tap="goShop">继续选购</button>
+      <button class="checkout-btn" :disabled="!selectedIds.length || operating" @tap="checkoutSelected">合并结算</button>
     </view>
   </view>
 </template>
@@ -74,15 +87,30 @@ import { go, goMain } from '@/utils/nav'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 
 const items = ref<ShopCartItem[]>([])
+const selectedIds = ref<string[]>([])
 const loading = ref(false)
 const operating = ref(false)
 const cartCount = computed(() => items.value.reduce((sum, item) => sum + Number(item.quantity || 1), 0))
-const totalPrice = computed(() => items.value.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0))
+const selectedItems = computed(() => items.value.filter(item => selectedIds.value.includes(itemKey(item))))
+const selectedCount = computed(() => selectedItems.value.reduce((sum, item) => sum + Number(item.quantity || 1), 0))
+const selectedTotalPrice = computed(() => selectedItems.value.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0))
+const isAllSelected = computed(() => Boolean(items.value.length) && selectedIds.value.length === items.value.length)
+
+function itemKey(item: Pick<ShopCartItem, 'id'>) {
+  return String(item.id)
+}
+
+function syncSelectedIds(nextItems: ShopCartItem[]) {
+  const validIds = new Set(nextItems.map(itemKey))
+  selectedIds.value = selectedIds.value.filter(id => validIds.has(id))
+}
 
 async function refreshCart() {
   loading.value = true
   try {
-    items.value = await getShopCart()
+    const list = await getShopCart()
+    items.value = list
+    syncSelectedIds(list)
   } catch (error) {
     toast(getErrorMessage(error, '购物车加载失败'))
   } finally {
@@ -94,16 +122,35 @@ function formatMoney(value: number) {
   return Number.isInteger(value) ? `${value}` : Number(value || 0).toFixed(2)
 }
 
+function isSelected(item: ShopCartItem) {
+  return selectedIds.value.includes(itemKey(item))
+}
+
+function toggleItem(item: ShopCartItem) {
+  const id = itemKey(item)
+  if (selectedIds.value.includes(id)) {
+    selectedIds.value = selectedIds.value.filter(value => value !== id)
+  } else {
+    selectedIds.value = [...selectedIds.value, id]
+  }
+}
+
+function toggleSelectAll() {
+  selectedIds.value = isAllSelected.value ? [] : items.value.map(itemKey)
+}
+
 async function adjustQuantity(item: ShopCartItem, delta: number) {
   const next = Number(item.quantity || 1) + delta
   operating.value = true
   try {
     if (next <= 0) {
       items.value = await removeShopCartItem(item.id)
+      syncSelectedIds(items.value)
       toast('已删除')
       return
     }
     items.value = await updateShopCartItemQuantity(item.id, next)
+    syncSelectedIds(items.value)
   } catch (error) {
     toast(getErrorMessage(error, '数量更新失败'))
   } finally {
@@ -115,6 +162,7 @@ async function removeItem(id: string | number) {
   operating.value = true
   try {
     items.value = await removeShopCartItem(id)
+    syncSelectedIds(items.value)
     toast('已删除')
   } catch (error) {
     toast(getErrorMessage(error, '删除失败'))
@@ -133,6 +181,7 @@ function handleClearCart() {
       operating.value = true
       try {
         items.value = await clearShopCart()
+        selectedIds.value = []
         success('已清空')
       } catch (error) {
         toast(getErrorMessage(error, '清空失败'))
@@ -143,10 +192,25 @@ function handleClearCart() {
   })
 }
 
+function itemSpecId(item: ShopCartItem) {
+  return item.spec_id || item.spec_id_snapshot || undefined
+}
+
 function checkoutItem(item: ShopCartItem) {
   go('/pages/shop/checkout/index', {
     packageId: item.package_id,
-    specId: item.spec_id || undefined
+    specId: itemSpecId(item),
+    quantity: item.quantity
+  })
+}
+
+function checkoutSelected() {
+  if (!selectedIds.value.length) {
+    toast('请选择要结算的商品')
+    return
+  }
+  go('/pages/shop/checkout/index', {
+    cartItemIds: selectedIds.value.join(',')
   })
 }
 
@@ -165,8 +229,15 @@ onShow(refreshCart)
 .cart-subtitle { display: block; margin-top: 8rpx; color: #888; font-size: 24rpx; }
 .clear-btn { min-width: 112rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; padding: 0 22rpx; margin: 0; border-radius: 999rpx; color: #888; font-size: 24rpx; background: #fff; }
 .clear-btn::after { border: none; }
+.select-row { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin: 8rpx 22rpx 0; padding: 18rpx 20rpx; border-radius: 18rpx; background: #fff; box-sizing: border-box; }
+.select-all { display: flex; align-items: center; gap: 10rpx; color: #333; font-size: 25rpx; font-weight: 800; }
+.select-tip { color: #999; font-size: 22rpx; }
+.check-circle { width: 38rpx; height: 38rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 2rpx solid #d8d8d8; color: transparent; font-size: 22rpx; font-weight: 900; box-sizing: border-box; }
+.check-circle.checked { border-color: #ef4f5f; color: #fff; background: linear-gradient(135deg, #ff7583, #ef3f51); }
 .cart-list { padding: 0 22rpx; }
-.cart-card { position: relative; display: flex; gap: 18rpx; margin-top: 20rpx; padding: 22rpx; border-radius: 22rpx; background: #fff; box-sizing: border-box; }
+.cart-card { position: relative; display: flex; gap: 18rpx; margin-top: 20rpx; padding: 22rpx 22rpx 22rpx 72rpx; border-radius: 22rpx; background: #fff; box-sizing: border-box; border: 2rpx solid transparent; }
+.cart-card.selected { border-color: rgba(239, 79, 95, 0.34); background: linear-gradient(180deg, #fff, #fff8f9); }
+.item-check { position: absolute; left: 22rpx; top: 50%; transform: translateY(-50%); }
 .cart-image { width: 148rpx; height: 148rpx; flex-shrink: 0; border-radius: 16rpx; background: #f0f0f0; }
 .cart-image--placeholder { display: flex; align-items: center; justify-content: center; color: #20ff9a; font-size: 54rpx; font-weight: 900; background: linear-gradient(135deg, #2f2f20, #1f2118); }
 .cart-main { min-width: 0; flex: 1; padding-right: 108rpx; }
@@ -195,13 +266,16 @@ onShow(refreshCart)
 .empty-desc { margin-top: 12rpx; color: #999; font-size: 25rpx; }
 .shop-btn { margin-top: 32rpx; min-width: 210rpx; height: 78rpx; display: flex; align-items: center; justify-content: center; padding: 0 34rpx; border-radius: 999rpx; color: #fff; font-size: 28rpx; font-weight: 900; background: linear-gradient(135deg, #ff7583, #ef3f51); }
 .shop-btn::after { border: none; }
-.bottom-spacer { height: calc(130rpx + env(safe-area-inset-bottom)); }
-.bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 18rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -10rpx 30rpx rgba(0, 0, 0, 0.08); box-sizing: border-box; }
-.total-box { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
+.bottom-spacer { height: calc(150rpx + env(safe-area-inset-bottom)); }
+.bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 14rpx; padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -10rpx 30rpx rgba(0, 0, 0, 0.08); box-sizing: border-box; }
+.total-box { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .total-box > text { color: #888; font-size: 22rpx; }
 .total-box view { display: flex; align-items: baseline; color: #ef4f5f; }
 .total-box view text:first-child { font-size: 22rpx; font-weight: 900; }
 .total-box view text:last-child { margin-left: 4rpx; font-size: 36rpx; font-weight: 900; }
-.bottom-shop-btn { min-width: 210rpx; height: 82rpx; display: flex; align-items: center; justify-content: center; padding: 0 34rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg, #ffbd27, #ff9e00); }
-.bottom-shop-btn::after { border: none; }
+.bottom-shop-btn, .checkout-btn { height: 82rpx; display: flex; align-items: center; justify-content: center; padding: 0 26rpx; margin: 0; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; }
+.bottom-shop-btn { background: linear-gradient(135deg, #ffbd27, #ff9e00); }
+.checkout-btn { background: linear-gradient(135deg, #ff7583, #ef3f51); }
+.checkout-btn[disabled] { opacity: 0.48; }
+.bottom-shop-btn::after, .checkout-btn::after { border: none; }
 </style>
