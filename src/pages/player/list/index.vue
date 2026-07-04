@@ -12,7 +12,7 @@
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">明星阵容，在线开局</view>
-      <view class="club-sub">展示当前可预约或在线的陪玩师，点击卡片可查看 TA 的音频自我介绍。</view>
+      <view class="club-sub">仅展示已上传头像的陪玩师，点击卡片可查看 TA 的音频自我介绍。</view>
     </view>
 
     <scroll-view scroll-x class="filters" show-scrollbar="false">
@@ -30,8 +30,7 @@
     <view class="players">
       <view v-for="player in filteredPlayers" :key="player.id" class="player-card" @tap="openPlayerDetail(player)">
         <view class="portrait">
-          <image v-if="player.avatar_url" class="portrait-img" :src="player.avatar_url" mode="aspectFill" />
-          <text v-else>{{ player.name?.[0] || '陪' }}</text>
+          <image class="portrait-img" :src="player.avatar_url" mode="aspectFill" />
         </view>
         <view class="player-main">
           <view class="name-row">
@@ -54,7 +53,7 @@
     </view>
 
     <view v-if="!filteredPlayers.length && loaded" class="club-empty">
-      {{ players.length === 0 ? '暂无可展示的陪玩师' : '暂无符合条件的陪玩' }}
+      {{ visiblePlayers.length === 0 ? '暂无已上传头像的陪玩师' : '暂无符合条件的陪玩' }}
     </view>
 
     <MainBottomTabs active="players" @select="handleMainTabSelect" />
@@ -65,7 +64,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
-import { getClientProfile } from '@/utils/client'
 import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
 
@@ -74,12 +72,15 @@ const activeFilter = ref('全部')
 const loaded = ref(false)
 const players = ref<OnlinePlayer[]>([])
 
-// 真实陪玩数据完全由后端返回（接口 /boss/online-players）
-// 后端应只返回 "is_player=true" 且已通过审核的陪玩师
+function hasUserAvatar(player: OnlinePlayer) {
+  return Boolean(String(player.avatar_url || '').trim())
+}
+
+const visiblePlayers = computed(() => players.value.filter(hasUserAvatar))
 
 const filteredPlayers = computed(() => {
   const filter = activeFilter.value
-  const source = players.value
+  const source = visiblePlayers.value
   if (filter === '全部') return source
   if (filter === '在线') return source.filter(player => player.is_online)
   return source.filter(player => player.type_name === filter)
@@ -96,9 +97,7 @@ function normalizeOnlineValue(value: unknown) {
 async function fetchPlayers() {
   loaded.value = false
   try {
-    // 使用 /api/player/list 获取全部陪玩师（含本人），不走 /boss/online-players
     const list = await getPlayerList()
-    // 标准化后端响应的嵌套字段
     players.value = (list || []).map(p => ({
       ...p,
       is_online: normalizeOnlineValue(p.is_online),
@@ -231,13 +230,7 @@ function goMain(tab: MainTab = 'home') {
   width: 108rpx;
   height: 108rpx;
   border-radius: 32rpx;
-  background: linear-gradient(135deg, #65c980, #1f7c4b);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 42rpx;
-  font-weight: 900;
+  background: #eef3e9;
   flex-shrink: 0;
   overflow: hidden;
 }
