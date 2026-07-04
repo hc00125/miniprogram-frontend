@@ -62,6 +62,14 @@
       }
     },
     {
+      "path": "pages/player/detail/index",
+      "style": {
+        "navigationBarTitleText": "陪玩详情",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/client/profile/index",
       "style": {
         "navigationBarTitleText": "个人中心"
