@@ -103,7 +103,7 @@ import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 
 interface ShopCategory extends PackageGroup {}
 
-const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
+const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const fallbackCategory: ShopCategory = { id: -10, name: '推荐套餐', sort_order: 0 }
 const categoryOrder = ['推荐套餐', '基础陪玩套餐', '趣味单', '特色单']
 

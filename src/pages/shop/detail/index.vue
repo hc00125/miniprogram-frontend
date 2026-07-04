@@ -170,7 +170,7 @@ import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
 
-const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
+const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
 const loading = ref(false)
 const product = ref<BossPackage | null>(null)

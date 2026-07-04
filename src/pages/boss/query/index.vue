@@ -195,7 +195,7 @@ const filteredOrders = computed(() => {
   return orders.value.filter(o => o.status === activeTab.value)
 })
 
-const fallbackCover = '/static/images/home-redesign/hero-lounge.jpg'
+const fallbackCover = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 
 function orderCover(order: BossOrderListItem) {
   return (order as any).cover_url || fallbackCover

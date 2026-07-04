@@ -148,7 +148,7 @@ import { go, replace } from '@/utils/nav'
 import { getStorage, setStorage } from '@/utils/storage'
 import { getShopCart, removeShopCartItem, type ShopCartItem } from '@/utils/shopCart'
 
-const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
+const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const MAX_PLAYER_COUNT = 3
 const unfinishedStatuses = ['待接单', '进行中', '待支付']
 
