@@ -159,16 +159,25 @@ function normalizeBossOrderDisplay(order: any) {
   const room = String(order.kook_room_number).trim()
   if (!room) return order
   const rawGameId = order.game_id ? String(order.game_id) : ''
+  const rawPackageName = order.package_name ? String(order.package_name) : ''
   const roomText = `KOOK房间：${room}`
   const gameIdText = rawGameId.includes(roomText) || rawGameId.includes(room)
     ? rawGameId
     : rawGameId
       ? `${rawGameId} ｜ ${roomText}`
       : roomText
+  const packageNameText = rawPackageName.includes(roomText) || rawPackageName.includes(room)
+    ? rawPackageName
+    : rawPackageName
+      ? `${rawPackageName} ｜ ${roomText}`
+      : roomText
   return {
     ...order,
     game_id_raw: rawGameId,
-    game_id: gameIdText
+    package_name_raw: rawPackageName,
+    game_id: gameIdText,
+    package_name: packageNameText,
+    kook_room_display: roomText
   }
 }
 
