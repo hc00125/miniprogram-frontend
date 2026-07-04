@@ -80,10 +80,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
-import { go, goMain } from '@/utils/nav'
+import { goMain } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
 
 const playerId = ref<number | null>(null)
