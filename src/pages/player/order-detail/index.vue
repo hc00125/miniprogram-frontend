@@ -20,11 +20,36 @@
         <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name }}</text></view>
         <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
         <view v-if="orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text class="copyable" @tap="copyText(orderInfo.game_id)">{{ orderInfo.game_id }}</text></view>
+        <view v-if="orderInfo.kook_room_number" class="info-row"><text>KOOK房间号</text><text class="copyable" @tap="copyText(orderInfo.kook_room_number)">{{ orderInfo.kook_room_number }}</text></view>
         <view class="info-row"><text>价格</text><text class="amount">¥{{ orderInfo.total_amount || orderInfo.total_price_per_hour }}</text></view>
         <view v-if="orderInfo.status === '待接单'" class="info-row"><text>等待时间</text><text>{{ waitTime }}</text></view>
         <view v-if="orderInfo.status === '进行中'" class="info-row"><text>已进行</text><text class="duration">{{ duration }}</text></view>
         <view v-if="orderInfo.duration_minutes" class="info-row"><text>服务时长</text><text>{{ orderInfo.duration_minutes }} 分钟</text></view>
       </view>
+    </view>
+
+    <view v-if="orderInfo && canEditKookRoom" class="club-card kook-card">
+      <view class="club-card__hd">
+        <text class="club-card__title">KOOK 房间号</text>
+        <text v-if="orderInfo.kook_room_number" class="room-status">已填写</text>
+        <text v-else class="room-status room-status--warn">待填写</text>
+      </view>
+      <view class="kook-desc">多个陪玩接同一单时，只要任意一位填写，整张订单都会统一使用这个房间号。</view>
+      <view class="kook-input-row">
+        <input
+          v-model="roomInput"
+          class="kook-input"
+          placeholder="请输入 KOOK 房间号，例如 TC8888-01"
+          maxlength="100"
+          @focus="roomFocused = true"
+          @blur="roomFocused = false"
+        />
+        <button class="save-room-btn" :disabled="savingRoom" @tap="saveKookRoom">
+          {{ savingRoom ? '保存中' : (orderInfo.kook_room_number ? '更新' : '保存') }}
+        </button>
+      </view>
+      <view v-if="orderInfo.kook_room_updated_at" class="kook-tip">最近更新时间：{{ formatRoomTime(orderInfo.kook_room_updated_at) }}</view>
+      <view v-else class="kook-tip">开始计时或完成订单前，需要先填写 KOOK 房间号。</view>
     </view>
 
     <view v-if="orderInfo?.boss_note" class="club-card note-card">
@@ -61,9 +86,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { completeOrder, getPlayerOrder, pausePlayerOrder, resumePlayerOrder, startTimer } from '@/api/player'
+import { completeOrder, getPlayerOrder, pausePlayerOrder, resumePlayerOrder, setPlayerOrderKookRoom, startTimer } from '@/api/player'
 import { formatDuration } from '@/utils/format'
 import { getStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -76,11 +101,18 @@ const player = ref<any>(null)
 const loading = ref(true)
 const starting = ref(false)
 const completing = ref(false)
+const savingRoom = ref(false)
+const roomInput = ref('')
+const roomFocused = ref(false)
 const duration = ref('00:00:00')
 const waitTime = ref('')
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
+
+const canEditKookRoom = computed(() => {
+  return Boolean(orderInfo.value && !['已完成', '已取消'].includes(orderInfo.value.status))
+})
 
 function statusClass(status: string) {
   return {
@@ -123,6 +155,7 @@ async function fetchOrder() {
     if (newCount > prevPlayerCount && prevPlayerCount > 0) toast('有打手就位')
     prevPlayerCount = newCount
     orderInfo.value = res
+    if (!roomFocused.value) roomInput.value = res.kook_room_number || ''
     updateDuration()
   } catch (error) {
     toast(getErrorMessage(error, '订单加载失败'))
@@ -131,7 +164,46 @@ async function fetchOrder() {
   }
 }
 
+function formatRoomTime(input: string) {
+  if (!input) return '-'
+  const date = new Date(input)
+  return `${date.getMonth() + 1}-${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+async function saveKookRoom() {
+  const value = roomInput.value.trim()
+  if (!value) {
+    toast('请填写 KOOK 房间号')
+    return false
+  }
+  savingRoom.value = true
+  try {
+    const res = await setPlayerOrderKookRoom(orderNo.value, value)
+    if (orderInfo.value) {
+      orderInfo.value.kook_room_number = res.kook_room_number
+      orderInfo.value.kook_room_updated_at = new Date().toISOString()
+    }
+    roomInput.value = res.kook_room_number
+    success('KOOK 房间号已保存')
+    await fetchOrder()
+    return true
+  } catch (error) {
+    toast(getErrorMessage(error, '房间号保存失败'))
+    return false
+  } finally {
+    savingRoom.value = false
+  }
+}
+
+async function ensureKookRoom() {
+  if (orderInfo.value?.kook_room_number) return true
+  if (roomInput.value.trim()) return saveKookRoom()
+  toast('请先填写 KOOK 房间号')
+  return false
+}
+
 async function handleStartTimer() {
+  if (!(await ensureKookRoom())) return
   const ok = await confirm('确定开始计时？开始后将按时间计费', '开始计时')
   if (!ok) return
   starting.value = true
@@ -167,6 +239,7 @@ async function handleResume() {
 }
 
 async function handleComplete() {
+  if (!(await ensureKookRoom())) return
   const ok = await confirm('确定要标记订单完成吗？')
   if (!ok) return
   completing.value = true
@@ -236,6 +309,16 @@ onUnmounted(stopTimers)
 .amount { color: #a87520; font-weight: 900; }
 .duration { color: #1f7c4b; font-weight: 900; }
 .copyable { color: #1f7c4b; font-weight: 800; }
+.kook-card { background: linear-gradient(180deg, #fff, #f8fbf4); }
+.room-status { color: #1f7c4b; font-size: 23rpx; font-weight: 900; }
+.room-status--warn { color: #a87520; }
+.kook-desc { margin-top: 8rpx; color: #687665; font-size: 24rpx; line-height: 1.5; }
+.kook-input-row { display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; }
+.kook-input { flex: 1; height: 78rpx; padding: 0 20rpx; border-radius: 18rpx; color: #172116; font-size: 26rpx; background: #fff; border: 1px solid rgba(37,49,35,.10); box-sizing: border-box; }
+.save-room-btn { width: 142rpx; height: 78rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 18rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg, #65c980, #1f7c4b); }
+.save-room-btn::after { border: none; }
+.save-room-btn[disabled] { opacity: .6; }
+.kook-tip { margin-top: 14rpx; color: #9a8b6b; font-size: 22rpx; }
 .note-card { padding: 26rpx 28rpx; display: flex; flex-direction: column; gap: 10rpx; }
 .note-card text:first-child { color: #a87520; font-size: 24rpx; font-weight: 800; }
 .note-card text:last-child { color: #5d4d25; font-size: 27rpx; }
