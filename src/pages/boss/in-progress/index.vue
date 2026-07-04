@@ -76,7 +76,8 @@
       <scroll-view scroll-x class="players-track" show-scrollbar="false">
         <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
           <view class="player-avatar">
-            <text>{{ player.name?.[0] || '陪' }}</text>
+            <image v-if="player.avatar_url" class="player-avatar__img" :src="player.avatar_url" mode="aspectFill" />
+            <text v-else>{{ player.name?.[0] || '陪' }}</text>
             <view class="online-tag">在线</view>
           </view>
           <view class="player-info">
@@ -777,6 +778,12 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
   font-size: 38rpx;
   font-weight: 900;
   box-shadow: 0 12rpx 24rpx rgba(31, 124, 75, 0.20);
+  overflow: hidden;
+}
+.player-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .online-tag {

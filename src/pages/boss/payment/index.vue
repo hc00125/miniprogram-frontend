@@ -79,7 +79,8 @@
       <scroll-view scroll-x class="players-track" show-scrollbar="false">
         <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
           <view class="player-avatar">
-            <text>{{ player.name?.[0] || '陪' }}</text>
+            <image v-if="player.avatar_url" class="player-avatar__img" :src="player.avatar_url" mode="aspectFill" />
+            <text v-else>{{ player.name?.[0] || '陪' }}</text>
           </view>
           <view class="player-info">
             <text class="player-name">{{ player.name }}</text>
@@ -181,7 +182,8 @@
       <view class="rating-list">
         <view v-for="player in orderInfo.players" :key="player.id" class="rating-item">
           <view class="rating-player">
-            <view class="rating-avatar">{{ player.name?.[0] || '陪' }}</view>
+            <image v-if="player.avatar_url" class="rating-avatar__img" :src="player.avatar_url" mode="aspectFill" />
+            <view v-else class="rating-avatar">{{ player.name?.[0] || '陪' }}</view>
             <view class="rating-player-info">
               <text class="rating-player-name">{{ player.name }}</text>
               <text class="rating-player-type">{{ player.type_name || '陪玩' }}</text>
@@ -736,6 +738,12 @@ onMounted(async () => {
   font-size: 32rpx;
   font-weight: 900;
   box-shadow: 0 10rpx 22rpx rgba(31, 124, 75, 0.20);
+  overflow: hidden;
+}
+.player-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .player-info {
@@ -1058,7 +1066,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  overflow: hidden;
+}
+.rating-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .rating-player-info {

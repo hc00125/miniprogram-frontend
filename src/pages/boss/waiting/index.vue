@@ -62,7 +62,8 @@
       <view class="slot-track">
         <view v-for="player in players" :key="player.id" class="slot-item slot-item--ready">
           <view class="slot-avatar-wrap">
-            <view class="slot-avatar">{{ player.name?.[0] || '陪' }}</view>
+            <image v-if="player.avatar_url" class="slot-avatar slot-avatar__img" :src="player.avatar_url" mode="aspectFill" />
+            <view v-else class="slot-avatar">{{ player.name?.[0] || '陪' }}</view>
             <view class="slot-badge">✓</view>
           </view>
           <text class="slot-name">{{ player.name }}</text>
@@ -622,6 +623,12 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
   font-size: 36rpx;
   font-weight: 900;
   box-shadow: 0 12rpx 26rpx rgba(31, 124, 75, 0.22);
+  overflow: hidden;
+}
+.slot-avatar__img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
 }
 
 .slot-item--ready .slot-avatar {
