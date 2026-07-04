@@ -43,6 +43,10 @@ export function getPlayerOrder(orderNo: string) {
   return api.get<any>(`/player/order/${orderNo}`)
 }
 
+export function setPlayerOrderKookRoom(orderNo: string, kook_room_number: string) {
+  return api.post<{ order_no: string; kook_room_number: string; message: string }>(`/player/order/${orderNo}/kook-room`, { kook_room_number })
+}
+
 export function startTimer(order_no: string, player_id: number) {
   return api.post('/player/start-timer', { order_no, player_id })
 }
