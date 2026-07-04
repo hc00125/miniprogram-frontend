@@ -102,6 +102,7 @@ export interface BossOrderListItem {
   total_amount: number
   paid: boolean
   created_at: string
+  kook_room_number?: string
 }
 
 export interface OrderCreateItemPayload {
@@ -153,6 +154,24 @@ function normalizePackageFromApi(pkg: BossPackage): BossPackage {
   }
 }
 
+function normalizeBossOrderDisplay(order: any) {
+  if (!order?.kook_room_number) return order
+  const room = String(order.kook_room_number).trim()
+  if (!room) return order
+  const rawGameId = order.game_id ? String(order.game_id) : ''
+  const roomText = `KOOK房间：${room}`
+  const gameIdText = rawGameId.includes(roomText) || rawGameId.includes(room)
+    ? rawGameId
+    : rawGameId
+      ? `${rawGameId} ｜ ${roomText}`
+      : roomText
+  return {
+    ...order,
+    game_id_raw: rawGameId,
+    game_id: gameIdText
+  }
+}
+
 export function getPackages() {
   return api.get<BossPackage[]>('/boss/packages').then(list => {
     const filtered = list
@@ -201,7 +220,7 @@ export function createOrder(payload: OrderCreatePayload) {
 }
 
 export function getOrder(orderNo: string) {
-  return api.get<any>(`/boss/order/${orderNo}`)
+  return api.get<any>(`/boss/order/${orderNo}`).then(normalizeBossOrderDisplay)
 }
 
 export function cancelOrder(orderNo: string) {
