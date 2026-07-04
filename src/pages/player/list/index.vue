@@ -12,7 +12,7 @@
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">明星阵容，在线开局</view>
-      <view class="club-sub">展示当前可预约或在线的陪玩师，点单时可回到点单大厅指定 TA。</view>
+      <view class="club-sub">展示当前可预约或在线的陪玩师，点击卡片可查看 TA 的音频自我介绍。</view>
     </view>
 
     <scroll-view scroll-x class="filters" show-scrollbar="false">
@@ -28,7 +28,7 @@
     </scroll-view>
 
     <view class="players">
-      <view v-for="player in filteredPlayers" :key="player.id" class="player-card">
+      <view v-for="player in filteredPlayers" :key="player.id" class="player-card" @tap="openPlayerDetail(player)">
         <view class="portrait">
           <image v-if="player.avatar_url" class="portrait-img" :src="player.avatar_url" mode="aspectFill" />
           <text v-else>{{ player.name?.[0] || '陪' }}</text>
@@ -42,11 +42,12 @@
             <text>{{ player.type_name || '优质陪玩' }}</text>
             <text>★ {{ player.avg_rating || '-' }}</text>
             <text>接单 {{ player.total_orders || 0 }}</text>
+            <text v-if="player.audio_intro_url" class="audio-tag">语音介绍</text>
           </view>
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
           <view class="card-actions">
             <text>+¥{{ formatMoney(player.price_extra || 0) }}/时</text>
-            <button class="club-btn" @tap="showDesignateUnavailable">指定TA</button>
+            <button class="club-btn" @tap.stop="showDesignateUnavailable">指定TA</button>
           </view>
         </view>
       </view>
@@ -65,7 +66,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { getClientProfile } from '@/utils/client'
-import { relaunch, navigateToTab, type MainTab } from '@/utils/nav'
+import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
 
 const filters = ['全部', '女陪', '技术陪', '金牌陪', '明星陪', '在线']
@@ -114,6 +115,10 @@ async function fetchPlayers() {
 }
 
 onMounted(fetchPlayers)
+
+function openPlayerDetail(player: OnlinePlayer) {
+  go('/pages/player/detail/index', { playerId: player.id })
+}
 
 function showDesignateUnavailable() {
   toast('该功能尚未上线')
@@ -279,6 +284,11 @@ function goMain(tab: MainTab = 'home') {
   background: #f7faf4;
   color: #687665;
   font-size: 22rpx;
+}
+
+.tags .audio-tag {
+  color: #1f7c4b;
+  background: #eef8f1;
 }
 
 .bio {
