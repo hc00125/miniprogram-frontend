@@ -67,8 +67,7 @@
         </view>
         <scroll-view v-if="featuredPlayers.length" scroll-x class="player-showcase" show-scrollbar="false">
           <view v-for="player in featuredPlayers" :key="player.id" class="player-mini-card">
-            <image v-if="player.avatar_url" class="player-mini-avatar" :src="player.avatar_url" mode="aspectFill" />
-            <view v-else class="player-mini-avatar player-mini-avatar--placeholder">{{ playerInitial(player) }}</view>
+            <image class="player-mini-avatar" :src="player.avatar_url" mode="aspectFill" />
             <view class="player-mini-main">
               <view class="player-mini-name-row">
                 <text class="player-mini-name">{{ player.name }}</text>
@@ -81,7 +80,7 @@
             </view>
           </view>
         </scroll-view>
-        <view v-else class="player-showcase-empty">暂无已入驻陪玩</view>
+        <view v-else class="player-showcase-empty">暂无已上传头像的陪玩</view>
 
         <view class="section-head package-head">
           <view>
@@ -180,7 +179,11 @@ const currentHeroIndex = ref(0)
 const packages = ref<BossPackage[]>([])
 const players = ref<OnlinePlayer[]>([])
 const hotPackages = computed(() => packages.value.slice(0, 2))
-const featuredPlayers = computed(() => players.value.slice(0, 6))
+const featuredPlayers = computed(() => players.value.filter(hasUserAvatar).slice(0, 6))
+
+function hasUserAvatar(player: OnlinePlayer) {
+  return Boolean(String(player.avatar_url || '').trim())
+}
 
 function toSafeNumber(value: unknown, fallback: number) {
   const numberValue = Number(value)
@@ -220,10 +223,6 @@ function normalizePlayer(player: OnlinePlayer): OnlinePlayer {
     price_extra: player.player_type?.price_extra || player.price_extra || 0,
     status: isOnline ? '在线' : '离线'
   }
-}
-
-function playerInitial(player: OnlinePlayer) {
-  return (player.name || player.type_name || '陪').trim().slice(0, 1)
 }
 
 function goShopCategory() {
@@ -358,8 +357,7 @@ onShow(fetchHomeData)
 .section-head button::after { border: none; }
 .player-showcase { white-space: nowrap; }
 .player-mini-card { display: inline-flex; align-items: center; gap: 14rpx; width: 236rpx; min-height: 104rpx; padding: 16rpx; margin-right: 14rpx; border-radius: 18rpx; background: rgba(255, 255, 255, 0.90); border: 1rpx solid rgba(61, 97, 74, 0.10); box-shadow: 0 10rpx 24rpx rgba(31, 55, 40, 0.05); box-sizing: border-box; vertical-align: top; }
-.player-mini-avatar { width: 64rpx; height: 64rpx; flex-shrink: 0; border-radius: 50%; background: #f0f0f0; }
-.player-mini-avatar--placeholder { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 30rpx; font-weight: 900; background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
+.player-mini-avatar { width: 64rpx; height: 64rpx; flex-shrink: 0; border-radius: 50%; background: #eef3e9; }
 .player-mini-main { flex: 1; min-width: 0; }
 .player-mini-name-row { display: flex; align-items: center; gap: 8rpx; min-width: 0; }
 .player-mini-name { max-width: 106rpx; color: #242424; font-size: 25rpx; font-weight: 900; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
