@@ -147,7 +147,7 @@ function normalizePackageFromApi(pkg: BossPackage): BossPackage {
     ...pkg,
     specs,
     player_count: Math.max(1, Number(pkg.player_count || 1)),
-    base_price: Math.max(0, Number(pkg.base_price ?? pkg.price ?? 0))
+    base_price: Math.max(0, Number(pkg.base_price != null ? pkg.base_price : (pkg.price != null ? pkg.price : 0)))
   }
 }
 
@@ -161,7 +161,8 @@ export function getPackages() {
 
     // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除；
     // 如果后端返回空数组，这里保持空数组，不再补前端假商品。
-    const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
+    const foundPkg = filtered.find(p => p.group_id !== null)
+    const firstGroupId = foundPkg ? foundPkg.group_id : null
     if (firstGroupId !== null) {
       filtered.forEach(p => {
         if (p.group_id === null) { p.group_id = firstGroupId; p.group_name = '' }

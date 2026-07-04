@@ -58,9 +58,9 @@ export async function addShopCartItem(payload: AddShopCartPayload) {
   const spec = payload.spec || null
   const body: AddShopCartRequest = {
     package_id: product.id,
-    spec_id: spec?.id ?? null,
-    spec_name: spec?.name,
-    spec_display_name: payload.spec_display_name || spec?.name,
+    spec_id: spec ? spec.id : null,
+    spec_name: spec ? spec.name : undefined,
+    spec_display_name: payload.spec_display_name || (spec ? spec.name : undefined),
     price: Number(payload.price || product.base_price || 0),
     quantity: normalizeQuantity(payload.quantity || 1),
     image_url: payload.image_url,

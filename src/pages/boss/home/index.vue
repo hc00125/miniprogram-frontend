@@ -14,15 +14,6 @@
             <swiper-item v-for="banner in heroBanners" :key="banner.id">
               <view class="hero-slide" @tap="handleHeroBannerTap(banner.target)">
                 <image class="hero-slide__image" :src="banner.image" mode="aspectFill" />
-                <view class="hero-slide__shade"></view>
-                <view class="hero-slide__body">
-                  <text class="hero-slide__badge">{{ banner.badge }}</text>
-                  <view class="hero-slide__copy">
-                    <text class="hero-slide__title">{{ banner.title }}</text>
-                    <text class="hero-slide__sub">{{ banner.subtitle }}</text>
-                  </view>
-                  <text class="hero-slide__link">{{ banner.cta }} <text>›</text></text>
-                </view>
               </view>
             </swiper-item>
           </swiper>
@@ -148,7 +139,7 @@ type HeroBanner = {
 }
 
 const assetBase = '/images/home-redesign'
-const homeHero = `${assetBase}/hero-lounge.jpg`
+const homeHero = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const orderNoticeBannerUrl = 'https://api.huc125.cn/media/order-notice/order-guide-banner.jpg'
 const packageVisuals = [`${assetBase}/package-five.png`, `${assetBase}/package-six.png`]
 const heroBanners: HeroBanner[] = [
@@ -202,7 +193,10 @@ function getPackagePlayerCount(pkg: BossPackage | null | undefined) {
 
 function getPackageBasePrice(pkg: BossPackage | null | undefined) {
   const item = pkg as (BossPackage & Record<string, unknown>) | null | undefined
-  return Math.max(0, toSafeNumber(item?.price ?? item?.base_price, 0))
+  const price = item ? item.price : undefined
+  const basePrice = item ? item.base_price : undefined
+  const effectivePrice = price !== undefined ? price : (basePrice !== undefined ? basePrice : 0)
+  return Math.max(0, toSafeNumber(effectivePrice, 0))
 }
 
 function formatMoney(value: number) {

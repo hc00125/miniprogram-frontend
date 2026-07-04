@@ -5,5 +5,8 @@ const uni = typeof uniPlugin === 'function' ? uniPlugin : (uniPlugin as any).def
 
 export default defineConfig({
   publicDir: 'static',
-  plugins: [uni()]
+  plugins: [uni()],
+  esbuild: {
+    target: 'es2015'
+  }
 })
