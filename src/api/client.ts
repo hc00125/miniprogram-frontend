@@ -24,6 +24,11 @@ export interface AvatarUploadResult {
   profile?: ClientProfile
 }
 
+export interface PlayerAudioUploadResult {
+  audio_intro_url: string
+  audio_intro_title: string
+}
+
 function resolveApiUrl(path: string) {
   return `${BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`
 }
@@ -31,7 +36,7 @@ function resolveApiUrl(path: string) {
 function parseUploadResponse(data: string | Record<string, any>): any {
   if (typeof data !== 'string') return data
   if (/<\/?[a-z][\s\S]*>/i.test(data)) {
-    return { detail: '头像上传接口不存在或地址错误' }
+    return { detail: '上传接口不存在或地址错误' }
   }
   try {
     return JSON.parse(data)
@@ -81,7 +86,33 @@ export function uploadClientAvatarApi(filePath: string) {
   })
 }
 
-export function submitPlayerApplicationApi(payload: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio'>) {
+export function uploadPlayerApplicationAudioApi(filePath: string, title?: string) {
+  return new Promise<PlayerAudioUploadResult>((resolve, reject) => {
+    const token = getStorage<string>('token')
+    uni.uploadFile({
+      url: resolveApiUrl('/player/apply/audio'),
+      filePath,
+      name: 'file',
+      formData: title ? { title } : {},
+      header: token ? { Authorization: `Bearer ${token}` } : {},
+      success: (res) => {
+        const data = parseUploadResponse(res.data)
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({
+            ...data,
+            audio_intro_url: data?.audio_intro_url || data?.url || '',
+            audio_intro_title: data?.audio_intro_title || title || '音频自我介绍'
+          })
+          return
+        }
+        reject(data)
+      },
+      fail: reject
+    })
+  })
+}
+
+export function submitPlayerApplicationApi(payload: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
   return api.post<PlayerApplication>('/player/apply', payload)
 }
 
