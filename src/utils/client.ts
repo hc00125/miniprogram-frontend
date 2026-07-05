@@ -21,6 +21,8 @@ export interface ClientProfile {
     type_name: string
     contact_wechat?: string
     bio?: string
+    audio_intro_url?: string
+    audio_intro_title?: string
     is_online: boolean
     total_orders: number
     avg_rating: number
@@ -36,6 +38,8 @@ export interface PlayerApplication {
   type_name?: string
   contact_wechat: string
   bio: string
+  audio_intro_url?: string
+  audio_intro_title?: string
   status: PlayerApplyStatus
   submitted_at: string
   reviewed_at?: string | null
@@ -150,7 +154,7 @@ export async function syncPlayerApplyStatus() {
   return status
 }
 
-export async function submitPlayerApplication(application: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio'>) {
+export async function submitPlayerApplication(application: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
   const payload = await submitPlayerApplicationApi(application)
   uni.setStorageSync(APPLICATION_KEY, payload)
   const profile = ensureClientProfile()
