@@ -1,4 +1,5 @@
 import api from '@/utils/request'
+
 /** 过滤后端残留的测试数据（名称以 test / group_ 开头的条目） */
 function isTestEntry(name: string): boolean {
   const n = (name || '').trim().toLowerCase()
@@ -154,30 +155,22 @@ function normalizePackageFromApi(pkg: BossPackage): BossPackage {
   }
 }
 
+/**
+ * KOOK 房间号保持为独立字段，不再拼接进套餐名称或游戏ID。
+ * raw 字段用于兼容旧页面以及历史缓存数据。
+ */
 function normalizeBossOrderDisplay(order: any) {
-  if (!order?.kook_room_number) return order
-  const room = String(order.kook_room_number).trim()
-  if (!room) return order
-  const rawGameId = order.game_id ? String(order.game_id) : ''
-  const rawPackageName = order.package_name ? String(order.package_name) : ''
-  const roomText = `KOOK房间：${room}`
-  const gameIdText = rawGameId.includes(roomText) || rawGameId.includes(room)
-    ? rawGameId
-    : rawGameId
-      ? `${rawGameId} ｜ ${roomText}`
-      : roomText
-  const packageNameText = rawPackageName.includes(roomText) || rawPackageName.includes(room)
-    ? rawPackageName
-    : rawPackageName
-      ? `${rawPackageName} ｜ ${roomText}`
-      : roomText
+  if (!order) return order
+  const rawGameId = order.game_id_raw ?? order.game_id ?? ''
+  const rawPackageName = order.package_name_raw ?? order.package_name ?? ''
+  const room = String(order.kook_room_number || '').trim()
   return {
     ...order,
+    game_id: rawGameId,
+    package_name: rawPackageName,
     game_id_raw: rawGameId,
     package_name_raw: rawPackageName,
-    game_id: gameIdText,
-    package_name: packageNameText,
-    kook_room_display: roomText
+    kook_room_display: room ? `KOOK房间：${room}` : ''
   }
 }
 
@@ -189,12 +182,13 @@ export function getPackages() {
       .map(normalizePackageFromApi)
       .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || a.id - b.id)
 
-    // group_id 为 null 的套餐归入第一个有效分组，避免被分类过滤器排除；
-    // 如果后端返回空数组，这里保持空数组，不再补前端假商品。
     const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
     if (firstGroupId !== null) {
       filtered.forEach(p => {
-        if (p.group_id === null) { p.group_id = firstGroupId; p.group_name = '' }
+        if (p.group_id === null) {
+          p.group_id = firstGroupId
+          p.group_name = ''
+        }
       })
     }
     return filtered
@@ -217,9 +211,7 @@ export function getOnlinePlayers() {
   return api.get<OnlinePlayer[]>('/boss/online-players')
 }
 
-/**
- * 陪玩师列表（含自己），支持 type_id / is_online / search / ordering 筛选
- */
+/** 陪玩师列表（含自己），支持 type_id / is_online / search / ordering 筛选 */
 export function getPlayerList(params: PlayerListParams = {}) {
   return api.get<OnlinePlayer[]>('/player/list', params)
 }
