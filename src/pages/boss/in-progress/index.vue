@@ -21,7 +21,7 @@
     </view>
 
     <view v-if="orderInfo?.timer_started_at && orderInfo?.status === '进行中'" class="amount-card">
-      <view><text>当前建议金额</text><text><small>¥</small>{{ suggestedAmount }}</text><text>超出基础时长：{{ overtimeHint }}</text></view>
+      <view><text>当前建议金额</text><text><text class="amount-currency">¥</text>{{ suggestedAmount }}</text><text>超出基础时长：{{ overtimeHint }}</text></view>
       <view class="shield">盾</view>
     </view>
 
@@ -195,7 +195,7 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .amount-card view:first-child text { display: block; }
 .amount-card view:first-child text:first-child { color: rgba(255,255,255,.72); font-size: 22rpx; }
 .amount-card view:first-child text:nth-child(2) { margin-top: 5rpx; font-size: 54rpx; font-weight: 900; }
-.amount-card small { font-size: 28rpx; }
+.amount-currency { display: inline !important; margin-right: 4rpx; font-size: 28rpx !important; }
 .amount-card view:first-child text:last-child { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 20rpx; }
 .shield { width: 70rpx; height: 70rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,.15); font-weight: 900; }
 .card { padding: 26rpx; }
