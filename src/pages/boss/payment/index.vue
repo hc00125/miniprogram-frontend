@@ -135,8 +135,9 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrder, ratePlayer } from '@/api/boss'
-import { createMiniProgramPayment, getPaymentStatus } from '@/api/pay'
+import { createMiniProgramPayment } from '@/api/pay'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
+import { requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
 const orderNo = ref('')
 const orderInfo = ref<any>(null)
@@ -195,20 +196,7 @@ async function payByWechat() {
     if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
 
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
-    await new Promise<void>((resolve, reject) => {
-      uni.requestPayment({
-        provider: 'wxpay',
-        timeStamp: payParams.timeStamp,
-        nonceStr: payParams.nonceStr,
-        package: payParams.package,
-        signType: payParams.signType as any,
-        paySign: payParams.paySign,
-        success: () => resolve(),
-        fail: reject
-      })
-    })
-
-    if (payParams.payment_no) await getPaymentStatus(payParams.payment_no)
+    await requestWechatVirtualPayment(payParams)
     await fetchOrder()
     success('虚拟支付完成')
   } catch (error: any) {
