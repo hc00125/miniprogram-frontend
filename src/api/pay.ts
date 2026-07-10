@@ -24,8 +24,12 @@ export function queryVirtualPayment(payment_no: string) {
   return api.post<any>(`/pay/wechat/virtual/query/${payment_no}`)
 }
 
-export function createPayment(order_no: string, channel: 'wechat' | 'alipay') {
-  return api.post<any>('/pay/create', { order_no, channel })
+/**
+ * 虚拟商品支付已切换到官方小程序虚拟支付，禁止支付页再创建普通微信支付单。
+ * 保留函数签名是为了兼容旧页面中的兜底调用。
+ */
+export function createPayment(_order_no: string, _channel: 'wechat' | 'alipay') {
+  return Promise.reject({ detail: '当前订单必须使用小程序虚拟支付' })
 }
 
 export function getPaymentStatus(payment_no: string) {
