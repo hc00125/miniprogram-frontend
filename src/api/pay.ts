@@ -9,12 +9,19 @@ export interface MiniPaymentRequest {
   amount?: number
   status?: string
   prepay_id?: string
+  virtual?: boolean
+  virtual_env?: number
+  product_id?: string
 }
 
 import api from '@/utils/request'
 
 export function createMiniProgramPayment(order_no: string, code?: string, openid?: string) {
-  return api.post<MiniPaymentRequest>('/pay/wechat/miniprogram/create', { order_no, code, openid })
+  return api.post<MiniPaymentRequest>('/pay/wechat/virtual/create', { order_no, code, openid })
+}
+
+export function queryVirtualPayment(payment_no: string) {
+  return api.post<any>(`/pay/wechat/virtual/query/${payment_no}`)
 }
 
 export function createPayment(order_no: string, channel: 'wechat' | 'alipay') {
