@@ -1,17 +1,21 @@
 export interface MiniPaymentRequest {
-  timeStamp: string
-  nonceStr: string
-  package: string
-  signType: string
-  paySign: string
-  payment_no?: string
+  signData: string
+  signature: string
+  mode: 'short_series_goods' | 'short_series_coin' | string
+  paySig: string
+  payment_no: string
   order_no?: string
   amount?: number
   status?: string
-  prepay_id?: string
   virtual?: boolean
   virtual_env?: number
   product_id?: string
+  // 兼容旧版支付页的字段
+  timeStamp?: string
+  nonceStr?: string
+  package?: string
+  signType?: string
+  prepay_id?: string
 }
 
 import api from '@/utils/request'
@@ -26,7 +30,7 @@ export function queryVirtualPayment(payment_no: string) {
 
 /**
  * 虚拟商品支付已切换到官方小程序虚拟支付，禁止支付页再创建普通微信支付单。
- * 保留函数签名是为了兼容旧页面中的兜底调用。
+ * 保留函数签名是为了兼容可能尚未清理的旧调用。
  */
 export function createPayment(_order_no: string, _channel: 'wechat' | 'alipay') {
   return Promise.reject({ detail: '当前订单必须使用小程序虚拟支付' })
