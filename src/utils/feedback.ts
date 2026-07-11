@@ -12,6 +12,7 @@ export function getErrorMessage(error: any, fallback: string) {
   if (typeof error.detail === 'string') return error.detail
   if (error.data && typeof error.data.detail === 'string') return error.data.detail
   if (typeof error.errMsg === 'string') return error.errMsg
+  if (typeof error.message === 'string') return error.message
   return fallback
 }
 

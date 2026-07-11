@@ -205,6 +205,7 @@ async function payByWechat() {
     })
     if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
+    console.log('[虚拟支付] 后端返回参数:', JSON.stringify(payParams))
     await requestWechatVirtualPayment(payParams)
     await fetchOrder()
     success('虚拟支付完成')

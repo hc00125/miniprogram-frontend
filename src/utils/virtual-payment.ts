@@ -33,7 +33,14 @@ function getNativeVirtualPaymentApi() {
 
 export async function requestWechatVirtualPayment(params: MiniPaymentRequest) {
   if (!params?.signData || !params?.paySig || !params?.signature || !params?.mode || !params?.payment_no) {
-    throw new Error('虚拟支付参数不完整，请重新进入支付页面')
+    const missing: string[] = []
+    if (!params?.signData) missing.push('signData')
+    if (!params?.paySig) missing.push('paySig')
+    if (!params?.signature) missing.push('signature')
+    if (!params?.mode) missing.push('mode')
+    if (!params?.payment_no) missing.push('payment_no')
+    console.error('[虚拟支付] 参数不完整，缺失字段:', missing, '完整参数:', JSON.stringify(params))
+    throw new Error(`虚拟支付参数不完整（缺失: ${missing.join(', ')}），请重新进入支付页面`)
   }
 
   const api = getNativeVirtualPaymentApi()
