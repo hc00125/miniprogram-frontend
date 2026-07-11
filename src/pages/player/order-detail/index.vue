@@ -21,12 +21,35 @@
         <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
         <view v-if="orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text class="copyable" @tap="copyText(orderInfo.game_id)">{{ orderInfo.game_id }}</text></view>
         <view v-if="orderInfo.kook_room_number" class="info-row"><text>KOOK房间号</text><text class="copyable" @tap="copyText(orderInfo.kook_room_number)">{{ orderInfo.kook_room_number }}</text></view>
-        <view class="info-row"><text>价格</text><text class="amount">¥{{ orderInfo.total_amount || orderInfo.total_price_per_hour }}</text></view>
+        <view class="info-row"><text>主订单金额</text><text class="amount">¥{{ orderInfo.total_amount || orderInfo.total_price_per_hour }}</text></view>
+        <view class="info-row"><text>累计服务时长</text><text class="duration">{{ totalBookedHoursText }}</text></view>
         <view v-if="orderInfo.status === '待接单'" class="info-row"><text>等待时间</text><text>{{ waitTime }}</text></view>
         <view v-if="orderInfo.status === '待支付'" class="info-row"><text>当前阶段</text><text>等待老板付款</text></view>
         <view v-if="orderInfo.status === '待开打'" class="info-row"><text>当前阶段</text><text class="duration">老板已付款，可开打</text></view>
         <view v-if="orderInfo.status === '进行中'" class="info-row"><text>已进行</text><text class="duration">{{ duration }}</text></view>
-        <view v-if="orderInfo.duration_minutes" class="info-row"><text>服务时长</text><text>{{ orderInfo.duration_minutes }} 分钟</text></view>
+        <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ orderInfo.duration_minutes }} 分钟</text></view>
+      </view>
+    </view>
+
+    <view v-if="orderInfo && (renewalCount || orderInfo.pending_renewal_order_no)" class="club-card renewal-card">
+      <view class="club-card__hd">
+        <text class="club-card__title">续单信息</text>
+        <text class="renewal-badge">已续 {{ renewalCount }} 次</text>
+      </view>
+      <view class="renewal-grid">
+        <view><text>原时长</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
+        <view><text>续单时长</text><text>{{ formatHours(orderInfo.renewal_booked_hours) }}</text></view>
+        <view><text>累计时长</text><text>{{ totalBookedHoursText }}</text></view>
+      </view>
+      <view v-if="orderInfo.pending_renewal_order_no" class="renewal-pending">
+        <text>老板有一笔续单等待付款</text>
+        <text>付款完成后新增时长会自动计入本单；待支付期间暂不能完成服务。</text>
+      </view>
+      <view v-if="paidRenewals.length" class="renewal-list">
+        <view v-for="item in paidRenewals" :key="item.order_no" class="renewal-row">
+          <text>第{{ item.renewal_index }}次续单 · +{{ formatHours(item.booked_hours) }}</text>
+          <text>已支付 ¥{{ Number(item.total_amount || 0).toFixed(2) }}</text>
+        </view>
       </view>
     </view>
 
@@ -112,9 +135,15 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
 
-const canEditKookRoom = computed(() => {
-  return Boolean(orderInfo.value && ['待开打', '进行中'].includes(orderInfo.value.status))
-})
+const canEditKookRoom = computed(() => Boolean(orderInfo.value && ['待开打', '进行中'].includes(orderInfo.value.status)))
+const renewalCount = computed(() => Number(orderInfo.value?.renewal_count || 0))
+const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid))
+const totalBookedHoursText = computed(() => formatHours(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0))
+
+function formatHours(value: number) {
+  const hours = Number(value || 0)
+  return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
+}
 
 function statusClass(status: string) {
   return {
@@ -243,7 +272,11 @@ async function handleResume() {
 
 async function handleComplete() {
   if (!(await ensureKookRoom())) return
-  const ok = await confirm('确定要标记订单完成吗？')
+  if (orderInfo.value?.pending_renewal_order_no) {
+    toast('老板还有一笔续单待支付，暂不能完成服务')
+    return
+  }
+  const ok = await confirm(`确定要标记订单完成吗？当前累计服务时长为${totalBookedHoursText.value}。`)
   if (!ok) return
   completing.value = true
   try {
@@ -312,6 +345,21 @@ onUnmounted(stopTimers)
 .amount { color: #a87520; font-weight: 900; }
 .duration { color: #1f7c4b; font-weight: 900; }
 .copyable { color: #1f7c4b; font-weight: 800; }
+.renewal-card { background: linear-gradient(180deg, #fffdf7, #fff); border-color: rgba(216,161,68,.18); }
+.renewal-badge { padding: 6rpx 13rpx; border-radius: 999rpx; color: #9a6a16; font-size: 22rpx; font-weight: 900; background: #fff3d4; }
+.renewal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 10rpx; }
+.renewal-grid view { padding: 18rpx 8rpx; border-radius: 18rpx; text-align: center; background: #f7faf4; }
+.renewal-grid text { display: block; }
+.renewal-grid text:first-child { color: #879083; font-size: 20rpx; }
+.renewal-grid text:last-child { margin-top: 5rpx; font-size: 25rpx; font-weight: 900; }
+.renewal-pending { margin-top: 16rpx; padding: 18rpx; border-radius: 18rpx; background: #fff5df; }
+.renewal-pending text { display: block; }
+.renewal-pending text:first-child { color: #8d651c; font-size: 24rpx; font-weight: 900; }
+.renewal-pending text:last-child { margin-top: 6rpx; color: #8c7c5f; font-size: 21rpx; line-height: 1.5; }
+.renewal-list { margin-top: 16rpx; }
+.renewal-row { min-height: 58rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-bottom: 1rpx solid rgba(39,61,42,.07); font-size: 22rpx; }
+.renewal-row text:first-child { color: #4f5d50; }
+.renewal-row text:last-child { color: #1f7c4b; font-weight: 900; text-align: right; }
 .kook-card { background: linear-gradient(180deg, #fff, #f8fbf4); }
 .room-status { color: #1f7c4b; font-size: 23rpx; font-weight: 900; }
 .room-status--warn { color: #a87520; }
