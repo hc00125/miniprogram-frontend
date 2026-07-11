@@ -26,6 +26,7 @@ export interface ClientProfile {
     is_online: boolean
     total_orders: number
     avg_rating: number
+    rating_count?: number
   } | null
 }
 
