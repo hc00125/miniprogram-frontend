@@ -23,6 +23,8 @@
         <view v-if="orderInfo.kook_room_number" class="info-row"><text>KOOK房间号</text><text class="copyable" @tap="copyText(orderInfo.kook_room_number)">{{ orderInfo.kook_room_number }}</text></view>
         <view class="info-row"><text>价格</text><text class="amount">¥{{ orderInfo.total_amount || orderInfo.total_price_per_hour }}</text></view>
         <view v-if="orderInfo.status === '待接单'" class="info-row"><text>等待时间</text><text>{{ waitTime }}</text></view>
+        <view v-if="orderInfo.status === '待支付'" class="info-row"><text>当前阶段</text><text>等待老板付款</text></view>
+        <view v-if="orderInfo.status === '待开打'" class="info-row"><text>当前阶段</text><text class="duration">老板已付款，可开打</text></view>
         <view v-if="orderInfo.status === '进行中'" class="info-row"><text>已进行</text><text class="duration">{{ duration }}</text></view>
         <view v-if="orderInfo.duration_minutes" class="info-row"><text>服务时长</text><text>{{ orderInfo.duration_minutes }} 分钟</text></view>
       </view>
@@ -49,7 +51,7 @@
         </button>
       </view>
       <view v-if="orderInfo.kook_room_updated_at" class="kook-tip">最近更新时间：{{ formatRoomTime(orderInfo.kook_room_updated_at) }}</view>
-      <view v-else class="kook-tip">开始计时或完成订单前，需要先填写 KOOK 房间号。</view>
+      <view v-else class="kook-tip">老板付款后，填写房间号即可确认开打。</view>
     </view>
 
     <view v-if="orderInfo?.boss_note" class="club-card note-card">
@@ -59,7 +61,7 @@
 
     <view v-if="orderInfo" class="club-card">
       <view class="club-card__hd">
-        <text class="club-card__title">队伍打手</text>
+        <text class="club-card__title">队伍陪玩</text>
         <text class="club-pill">{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }}</text>
       </view>
       <view class="club-card__bd player-stack">
@@ -76,11 +78,11 @@
 
     <view class="footer-actions">
       <button class="club-btn club-btn--ghost" @tap="backToRoute('/pages/player/grab/index')">大厅</button>
-      <button v-if="orderInfo?.status === '进行中' && !orderInfo?.timer_started_at" class="club-btn" :disabled="starting" @tap="handleStartTimer">开始计时</button>
+      <button v-if="orderInfo?.status === '待开打'" class="club-btn" :disabled="starting" @tap="handleStartTimer">{{ starting ? '开打中...' : '确认开打' }}</button>
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.timer_started_at && !orderInfo?.is_paused" class="club-btn club-btn--warn" @tap="handlePause">暂停</button>
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.is_paused" class="club-btn" @tap="handleResume">继续</button>
       <button v-if="orderInfo?.status === '进行中'" class="club-btn" :disabled="completing" @tap="handleComplete">完成</button>
-      <button v-if="orderInfo?.status === '待支付'" class="club-btn club-btn--ghost" @tap="toast('等待老板支付')">待支付</button>
+      <button v-if="orderInfo?.status === '待支付'" class="club-btn club-btn--ghost" @tap="toast('等待老板完成付款')">等待付款</button>
     </view>
   </view>
 </template>
@@ -111,14 +113,15 @@ let durationTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
 
 const canEditKookRoom = computed(() => {
-  return Boolean(orderInfo.value && !['已完成', '已取消'].includes(orderInfo.value.status))
+  return Boolean(orderInfo.value && ['待开打', '进行中'].includes(orderInfo.value.status))
 })
 
 function statusClass(status: string) {
   return {
     'club-status--wait': status === '待接单',
-    'club-status--run': status === '进行中',
     'club-status--pay': status === '待支付',
+    'club-status--ready': status === '待开打',
+    'club-status--run': status === '进行中',
     'club-status--done': status === '已完成',
     'club-status--cancel': status === '已取消'
   }
@@ -133,9 +136,9 @@ function updateDuration() {
       : orderInfo.value.is_paused && orderInfo.value.last_paused_at
         ? new Date(orderInfo.value.last_paused_at).getTime()
         : Date.now()
-    duration.value = formatDuration(Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0))
-  } else if (orderInfo.value.status === '进行中') {
-    duration.value = '等待开始计时'
+    duration.value = formatDuration(Math.max(0, Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0)))
+  } else if (orderInfo.value.status === '待开打') {
+    duration.value = '等待开打'
   }
 
   if (orderInfo.value.status === '待接单' && orderInfo.value.created_at) {
@@ -152,7 +155,7 @@ async function fetchOrder() {
   try {
     const res = await getPlayerOrder(orderNo.value)
     const newCount = res.players?.length || 0
-    if (newCount > prevPlayerCount && prevPlayerCount > 0) toast('有打手就位')
+    if (newCount > prevPlayerCount && prevPlayerCount > 0) toast('有陪玩就位')
     prevPlayerCount = newCount
     orderInfo.value = res
     if (!roomFocused.value) roomInput.value = res.kook_room_number || ''
@@ -204,15 +207,15 @@ async function ensureKookRoom() {
 
 async function handleStartTimer() {
   if (!(await ensureKookRoom())) return
-  const ok = await confirm('确定开始计时？开始后将按时间计费', '开始计时')
+  const ok = await confirm('老板已完成付款，确定现在开打并开始计时吗？', '确认开打')
   if (!ok) return
   starting.value = true
   try {
     await startTimer(orderNo.value, player.value.id)
-    success('计时已开始')
+    success('已开打，计时开始')
     await fetchOrder()
   } catch (error) {
-    toast(getErrorMessage(error, '操作失败'))
+    toast(getErrorMessage(error, '开打失败'))
   } finally {
     starting.value = false
   }
