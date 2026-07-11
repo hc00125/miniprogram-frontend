@@ -26,10 +26,9 @@
           </view>
         </view>
       </view>
-
     </view>
 
-    <!-- 陪玩师信息栏：紧贴绿色卡片，避免重复头像和昵称 -->
+    <!-- 陪玩师信息栏 -->
     <view v-if="profile?.player" class="player-summary-card">
       <view class="card-head player-summary-head">
         <text class="card-eyebrow">陪玩师信息</text>
@@ -50,13 +49,13 @@
           </view>
           <view class="stat-divider"></view>
           <view class="stat-item">
-            <text class="stat-value">-</text>
+            <text class="stat-value">{{ playerRatingText }}</text>
             <text class="stat-label">综合评分</text>
           </view>
           <view class="stat-divider"></view>
           <view class="stat-item">
-            <text class="stat-value">-</text>
-            <text class="stat-label">好评率</text>
+            <text class="stat-value">{{ profile.player.rating_count || 0 }}</text>
+            <text class="stat-label">评价数量</text>
           </view>
         </view>
         <view v-if="profile?.application?.reject_reason" class="reject-banner">
@@ -82,18 +81,18 @@
           <text class="quick-sub">查看服务记录</text>
         </view>
       </view>
-      <view class="quick-item" @tap="goPlayerRoute">
+      <view class="quick-item" @tap="handlePlayerAction">
         <view class="quick-icon">抢</view>
         <view class="quick-text">
-          <text class="quick-title">抢单抢单</text>
-          <text class="quick-sub">进入接单大厅</text>
+          <text class="quick-title">抢单大厅</text>
+          <text class="quick-sub">查看并抢新订单</text>
         </view>
       </view>
-      <view class="quick-item" @tap="handlePlayerAction">
-        <view class="quick-icon">陪</view>
+      <view class="quick-item" @tap="handlePlayerCenterAction">
+        <view class="quick-icon">{{ profile?.player_status === 'approved' ? '评' : '陪' }}</view>
         <view class="quick-text">
-          <text class="quick-title">{{ playerActionTitle }}</text>
-          <text class="quick-sub">{{ playerActionSub }}</text>
+          <text class="quick-title">{{ playerCenterTitle }}</text>
+          <text class="quick-sub">{{ playerCenterSub }}</text>
         </view>
       </view>
     </view>
@@ -170,8 +169,12 @@ const profileIdText = computed(() => {
   return '20240705'
 })
 
-const isPlayerOnline = computed(() => {
-  return Boolean(profile.value?.player?.is_online)
+const isPlayerOnline = computed(() => Boolean(profile.value?.player?.is_online))
+
+const playerRatingText = computed(() => {
+  const count = Number(profile.value?.player?.rating_count || 0)
+  const score = Number(profile.value?.player?.avg_rating || 0)
+  return count > 0 ? score.toFixed(1) : '-'
 })
 
 const statusText = computed(() => {
@@ -191,8 +194,12 @@ const playerActionTitle = computed(() => {
   if (profile.value?.player_status === 'pending') return '审核中'
   return '申请成为陪玩师'
 })
-const playerActionSub = computed(() => {
-  if (profile.value?.player_status === 'approved') return '进入接单大厅'
+const playerCenterTitle = computed(() => {
+  if (profile.value?.player_status === 'approved') return '我的接单与评价'
+  return playerActionTitle.value
+})
+const playerCenterSub = computed(() => {
+  if (profile.value?.player_status === 'approved') return '查看订单与老板评价'
   if (profile.value?.player_status === 'pending') return '请等待管理员审核'
   return '提交资料后审核'
 })
@@ -216,7 +223,6 @@ async function loadProfile() {
       go('/pages/client/login/index')
       return
     }
-    // 修复：如果缓存里有已批准的 application，就修正 player_status
     if (cached.application?.status === 'approved') {
       cached.player_status = 'approved'
     } else if (cached.application && cached.player_status !== 'pending') {
@@ -251,7 +257,6 @@ async function togglePlayerOnline() {
 }
 
 function handlePlayerAction() {
-  console.log('[handlePlayerAction] player_status =', profile.value?.player_status)
   if (profile.value?.player_status === 'approved') {
     go('/pages/player/grab/index')
     return
@@ -260,11 +265,14 @@ function handlePlayerAction() {
     toast('申请审核中，请等待管理员审核')
     return
   }
-  // 兜底：未登录 / 无 player_status / 已拒绝 / 加载失败等场景都进入申请页
   go('/pages/player/apply/index')
 }
 
-function goPlayerRoute() {
+function handlePlayerCenterAction() {
+  if (profile.value?.player_status === 'approved') {
+    go('/pages/player/my-orders/index')
+    return
+  }
   handlePlayerAction()
 }
 
