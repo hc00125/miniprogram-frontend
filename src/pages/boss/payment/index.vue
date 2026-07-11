@@ -1,6 +1,6 @@
 <template>
   <view class="payment-page">
-    <view class="status-card" :class="{ paid: paidClass }">
+    <view class="status-card" :class="{ paid: isPaid }">
       <view class="status-dot"></view>
       <view class="status-main">
         <text class="status-title">{{ stripText }}</text>
@@ -10,7 +10,7 @@
     </view>
 
     <view v-if="orderInfo" class="amount-card">
-      <text class="amount-label">{{ paidClass ? '已支付金额' : '待支付金额' }}</text>
+      <text class="amount-label">{{ isPaid ? '已支付金额' : '待支付金额' }}</text>
       <view class="amount-row"><text>¥</text><text>{{ orderAmount }}</text></view>
       <view class="secure-tip"><text>盾</text><text>微信官方小程序虚拟支付</text></view>
     </view>
@@ -36,7 +36,7 @@
       <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
       <view v-if="orderInfo.booked_hours" class="info-row"><text>预订时长</text><text>{{ orderInfo.booked_hours }}小时</text></view>
       <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
-      <view class="info-row total-row"><text>应付总额</text><text>¥{{ orderAmount }}</text></view>
+      <view class="info-row total-row"><text>订单总额</text><text>¥{{ orderAmount }}</text></view>
     </view>
 
     <view v-if="orderInfo?.players?.length" class="card players-card">
@@ -72,11 +72,11 @@
     <view v-if="showPayPanel" class="card virtual-pay-card">
       <view class="virtual-head">
         <view class="wechat-icon">微</view>
-        <view><text>微信虚拟支付</text><text>官方支付能力 · 服务器校验交易结果</text></view>
+        <view><text>微信虚拟支付</text><text>队伍已就位 · 付款后等待陪玩开打</text></view>
       </view>
       <view class="virtual-notice">
         <text></text>
-        <text>支付前会核对微信道具、规格和订单金额。若失败，页面会显示具体原因与错误编号。</text>
+        <text>支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。</text>
       </view>
       <button class="pay-button" :disabled="paying" @tap="payByWechat">
         {{ paying ? '正在拉起虚拟支付...' : `微信虚拟支付 ¥${orderAmount}` }}
@@ -84,13 +84,14 @@
       <text class="pay-help">支付成功以后微信服务器仍需数秒确认，请勿连续点击。</text>
     </view>
 
-    <view v-if="paidClass" class="card completed-card">
+    <view v-if="isPaid" class="card completed-card">
       <view class="completed-icon">✓</view>
-      <text class="completed-title">订单已完成</text>
-      <text class="completed-sub">支付结果已经由微信服务器确认</text>
+      <text class="completed-title">{{ paidCardTitle }}</text>
+      <text class="completed-sub">{{ paidCardSub }}</text>
+      <button v-if="showProgressButton" class="progress-button" @tap="goProgress">查看服务进度</button>
     </view>
 
-    <view v-if="paidClass && orderInfo?.players?.length" class="card rating-card">
+    <view v-if="isCompleted && orderInfo?.players?.length" class="card rating-card">
       <view class="card-head"><text>评价陪玩</text><text>帮助其他老板选择</text></view>
       <view v-for="player in orderInfo.players" :key="player.id" class="rating-item">
         <view class="rating-player">
@@ -118,6 +119,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getOrder, ratePlayer } from '@/api/boss'
 import { createMiniProgramPayment } from '@/api/pay'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
+import { replace } from '@/utils/nav'
 import { requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
 type PayErrorState = {
@@ -138,11 +140,37 @@ const ratingComment = ref('')
 const ratingSubmitting = ref(false)
 const ratingsSubmitted = ref(false)
 
-const showPayPanel = computed(() => Boolean(orderInfo.value && !orderInfo.value.paid && orderInfo.value.status !== '已完成'))
+const isPaid = computed(() => Boolean(orderInfo.value?.paid))
+const isCompleted = computed(() => orderInfo.value?.status === '已完成')
+const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid))
+const showProgressButton = computed(() => ['待开打', '进行中'].includes(orderInfo.value?.status))
 const orderAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
-const paidClass = computed(() => Boolean(orderInfo.value?.status === '已完成' || orderInfo.value?.paid))
-const payStatusText = computed(() => !orderInfo.value ? '加载中' : paidClass.value ? '已支付' : '待支付')
-const stripText = computed(() => !orderInfo.value ? '订单加载中' : paidClass.value ? '订单支付完成' : '服务已完成，请完成支付')
+const payStatusText = computed(() => {
+  if (!orderInfo.value) return '加载中'
+  if (orderInfo.value.status === '待支付') return '待支付'
+  if (orderInfo.value.status === '待开打') return '待开打'
+  if (orderInfo.value.status === '进行中') return '进行中'
+  if (orderInfo.value.status === '已完成') return '已完成'
+  return orderInfo.value.status || '待确认'
+})
+const stripText = computed(() => {
+  if (!orderInfo.value) return '订单加载中'
+  if (orderInfo.value.status === '待支付') return '队伍已就位，请先完成付款'
+  if (orderInfo.value.status === '待开打') return '付款成功，等待陪玩开打'
+  if (orderInfo.value.status === '进行中') return '付款已完成，服务进行中'
+  if (orderInfo.value.status === '已完成') return '订单服务已完成'
+  return '查看订单支付状态'
+})
+const paidCardTitle = computed(() => {
+  if (isCompleted.value) return '订单已完成'
+  if (orderInfo.value?.status === '进行中') return '服务正在进行中'
+  return '支付成功，等待开打'
+})
+const paidCardSub = computed(() => {
+  if (isCompleted.value) return '服务已完成，可以对陪玩进行评价'
+  if (orderInfo.value?.status === '进行中') return '陪玩已开打，订单正在计时'
+  return '微信服务器已确认付款，请等待陪玩填写房间号并开打'
+})
 
 function extractCode(error: any) {
   return String(
@@ -170,10 +198,10 @@ function classifyPayError(error: any): PayErrorState {
     return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入订单支付页。', code }
   }
   if (/appkey|offer|配置|configuration/.test(text)) {
-    return { title: '支付配置异常', detail, action: '请管理员检查沙箱AppKey、OfferID和虚拟支付环境配置。', code }
+    return { title: '支付配置异常', detail, action: '请管理员检查AppKey、OfferID和虚拟支付环境配置。', code }
   }
   if (/尚未审核|道具状态|15010|15011|15013/.test(text)) {
-    return { title: '微信道具暂不可用', detail, action: '请确认道具已通过开发版本审核，并使用开发版或体验版进行沙箱测试。', code }
+    return { title: '微信道具暂不可用', detail, action: '请确认虚拟道具已发布，并使用正确的小程序版本和支付环境。', code }
   }
   if (Number(error?.statusCode) >= 500 || /内部错误|请求失败（500）/.test(text)) {
     return { title: '支付服务暂时异常', detail, action: '请稍后重试；如持续出现，请把错误编号提供给管理员查询服务器日志。', code }
@@ -187,7 +215,7 @@ async function fetchOrder() {
   loadError.value = ''
   try {
     orderInfo.value = await getOrder(orderNo.value)
-    if (paidClass.value) payError.value = null
+    if (isPaid.value) payError.value = null
   } catch (error) {
     loadError.value = getErrorMessage(error, '订单加载失败')
   } finally {
@@ -205,10 +233,9 @@ async function payByWechat() {
     })
     if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
-    console.log('[虚拟支付] 后端返回参数:', JSON.stringify(payParams))
     await requestWechatVirtualPayment(payParams)
     await fetchOrder()
-    success('虚拟支付完成')
+    success('支付完成，等待陪玩开打')
   } catch (error: any) {
     const errCode = Number(error?.errCode)
     if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
@@ -252,6 +279,10 @@ async function submitRatings() {
 
 function copyText(value: string) {
   uni.setClipboardData({ data: value, success: () => success('已复制') })
+}
+
+function goProgress() {
+  replace('/pages/boss/in-progress/index', { orderNo: orderNo.value })
 }
 
 onLoad((query) => { orderNo.value = String(query?.orderNo || '') })
@@ -302,7 +333,7 @@ onShow(fetchOrder)
 .virtual-notice text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 11rpx; border-radius: 50%; background: #d8a144; }
 .virtual-notice text:last-child { flex: 1; }
 .pay-button { width: 100%; height: 92rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 30rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); box-shadow: 0 12rpx 26rpx rgba(31,156,81,.22); }
-.pay-button::after, .mini-button::after, .ghost-button::after, .retry-button::after, .rating-button::after { border: none; }
+.pay-button::after, .mini-button::after, .ghost-button::after, .retry-button::after, .rating-button::after, .progress-button::after { border: none; }
 .pay-button[disabled] { opacity: .62; }
 .pay-help { display: block; margin-top: 14rpx; color: #9aa197; font-size: 21rpx; text-align: center; }
 .error-card, .pay-error-card { padding: 24rpx; border-color: rgba(196,50,50,.17); background: #fff6f4; }
@@ -317,7 +348,7 @@ onShow(fetchOrder)
 .error-code text:last-child { flex: 1; text-align: right; font-weight: 900; word-break: break-all; }
 .error-action { margin-top: 14rpx; color: #7d645f; font-size: 22rpx; line-height: 1.5; }
 .error-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 20rpx; }
-.ghost-button, .retry-button, .mini-button { height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; font-size: 24rpx; font-weight: 900; }
+.ghost-button, .retry-button, .mini-button, .progress-button { height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; font-size: 24rpx; font-weight: 900; }
 .ghost-button { color: #8f2929; background: #fff; border: 1rpx solid rgba(196,50,50,.20); }
 .retry-button, .mini-button { color: #fff; background: #c43232; }
 .mini-button { min-width: 150rpx; margin: 0; padding: 0 20rpx; }
@@ -325,6 +356,7 @@ onShow(fetchOrder)
 .completed-icon { width: 90rpx; height: 90rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 48rpx; font-weight: 900; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
 .completed-title { margin-top: 18rpx; font-size: 34rpx; font-weight: 900; }
 .completed-sub { margin-top: 10rpx; color: #7d877a; font-size: 23rpx; }
+.progress-button { min-width: 260rpx; margin-top: 24rpx; padding: 0 30rpx; color: #fff; background: #1f7c4b; }
 .rating-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-bottom: 1rpx solid rgba(39,61,42,.07); }
 .rating-player { display: flex; align-items: center; gap: 12rpx; }
 .rating-avatar { width: 60rpx; height: 60rpx; border-radius: 50%; }
