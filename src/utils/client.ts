@@ -34,6 +34,7 @@ export interface PlayerApplication {
   nickname?: string
   avatar_url?: string
   name: string
+  real_name: string
   type_id?: number
   type_name?: string
   contact_wechat: string
@@ -154,7 +155,7 @@ export async function syncPlayerApplyStatus() {
   return status
 }
 
-export async function submitPlayerApplication(application: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
+export async function submitPlayerApplication(application: Pick<PlayerApplication, 'name' | 'real_name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
   const payload = await submitPlayerApplicationApi(application)
   uni.setStorageSync(APPLICATION_KEY, payload)
   const profile = ensureClientProfile()
