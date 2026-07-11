@@ -4,7 +4,7 @@
       <view class="status-dot"></view>
       <view class="status-main">
         <text class="status-title">{{ stripText }}</text>
-        <text class="status-sub">订单号 {{ orderNo }}</text>
+        <text class="status-sub">{{ isRenewal ? `续单号 ${orderNo}` : `订单号 ${orderNo}` }}</text>
       </view>
       <text class="status-pill">{{ payStatusText }}</text>
     </view>
@@ -25,22 +25,25 @@
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
-      <view class="card-head"><text>订单明细</text><text>{{ orderInfo.status }}</text></view>
+      <view class="card-head"><text>{{ isRenewal ? '续单明细' : '订单明细' }}</text><text>{{ orderInfo.status }}</text></view>
+      <view v-if="isRenewal" class="info-row room-row" @tap="copyText(orderInfo.parent_order_no)">
+        <text>原订单</text><text>{{ orderInfo.parent_order_no }} · 复制</text>
+      </view>
+      <view v-if="isRenewal" class="info-row"><text>续单次数</text><text>第{{ orderInfo.renewal_index }}次</text></view>
       <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view>
       <view v-if="orderInfo.spec_name || orderInfo.spec_display_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view>
       <view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view>
       <view v-if="orderInfo.kook_room_number" class="info-row room-row" @tap="copyText(orderInfo.kook_room_number)">
-        <text>KOOK房间号</text>
-        <text>{{ orderInfo.kook_room_number }} · 复制</text>
+        <text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text>
       </view>
       <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
-      <view v-if="orderInfo.booked_hours" class="info-row"><text>预订时长</text><text>{{ orderInfo.booked_hours }}小时</text></view>
-      <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
-      <view class="info-row total-row"><text>订单总额</text><text>¥{{ orderAmount }}</text></view>
+      <view v-if="orderInfo.booked_hours" class="info-row"><text>{{ isRenewal ? '新增时长' : '预订时长' }}</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
+      <view v-if="!isRenewal && orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
+      <view class="info-row total-row"><text>{{ isRenewal ? '续单金额' : '订单总额' }}</text><text>¥{{ orderAmount }}</text></view>
     </view>
 
     <view v-if="orderInfo?.players?.length" class="card players-card">
-      <view class="card-head"><text>服务阵容</text><text>{{ orderInfo.players.length }}位陪玩</text></view>
+      <view class="card-head"><text>{{ isRenewal ? '保持原服务阵容' : '服务阵容' }}</text><text>{{ orderInfo.players.length }}位陪玩</text></view>
       <scroll-view scroll-x class="players-track" show-scrollbar="false">
         <view v-for="player in orderInfo.players" :key="player.id" class="player-item">
           <image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" />
@@ -72,11 +75,14 @@
     <view v-if="showPayPanel" class="card virtual-pay-card">
       <view class="virtual-head">
         <view class="wechat-icon">微</view>
-        <view><text>微信虚拟支付</text><text>队伍已就位 · 付款后等待陪玩开打</text></view>
+        <view>
+          <text>微信虚拟支付</text>
+          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '队伍已就位 · 付款后等待陪玩开打' }}</text>
+        </view>
       </view>
       <view class="virtual-notice">
         <text></text>
-        <text>支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。</text>
+        <text>{{ payNotice }}</text>
       </view>
       <button class="pay-button" :disabled="paying" @tap="payByWechat">
         {{ paying ? '正在拉起虚拟支付...' : `微信虚拟支付 ¥${orderAmount}` }}
@@ -88,10 +94,10 @@
       <view class="completed-icon">✓</view>
       <text class="completed-title">{{ paidCardTitle }}</text>
       <text class="completed-sub">{{ paidCardSub }}</text>
-      <button v-if="showProgressButton" class="progress-button" @tap="goProgress">查看服务进度</button>
+      <button v-if="showProgressButton" class="progress-button" @tap="goProgress">{{ isRenewal ? '返回原订单' : '查看服务进度' }}</button>
     </view>
 
-    <view v-if="isCompleted && orderInfo?.players?.length" class="card rating-card">
+    <view v-if="isCompleted && !isRenewal && orderInfo?.players?.length" class="card rating-card">
       <view class="card-head"><text>评价陪玩</text><text>帮助其他老板选择</text></view>
       <view v-for="player in orderInfo.players" :key="player.id" class="rating-item">
         <view class="rating-player">
@@ -141,12 +147,19 @@ const ratingSubmitting = ref(false)
 const ratingsSubmitted = ref(false)
 
 const isPaid = computed(() => Boolean(orderInfo.value?.paid))
+const isRenewal = computed(() => orderInfo.value?.order_type === 'renewal')
 const isCompleted = computed(() => orderInfo.value?.status === '已完成')
 const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid))
-const showProgressButton = computed(() => ['待开打', '进行中'].includes(orderInfo.value?.status))
+const showProgressButton = computed(() => isRenewal.value ? isPaid.value : ['待开打', '进行中'].includes(orderInfo.value?.status))
+const serviceOrderNo = computed(() => isRenewal.value ? orderInfo.value?.parent_order_no : orderNo.value)
 const orderAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
+const payNotice = computed(() => isRenewal.value
+  ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。付款成功后会自动合并到原订单，陪玩阵容和房间号保持不变。`
+  : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。')
 const payStatusText = computed(() => {
   if (!orderInfo.value) return '加载中'
+  if (isRenewal.value && orderInfo.value.status === '待支付') return '续单待支付'
+  if (isRenewal.value && isPaid.value) return '续单成功'
   if (orderInfo.value.status === '待支付') return '待支付'
   if (orderInfo.value.status === '待开打') return '待开打'
   if (orderInfo.value.status === '进行中') return '进行中'
@@ -155,6 +168,7 @@ const payStatusText = computed(() => {
 })
 const stripText = computed(() => {
   if (!orderInfo.value) return '订单加载中'
+  if (isRenewal.value) return isPaid.value ? '续单支付完成' : '续单已创建，请完成付款'
   if (orderInfo.value.status === '待支付') return '队伍已就位，请先完成付款'
   if (orderInfo.value.status === '待开打') return '付款成功，等待陪玩开打'
   if (orderInfo.value.status === '进行中') return '付款已完成，服务进行中'
@@ -162,15 +176,22 @@ const stripText = computed(() => {
   return '查看订单支付状态'
 })
 const paidCardTitle = computed(() => {
+  if (isRenewal.value) return '续单支付成功'
   if (isCompleted.value) return '订单已完成'
   if (orderInfo.value?.status === '进行中') return '服务正在进行中'
   return '支付成功，等待开打'
 })
 const paidCardSub = computed(() => {
+  if (isRenewal.value) return `新增${formatHours(orderInfo.value?.booked_hours || 0)}已自动计入原订单`
   if (isCompleted.value) return '服务已完成，可以对陪玩进行评价'
   if (orderInfo.value?.status === '进行中') return '陪玩已开打，订单正在计时'
   return '微信服务器已确认付款，请等待陪玩填写房间号并开打'
 })
+
+function formatHours(value: number) {
+  const hours = Number(value || 0)
+  return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
+}
 
 function extractCode(error: any) {
   return String(
@@ -235,7 +256,7 @@ async function payByWechat() {
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
     await requestWechatVirtualPayment(payParams)
     await fetchOrder()
-    success('支付完成，等待陪玩开打')
+    success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
   } catch (error: any) {
     const errCode = Number(error?.errCode)
     if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
@@ -278,11 +299,13 @@ async function submitRatings() {
 }
 
 function copyText(value: string) {
+  if (!value) return
   uni.setClipboardData({ data: value, success: () => success('已复制') })
 }
 
 function goProgress() {
-  replace('/pages/boss/in-progress/index', { orderNo: orderNo.value })
+  if (!serviceOrderNo.value) return
+  replace('/pages/boss/in-progress/index', { orderNo: serviceOrderNo.value })
 }
 
 onLoad((query) => { orderNo.value = String(query?.orderNo || '') })
