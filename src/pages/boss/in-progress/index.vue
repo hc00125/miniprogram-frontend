@@ -1,17 +1,17 @@
 <template>
   <view class="progress-page">
     <view class="status-bar">
-      <view class="live-dot"></view>
-      <view class="status-copy"><text>服务正在进行中</text><text>请保持游戏内在线，订单状态会自动刷新</text></view>
-      <text class="live-tag">LIVE</text>
+      <view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打' }"></view>
+      <view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSub }}</text></view>
+      <text class="live-tag">{{ orderInfo?.status || '加载中' }}</text>
     </view>
 
     <view class="hero-card">
-      <text class="hero-eyebrow">SERVICE IN PROGRESS</text>
-      <text class="hero-title">队伍已就位</text>
+      <text class="hero-eyebrow">SERVICE PROGRESS</text>
+      <text class="hero-title">{{ heroTitle }}</text>
       <view class="timer-card">
-        <text>服务时长</text>
-        <text>{{ duration }}</text>
+        <text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text>
+        <text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text>
         <text>{{ durationStatus }}</text>
       </view>
       <view class="hero-meta">
@@ -20,21 +20,21 @@
       </view>
     </view>
 
-    <view v-if="orderInfo?.timer_started_at && orderInfo?.status === '进行中'" class="amount-card">
-      <view><text>当前建议金额</text><text><text class="amount-currency">¥</text>{{ suggestedAmount }}</text><text>超出基础时长：{{ overtimeHint }}</text></view>
+    <view v-if="orderInfo?.paid" class="amount-card">
+      <view><text>已支付金额</text><text><text class="amount-currency">¥</text>{{ paidAmount }}</text><text>{{ orderInfo.status === '待开打' ? '付款完成，等待陪玩开打' : '本单已完成付款' }}</text></view>
       <view class="shield">盾</view>
     </view>
 
     <view v-if="orderInfo" class="card">
       <view class="card-head">
-        <view><text class="card-title">服务阵容</text><text class="card-sub">{{ orderInfo.players?.length || 0 }}位陪玩在线服务</text></view>
+        <view><text class="card-title">服务阵容</text><text class="card-sub">{{ orderInfo.players?.length || 0 }}位陪玩已接单</text></view>
         <button class="mini-btn" @tap="checkOrder">刷新</button>
       </view>
       <scroll-view scroll-x class="player-track" show-scrollbar="false">
         <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
           <image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" />
           <view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view>
-          <view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text>★ {{ player.avg_rating || '5.0' }} · 接单 {{ player.total_orders || 0 }}</text></view>
+          <view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text>{{ player.status || '已接单' }}</text></view>
         </view>
       </scroll-view>
     </view>
@@ -46,25 +46,24 @@
       <view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view>
       <view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view>
       <view class="info-row"><text>预订时长</text><text>{{ bookedHoursText }}</text></view>
-      <view class="info-row"><text>基础价格</text><text>¥{{ Number(orderInfo.total_price_per_hour || 0).toFixed(2) }}</text></view>
+      <view class="info-row"><text>订单金额</text><text>¥{{ paidAmount }}</text></view>
     </view>
 
     <view v-if="orderInfo" class="card flow-card">
-      <text class="card-title standalone-title">服务进度</text>
+      <text class="card-title standalone-title">订单流程</text>
       <view class="flow-list">
-        <view class="flow-item done"><text>✓</text><view><text>下单成功</text><text>{{ formatOrderTime(orderInfo.created_at) }}</text></view></view>
-        <view class="flow-item done"><text>✓</text><view><text>队伍已就位</text><text>{{ formatOrderTime(orderInfo.start_time) }}</text></view></view>
-        <view class="flow-item" :class="orderInfo.status === '待支付' || orderInfo.status === '已完成' ? 'done' : 'active'"><text>{{ orderInfo.status === '待支付' || orderInfo.status === '已完成' ? '✓' : '3' }}</text><view><text>服务进行中</text><text>{{ duration }}</text></view></view>
-        <view class="flow-item" :class="orderInfo.status === '已完成' ? 'done' : ''"><text>{{ orderInfo.status === '已完成' ? '✓' : '4' }}</text><view><text>完成支付</text><text>¥{{ suggestedAmount }}</text></view></view>
+        <view class="flow-item done"><text>✓</text><view><text>1. 派单</text><text>订单已发布到抢单大厅</text></view></view>
+        <view class="flow-item" :class="stepClass('接单')"><text>{{ stepIcon('接单', '2') }}</text><view><text>2. 接单</text><text>{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }} 位陪玩已就位</text></view></view>
+        <view class="flow-item" :class="stepClass('付款')"><text>{{ stepIcon('付款', '3') }}</text><view><text>3. 付款</text><text>{{ orderInfo.paid ? `已支付 ¥${paidAmount}` : '等待老板付款' }}</text></view></view>
+        <view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view>
+        <view class="flow-item" :class="stepClass('完成')"><text>{{ stepIcon('完成', '5') }}</text><view><text>5. 完成</text><text>{{ orderInfo.status === '已完成' ? '服务已完成' : '服务结束后完成订单' }}</text></view></view>
       </view>
     </view>
 
     <view class="footer-actions">
       <button class="ghost-btn" @tap="goMain('home')">返回首页</button>
-      <button v-if="orderInfo?.status === '进行中' && orderInfo?.timer_started_at && !orderInfo?.is_paused" class="warn-btn" @tap="pauseTimer">暂停计时</button>
-      <button v-if="orderInfo?.status === '进行中' && orderInfo?.is_paused" class="primary-btn" @tap="resumeTimer">继续计时</button>
-      <button v-if="orderInfo?.status === '进行中'" class="danger-btn" @tap="handleCancel">取消订单</button>
-      <button v-if="orderInfo?.status === '待支付'" class="primary-btn wide" @tap="goPayment">立即支付 ¥{{ suggestedAmount }}</button>
+      <button class="primary-btn" @tap="checkOrder">刷新状态</button>
+      <button v-if="orderInfo?.status === '待支付'" class="primary-btn wide" @tap="goPayment">去付款 ¥{{ paidAmount }}</button>
     </view>
   </view>
 </template>
@@ -72,56 +71,78 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { cancelOrder, getOrder, pauseOrder, resumeOrder } from '@/api/boss'
+import { getOrder } from '@/api/boss'
 import { formatDateTime as formatDateTimeValue, formatDuration } from '@/utils/format'
 import { replace, relaunch } from '@/utils/nav'
-import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 
 const orderNo = ref('')
 const orderInfo = ref<any>(null)
 const duration = ref('00:00:00')
 let orderTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
-let prevStatus = ''
 
 const startTimeText = computed(() => formatOrderTime(orderInfo.value?.start_time))
 const bookedHoursText = computed(() => `${Number(orderInfo.value?.booked_hours || 1)}小时`)
-const durationStatus = computed(() => orderInfo.value?.is_paused ? '已暂停' : !orderInfo.value?.timer_started_at ? '等待开始' : '服务中')
-const overtimeHint = computed(() => {
-  if (!orderInfo.value?.timer_started_at) return '尚未开始计时'
-  const start = new Date(orderInfo.value.timer_started_at).getTime()
-  const end = orderInfo.value.is_paused && orderInfo.value.last_paused_at ? new Date(orderInfo.value.last_paused_at).getTime() : Date.now()
-  const effectiveMin = ((end - start) / 1000 - (orderInfo.value.paused_duration || 0)) / 60
-  const extra = effectiveMin - Number(orderInfo.value.booked_hours || 1) * 60
-  if (extra <= 0) return '尚未超出'
-  if (extra < 1) return `${Math.round(extra * 60)}秒`
-  return `${Math.floor(extra)}分钟${extra % 1 > 0 ? `${Math.round(extra % 1 * 60)}秒` : ''}`
-})
-const suggestedAmount = computed(() => {
-  const base = Number(orderInfo.value?.total_price_per_hour || 0)
-  if (!orderInfo.value?.timer_started_at) return base.toFixed(2)
-  const start = new Date(orderInfo.value.timer_started_at).getTime()
-  const end = orderInfo.value.is_paused && orderInfo.value.last_paused_at ? new Date(orderInfo.value.last_paused_at).getTime() : Date.now()
-  const effectiveMin = ((end - start) / 1000 - (orderInfo.value.paused_duration || 0)) / 60
-  const extra = effectiveMin - Number(orderInfo.value.booked_hours || 1) * 60
-  if (extra <= 29) return base.toFixed(2)
-  return (base + Math.ceil((extra - 29) / 30) * base * .5).toFixed(2)
+const paidAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
+const statusTitle = computed(() => orderInfo.value?.status === '待开打' ? '付款完成，等待开打' : '服务正在进行中')
+const statusSub = computed(() => orderInfo.value?.status === '待开打' ? '陪玩填写房间号并确认开打后开始计时' : '请保持游戏内在线，订单状态会自动刷新')
+const heroTitle = computed(() => orderInfo.value?.status === '待开打' ? '队伍已就位，准备开打' : '服务进行中')
+const durationStatus = computed(() => {
+  if (orderInfo.value?.status === '待开打') return '已付款 · 等待陪玩操作'
+  if (orderInfo.value?.is_paused) return '已暂停'
+  return orderInfo.value?.timer_started_at ? '服务中' : '等待开始'
 })
 
 function formatOrderTime(value?: string) { return value ? formatDateTimeValue(value) : '待确认' }
+
 function updateDuration() {
-  if (!orderInfo.value?.timer_started_at) { duration.value = orderInfo.value?.status === '进行中' ? '等待开始' : '00:00:00'; return }
+  if (!orderInfo.value?.timer_started_at) {
+    duration.value = orderInfo.value?.status === '待开打' ? '等待开打' : '00:00:00'
+    return
+  }
   const start = new Date(orderInfo.value.timer_started_at).getTime()
-  const end = orderInfo.value.end_time ? new Date(orderInfo.value.end_time).getTime() : orderInfo.value.is_paused && orderInfo.value.last_paused_at ? new Date(orderInfo.value.last_paused_at).getTime() : Date.now()
+  const end = orderInfo.value.end_time
+    ? new Date(orderInfo.value.end_time).getTime()
+    : orderInfo.value.is_paused && orderInfo.value.last_paused_at
+      ? new Date(orderInfo.value.last_paused_at).getTime()
+      : Date.now()
   duration.value = formatDuration(Math.max(0, Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0)))
 }
+
+function stepRank(status: string) {
+  return {
+    '待接单': 1,
+    '待支付': 2,
+    '待开打': 3,
+    '进行中': 4,
+    '已完成': 5,
+  }[status] || 0
+}
+
+function targetRank(step: string) {
+  return { '接单': 2, '付款': 3, '开打': 4, '完成': 5 }[step] || 0
+}
+
+function stepClass(step: string) {
+  const current = stepRank(orderInfo.value?.status)
+  const target = targetRank(step)
+  if (current > target || (step === '完成' && current === 5)) return 'done'
+  if (current === target || (step === '接单' && current === 1)) return 'active'
+  return ''
+}
+
+function stepIcon(step: string, fallback: string) {
+  return stepClass(step) === 'done' ? '✓' : fallback
+}
+
 async function checkOrder() {
   if (!orderNo.value) return
   try {
     const res = await getOrder(orderNo.value)
     orderInfo.value = res
     updateDuration()
-    if (res.status === '待支付' && prevStatus !== '待支付') {
+    if (res.status === '待支付') {
       stopTimers()
       replace('/pages/boss/payment/index', { orderNo: orderNo.value })
     } else if (res.status === '已完成') {
@@ -132,19 +153,9 @@ async function checkOrder() {
       toast('订单已取消')
       goMain('home')
     }
-    prevStatus = res.status
   } catch (error) { toast(getErrorMessage(error, '订单加载失败')) }
 }
-async function pauseTimer() {
-  try { await pauseOrder(orderNo.value); success('计时已暂停'); checkOrder() } catch (error) { toast(getErrorMessage(error, '暂停失败')) }
-}
-async function resumeTimer() {
-  try { await resumeOrder(orderNo.value); success('计时已继续'); checkOrder() } catch (error) { toast(getErrorMessage(error, '继续失败')) }
-}
-async function handleCancel() {
-  if (!(await confirm('确定要取消当前进行中的订单吗？'))) return
-  try { await cancelOrder(orderNo.value); success('订单已取消'); stopTimers(); goMain('home') } catch (error) { toast(getErrorMessage(error, '取消失败')) }
-}
+
 function copyRoom() {
   const room = orderInfo.value?.kook_room_number
   if (!room) return
@@ -171,6 +182,7 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .progress-page { min-height: 100vh; padding: 20rpx 24rpx 220rpx; box-sizing: border-box; color: #172116; background: radial-gradient(ellipse at 12% 0%, rgba(216,161,68,.10), transparent 36%), radial-gradient(ellipse at 88% 14%, rgba(47,155,99,.10), transparent 32%), linear-gradient(180deg, #fbf7ef, #f7f3ea 48%, #fffaf2); }
 .status-bar { display: flex; align-items: center; gap: 14rpx; padding: 18rpx 22rpx; border-radius: 22rpx; border: 1rpx solid rgba(47,155,99,.18); background: rgba(246,252,247,.95); }
 .live-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #ef5b5b; box-shadow: 0 0 0 8rpx rgba(239,91,91,.12); }
+.live-dot.waiting { background: #d8a144; box-shadow: 0 0 0 8rpx rgba(216,161,68,.12); }
 .status-copy { flex: 1; }
 .status-copy text { display: block; }
 .status-copy text:first-child { font-size: 25rpx; font-weight: 900; }
@@ -234,6 +246,4 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .footer-actions .wide { grid-column: 1 / -1; }
 .ghost-btn { color: #1f7c4b; background: #fff; border: 1rpx solid rgba(47,155,99,.18); }
 .primary-btn { color: #fff; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
-.warn-btn { color: #73531f; background: #fff1c9; }
-.danger-btn { color: #fff; background: #c35b4e; }
 </style>
