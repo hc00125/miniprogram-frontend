@@ -2,11 +2,46 @@
   <view class="club-page orders-page">
     <view class="brand-poster header-card">
       <view>
-        <view class="eyebrow">PLAYER ORDERS</view>
-        <view class="title">我的接单</view>
-        <view class="sub">查看已接订单、待结算和历史服务。</view>
+        <view class="eyebrow">PLAYER CENTER</view>
+        <view class="title">我的接单与评价</view>
+        <view class="sub">查看服务记录，以及老板对你的真实评分。</view>
       </view>
-      <button class="club-btn club-btn--ghost" @tap="fetchOrders">刷新</button>
+      <button class="club-btn club-btn--ghost" @tap="refreshAll">刷新</button>
+    </view>
+
+    <view class="club-card ratings-card">
+      <view class="club-card__bd">
+        <view class="rating-summary">
+          <view>
+            <text class="summary-score">{{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text>
+            <text class="summary-label">综合评分</text>
+          </view>
+          <view>
+            <text class="summary-value">{{ ratingSummary.rating_count }}</text>
+            <text class="summary-label">评价数量</text>
+          </view>
+          <view>
+            <text class="summary-value">{{ ratingSummary.total_orders }}</text>
+            <text class="summary-label">完成订单</text>
+          </view>
+        </view>
+
+        <view class="rating-section-head">
+          <text>最近评价</text>
+          <text>仅展示你的订单评价</text>
+        </view>
+        <view v-if="ratings.length" class="rating-list">
+          <view v-for="item in ratings" :key="item.id" class="rating-item">
+            <view class="rating-head">
+              <text class="stars">{{ starText(item.rating) }}</text>
+              <text class="rating-date">{{ formatReviewDate(item.created_at) }}</text>
+            </view>
+            <text class="rating-comment">{{ item.comment || '老板未填写文字评价' }}</text>
+            <text class="rating-package">{{ item.package_name || '陪玩服务' }}</text>
+          </view>
+        </view>
+        <view v-else class="ratings-empty">暂无评价，完成订单并由老板评价后会显示在这里。</view>
+      </view>
     </view>
 
     <view class="club-card">
@@ -38,8 +73,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { completeOrder, getMyOrders, logoutPlayer } from '@/api/player'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { completeOrder, getMyOrders, getMyPlayerRatings, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -48,7 +83,15 @@ import { isApprovedPlayer } from '@/utils/client'
 
 const player = ref<any>(null)
 const orders = ref<any[]>([])
+const ratingData = ref<PlayerRatingsResult | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
+
+const ratings = computed(() => ratingData.value?.results || [])
+const ratingSummary = computed(() => ratingData.value?.summary || {
+  average_rating: 0,
+  rating_count: 0,
+  total_orders: 0
+})
 
 function statusClass(status: string) {
   return {
@@ -64,6 +107,18 @@ function formatOrderTime(value: string) {
   return formatDateTimeValue(value)
 }
 
+function formatReviewDate(value: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function starText(value: number) {
+  const count = Math.max(1, Math.min(5, Number(value || 0)))
+  return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}`
+}
+
 async function fetchOrders() {
   try {
     orders.value = await getMyOrders()
@@ -72,13 +127,26 @@ async function fetchOrders() {
   }
 }
 
+async function fetchRatings() {
+  try {
+    ratingData.value = await getMyPlayerRatings()
+  } catch (error) {
+    ratingData.value = null
+    toast(getErrorMessage(error, '获取评价失败'))
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([fetchOrders(), fetchRatings()])
+}
+
 async function complete(order: any) {
   const ok = await confirm('确定要标记订单完成吗？')
   if (!ok) return
   try {
     await completeOrder(order.order_no, player.value.id)
     success('已标记完成')
-    await fetchOrders()
+    await refreshAll()
   } catch (error) {
     toast(getErrorMessage(error, '操作失败'))
   }
@@ -109,8 +177,8 @@ onMounted(async () => {
     return
   }
   player.value = playerInfo
-  await fetchOrders()
-  refreshTimer = setInterval(fetchOrders, 10000)
+  await refreshAll()
+  refreshTimer = setInterval(refreshAll, 10000)
 })
 
 onUnmounted(() => {
@@ -125,6 +193,24 @@ onUnmounted(() => {
 .eyebrow { color: #a87520; font-size: 22rpx; font-weight: 900; }
 .title { margin-top: 12rpx; color: #172116; font-size: 42rpx; font-weight: 900; }
 .sub { margin-top: 8rpx; color: #687665; font-size: 24rpx; }
+.ratings-card { margin-top: 22rpx; }
+.rating-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
+.rating-summary > view { padding: 20rpx 10rpx; border-radius: 22rpx; text-align: center; background: #f7faf4; }
+.summary-score, .summary-value, .summary-label { display: block; }
+.summary-score { color: #a87520; font-size: 42rpx; font-weight: 900; }
+.summary-value { color: #172116; font-size: 34rpx; font-weight: 900; }
+.summary-label { margin-top: 6rpx; color: #8a9286; font-size: 21rpx; }
+.rating-section-head { display: flex; justify-content: space-between; align-items: center; margin: 26rpx 0 14rpx; }
+.rating-section-head text:first-child { color: #172116; font-size: 29rpx; font-weight: 900; }
+.rating-section-head text:last-child { color: #8a9286; font-size: 21rpx; }
+.rating-list { display: flex; flex-direction: column; gap: 14rpx; }
+.rating-item { padding: 20rpx; border-radius: 20rpx; background: #f7faf4; border: 1rpx solid rgba(39,61,42,.06); }
+.rating-head { display: flex; justify-content: space-between; align-items: center; gap: 14rpx; }
+.stars { color: #e1ac3f; font-size: 26rpx; letter-spacing: 2rpx; }
+.rating-date { color: #9aa197; font-size: 21rpx; }
+.rating-comment { display: block; margin-top: 10rpx; color: #39423a; font-size: 25rpx; line-height: 1.5; }
+.rating-package { display: block; margin-top: 8rpx; color: #8a9286; font-size: 21rpx; }
+.ratings-empty { padding: 28rpx 20rpx; border-radius: 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; background: #f7faf4; }
 .order-list { display: flex; flex-direction: column; gap: 18rpx; }
 .order-card { padding: 24rpx; border-radius: 30rpx; background: #fff; border: 1px solid rgba(37,49,35,.08); box-shadow: 0 10rpx 24rpx rgba(39, 61, 42, 0.06); }
 .order-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
