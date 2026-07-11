@@ -105,6 +105,11 @@ export interface BossOrderListItem {
   paid: boolean
   created_at: string
   kook_room_number?: string
+  order_type?: 'normal' | 'renewal' | string
+  renewal_count?: number
+  total_booked_hours?: number
+  pending_renewal_order_no?: string | null
+  can_renew?: boolean
 }
 
 export interface OrderCreateItemPayload {
@@ -128,6 +133,17 @@ export interface OrderCreatePayload {
   designated_players?: number[] | null
   boss_note?: string | null
   booked_hours?: number
+}
+
+export interface RenewalCreateResult {
+  order_no: string
+  parent_order_no: string
+  renewal_index: number
+  booked_hours: number
+  total_amount: number
+  status: string
+  created: boolean
+  message: string
 }
 
 /** 保留规格类型示例，页面展示不再自动注入这些前端预设商品。 */
@@ -219,6 +235,10 @@ export function getPlayerList(params: PlayerListParams = {}) {
 
 export function createOrder(payload: OrderCreatePayload) {
   return api.post<{ order_no: string }>('/boss/order', payload)
+}
+
+export function createRenewal(orderNo: string, units = 1) {
+  return api.post<RenewalCreateResult>(`/boss/order/${orderNo}/renew`, { units })
 }
 
 export function getOrder(orderNo: string) {
