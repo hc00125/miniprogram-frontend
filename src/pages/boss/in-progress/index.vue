@@ -21,8 +21,69 @@
     </view>
 
     <view v-if="orderInfo?.paid" class="amount-card">
-      <view><text>已支付金额</text><text><text class="amount-currency">¥</text>{{ paidAmount }}</text><text>{{ orderInfo.status === '待开打' ? '付款完成，等待陪玩开打' : '本单已完成付款' }}</text></view>
+      <view>
+        <text>累计已支付</text>
+        <text><text class="amount-currency">¥</text>{{ totalPaidAmount }}</text>
+        <text>主订单 ¥{{ paidAmount }} · 续单 ¥{{ renewalPaidAmount }}</text>
+      </view>
       <view class="shield">盾</view>
+    </view>
+
+    <view v-if="orderInfo && canShowRenewal" class="card renewal-card">
+      <view class="card-head">
+        <view>
+          <text class="card-title">继续续单</text>
+          <text class="card-sub">保持原陪玩阵容、商品规格和 KOOK 房间</text>
+        </view>
+        <text class="renewal-count">已续 {{ orderInfo.renewal_count || 0 }} 次</text>
+      </view>
+
+      <view class="renewal-summary">
+        <view><text>原服务</text><text>{{ originalHoursText }}</text></view>
+        <view><text>已续时长</text><text>{{ renewalHoursText }}</text></view>
+        <view><text>累计时长</text><text>{{ totalHoursText }}</text></view>
+      </view>
+
+      <view v-if="orderInfo.pending_renewal_order_no" class="pending-renewal">
+        <view>
+          <text>存在待支付续单</text>
+          <text>{{ orderInfo.pending_renewal_order_no }}</text>
+        </view>
+        <button class="continue-pay-btn" @tap="continueRenewalPayment">继续支付</button>
+      </view>
+
+      <template v-else>
+        <text class="renewal-label">选择续单份数</text>
+        <view class="unit-options">
+          <view
+            v-for="unit in renewalOptions"
+            :key="unit"
+            class="unit-option"
+            :class="{ active: renewalUnits === unit }"
+            @tap="renewalUnits = unit"
+          >
+            <text>{{ unit }}份</text>
+            <text>+{{ formatHours(baseHours * unit) }}</text>
+          </view>
+        </view>
+        <view class="renewal-price-row">
+          <view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view>
+          <view><text>续单金额</text><text>¥{{ renewalAmount }}</text></view>
+        </view>
+        <button class="renewal-btn" :disabled="renewing || !orderInfo.can_renew" @tap="handleRenewal">
+          {{ renewing ? '正在创建续单...' : `立即续单 ¥${renewalAmount}` }}
+        </button>
+        <text v-if="!orderInfo.can_renew" class="renewal-tip">当前订单暂不能创建新续单，请刷新状态或先处理待支付续单。</text>
+        <text v-else class="renewal-tip">续单会生成独立支付订单，付款成功后时长自动计入本订单。</text>
+      </template>
+
+      <view v-if="paidRenewals.length" class="renewal-history">
+        <text class="renewal-history-title">续单记录</text>
+        <view v-for="item in paidRenewals" :key="item.order_no" class="renewal-history-row">
+          <text>第{{ item.renewal_index }}次 · +{{ formatHours(Number(item.booked_hours || 0)) }}</text>
+          <text>¥{{ Number(item.total_amount || 0).toFixed(2) }} · {{ item.status }}</text>
+        </view>
+      </view>
     </view>
 
     <view v-if="orderInfo" class="card">
@@ -45,8 +106,9 @@
       <view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view>
       <view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view>
       <view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view>
-      <view class="info-row"><text>预订时长</text><text>{{ bookedHoursText }}</text></view>
-      <view class="info-row"><text>订单金额</text><text>¥{{ paidAmount }}</text></view>
+      <view class="info-row"><text>原预订时长</text><text>{{ originalHoursText }}</text></view>
+      <view class="info-row"><text>累计服务时长</text><text>{{ totalHoursText }}</text></view>
+      <view class="info-row"><text>主订单金额</text><text>¥{{ paidAmount }}</text></view>
     </view>
 
     <view v-if="orderInfo" class="card flow-card">
@@ -71,20 +133,31 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrder } from '@/api/boss'
+import { createRenewal, getOrder } from '@/api/boss'
 import { formatDateTime as formatDateTimeValue, formatDuration } from '@/utils/format'
 import { replace, relaunch } from '@/utils/nav'
-import { getErrorMessage, success, toast } from '@/utils/feedback'
+import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 
 const orderNo = ref('')
 const orderInfo = ref<any>(null)
 const duration = ref('00:00:00')
+const renewalUnits = ref(1)
+const renewing = ref(false)
+const renewalOptions = [1, 2, 3]
 let orderTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 
 const startTimeText = computed(() => formatOrderTime(orderInfo.value?.start_time))
-const bookedHoursText = computed(() => `${Number(orderInfo.value?.booked_hours || 1)}小时`)
+const baseHours = computed(() => Math.max(0.5, Number(orderInfo.value?.booked_hours || 1)))
 const paidAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
+const renewalPaidAmount = computed(() => Number(orderInfo.value?.renewal_paid_amount || 0).toFixed(2))
+const totalPaidAmount = computed(() => (Number(paidAmount.value) + Number(renewalPaidAmount.value)).toFixed(2))
+const renewalAmount = computed(() => (Number(paidAmount.value) * renewalUnits.value).toFixed(2))
+const originalHoursText = computed(() => formatHours(Number(orderInfo.value?.booked_hours || 0)))
+const renewalHoursText = computed(() => formatHours(Number(orderInfo.value?.renewal_booked_hours || 0)))
+const totalHoursText = computed(() => formatHours(Number(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0)))
+const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid))
+const canShowRenewal = computed(() => ['待开打', '进行中'].includes(orderInfo.value?.status) && orderInfo.value?.order_type !== 'renewal')
 const statusTitle = computed(() => orderInfo.value?.status === '待开打' ? '付款完成，等待开打' : '服务正在进行中')
 const statusSub = computed(() => orderInfo.value?.status === '待开打' ? '陪玩填写房间号并确认开打后开始计时' : '请保持游戏内在线，订单状态会自动刷新')
 const heroTitle = computed(() => orderInfo.value?.status === '待开打' ? '队伍已就位，准备开打' : '服务进行中')
@@ -95,6 +168,10 @@ const durationStatus = computed(() => {
 })
 
 function formatOrderTime(value?: string) { return value ? formatDateTimeValue(value) : '待确认' }
+function formatHours(value: number) {
+  const hours = Number(value || 0)
+  return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
+}
 
 function updateDuration() {
   if (!orderInfo.value?.timer_started_at) {
@@ -111,19 +188,11 @@ function updateDuration() {
 }
 
 function stepRank(status: string) {
-  return {
-    '待接单': 1,
-    '待支付': 2,
-    '待开打': 3,
-    '进行中': 4,
-    '已完成': 5,
-  }[status] || 0
+  return ({ '待接单': 1, '待支付': 2, '待开打': 3, '进行中': 4, '已完成': 5 } as Record<string, number>)[status] || 0
 }
-
 function targetRank(step: string) {
-  return { '接单': 2, '付款': 3, '开打': 4, '完成': 5 }[step] || 0
+  return ({ '接单': 2, '付款': 3, '开打': 4, '完成': 5 } as Record<string, number>)[step] || 0
 }
-
 function stepClass(step: string) {
   const current = stepRank(orderInfo.value?.status)
   const target = targetRank(step)
@@ -131,10 +200,7 @@ function stepClass(step: string) {
   if (current === target || (step === '接单' && current === 1)) return 'active'
   return ''
 }
-
-function stepIcon(step: string, fallback: string) {
-  return stepClass(step) === 'done' ? '✓' : fallback
-}
+function stepIcon(step: string, fallback: string) { return stepClass(step) === 'done' ? '✓' : fallback }
 
 async function checkOrder() {
   if (!orderNo.value) return
@@ -156,6 +222,29 @@ async function checkOrder() {
   } catch (error) { toast(getErrorMessage(error, '订单加载失败')) }
 }
 
+async function handleRenewal() {
+  if (!orderInfo.value?.can_renew || renewing.value) return
+  const message = `确认续单${renewalUnits.value}份？\n增加${formatHours(baseHours.value * renewalUnits.value)}，需支付¥${renewalAmount.value}`
+  if (!(await confirm(message, '确认续单'))) return
+  renewing.value = true
+  try {
+    const result = await createRenewal(orderNo.value, renewalUnits.value)
+    stopTimers()
+    success(result.created ? '续单已创建' : '已有待支付续单')
+    replace('/pages/boss/payment/index', { orderNo: result.order_no })
+  } catch (error) {
+    toast(getErrorMessage(error, '续单创建失败'))
+  } finally {
+    renewing.value = false
+  }
+}
+
+function continueRenewalPayment() {
+  const renewalOrderNo = orderInfo.value?.pending_renewal_order_no
+  if (!renewalOrderNo) return
+  stopTimers()
+  replace('/pages/boss/payment/index', { orderNo: renewalOrderNo })
+}
 function copyRoom() {
   const room = orderInfo.value?.kook_room_number
   if (!room) return
@@ -218,7 +307,37 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .card-sub { margin-top: 6rpx; color: #879083; font-size: 21rpx; }
 .order-status { padding: 7rpx 14rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; background: #eef8f1; }
 .mini-btn { min-width: 104rpx; height: 58rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 22rpx; font-weight: 900; background: #eef8f1; }
-.mini-btn::after { border: none; }
+.mini-btn::after, .renewal-btn::after, .continue-pay-btn::after { border: none; }
+.renewal-card { border-color: rgba(216,161,68,.18); background: linear-gradient(180deg, #fffdf8, #fff); }
+.renewal-count { padding: 7rpx 14rpx; border-radius: 999rpx; color: #9a6a16; font-size: 21rpx; font-weight: 900; background: #fff3d4; }
+.renewal-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; }
+.renewal-summary view { padding: 18rpx 10rpx; border-radius: 18rpx; text-align: center; background: #f7faf4; }
+.renewal-summary text { display: block; }
+.renewal-summary text:first-child { color: #879083; font-size: 20rpx; }
+.renewal-summary text:last-child { margin-top: 6rpx; font-size: 26rpx; font-weight: 900; }
+.renewal-label { display: block; margin-top: 22rpx; color: #687665; font-size: 23rpx; font-weight: 800; }
+.unit-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 12rpx; }
+.unit-option { padding: 18rpx 8rpx; border-radius: 18rpx; text-align: center; background: #f5f6f2; border: 1rpx solid transparent; }
+.unit-option text { display: block; }
+.unit-option text:first-child { font-size: 26rpx; font-weight: 900; }
+.unit-option text:last-child { margin-top: 4rpx; color: #879083; font-size: 20rpx; }
+.unit-option.active { color: #1f7c4b; border-color: rgba(47,155,99,.28); background: #eef8f1; }
+.renewal-price-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12rpx; margin-top: 16rpx; }
+.renewal-price-row view { display: flex; justify-content: space-between; align-items: center; padding: 16rpx; border-radius: 16rpx; background: #fff8e8; font-size: 22rpx; }
+.renewal-price-row text:last-child { color: #a87520; font-weight: 900; }
+.renewal-btn { width: 100%; height: 82rpx; margin-top: 18rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #d8a144, #a87520); }
+.renewal-btn[disabled] { opacity: .55; }
+.renewal-tip { display: block; margin-top: 12rpx; color: #879083; font-size: 21rpx; text-align: center; line-height: 1.5; }
+.pending-renewal { display: flex; align-items: center; gap: 16rpx; margin-top: 18rpx; padding: 18rpx; border-radius: 18rpx; background: #fff5df; }
+.pending-renewal view { flex: 1; min-width: 0; }
+.pending-renewal text { display: block; }
+.pending-renewal text:first-child { color: #8d651c; font-size: 24rpx; font-weight: 900; }
+.pending-renewal text:last-child { margin-top: 5rpx; color: #9a8b6b; font-size: 20rpx; word-break: break-all; }
+.continue-pay-btn { min-width: 150rpx; height: 66rpx; margin: 0; padding: 0 20rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; font-weight: 900; background: #a87520; }
+.renewal-history { margin-top: 22rpx; padding-top: 18rpx; border-top: 1rpx solid rgba(39,61,42,.08); }
+.renewal-history-title { display: block; margin-bottom: 8rpx; font-size: 24rpx; font-weight: 900; }
+.renewal-history-row { min-height: 58rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; color: #687665; font-size: 21rpx; border-bottom: 1rpx solid rgba(39,61,42,.06); }
+.renewal-history-row text:last-child { color: #1f7c4b; font-weight: 800; text-align: right; }
 .player-track { white-space: nowrap; }
 .player-card { width: 280rpx; display: inline-flex; align-items: center; gap: 14rpx; margin-right: 14rpx; padding: 18rpx; border-radius: 22rpx; background: #f7faf4; box-sizing: border-box; vertical-align: top; }
 .player-avatar { width: 70rpx; height: 70rpx; flex-shrink: 0; border-radius: 50%; }
