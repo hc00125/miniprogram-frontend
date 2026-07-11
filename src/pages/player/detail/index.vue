@@ -21,7 +21,10 @@
         </view>
         <view class="stats-row">
           <view class="stat-item"><text>{{ player.total_orders || 0 }}</text><text>接单数</text></view>
-          <view class="stat-item"><text>{{ player.avg_rating || '-' }}</text><text>评分</text></view>
+          <view class="stat-item">
+            <text>{{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text>
+            <text>{{ ratingSummary.rating_count ? `${ratingSummary.rating_count}条评价` : '暂无评分' }}</text>
+          </view>
           <view class="stat-item"><text>+¥{{ formatMoney(player.price_extra || 0) }}</text><text>加价/时</text></view>
         </view>
       </view>
@@ -56,6 +59,31 @@
         <view class="bio-text">{{ player.bio || '这个陪玩师还没有填写简介。' }}</view>
       </view>
 
+      <view v-if="player" class="detail-card ratings-card">
+        <view class="card-title-row">
+          <view>
+            <text class="card-title">老板评价</text>
+            <text class="card-subtitle">真实订单完成后产生的服务评分</text>
+          </view>
+          <view class="rating-summary-pill">
+            <text>★ {{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text>
+            <text>{{ ratingSummary.rating_count }}条</text>
+          </view>
+        </view>
+
+        <view v-if="ratings.length" class="review-list">
+          <view v-for="item in ratings" :key="item.id" class="review-item">
+            <view class="review-head">
+              <text class="review-stars">{{ starText(item.rating) }}</text>
+              <text class="review-date">{{ formatReviewDate(item.created_at) }}</text>
+            </view>
+            <text class="review-comment">{{ item.comment || '老板未填写文字评价' }}</text>
+            <text class="review-package">{{ item.package_name || '陪玩服务' }}</text>
+          </view>
+        </view>
+        <view v-else class="review-empty">暂无评价，完成首个订单后这里会展示真实反馈。</view>
+      </view>
+
       <view v-if="player" class="detail-card tips-card">
         <view class="card-title">下单提醒</view>
         <view class="tip-list">
@@ -80,17 +108,26 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
+import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult } from '@/api/player'
 import { goMain } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
 
 const playerId = ref<number | null>(null)
 const player = ref<OnlinePlayer | null>(null)
+const ratingData = ref<PlayerRatingsResult | null>(null)
 const loaded = ref(false)
 const isPlaying = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
+
+const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
+const ratingSummary = computed(() => ratingData.value?.summary || {
+  average_rating: Number(player.value?.avg_rating || 0),
+  rating_count: Number(player.value?.rating_count || 0),
+  total_orders: Number(player.value?.total_orders || 0)
+})
 
 function normalizeOnlineValue(value: unknown) {
   return value === true || value === 1 || value === '1' || value === 'true'
@@ -110,12 +147,32 @@ function formatMoney(value: number) {
   return Number.isInteger(value) ? `${value}` : Number(value || 0).toFixed(1)
 }
 
+function starText(value: number) {
+  const count = Math.max(1, Math.min(5, Number(value || 0)))
+  return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}`
+}
+
+function formatReviewDate(value: string) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 async function fetchPlayer() {
   loaded.value = false
+  ratingData.value = null
   try {
     const list = await getPlayerList()
     const matched = (list || []).map(normalizePlayer).find(item => Number(item.id) === Number(playerId.value)) || null
     player.value = matched
+    if (matched) {
+      try {
+        ratingData.value = await getPublicPlayerRatings(matched.id)
+      } catch {
+        ratingData.value = null
+      }
+    }
   } catch (error) {
     toast('陪玩详情加载失败')
     player.value = null
@@ -451,6 +508,87 @@ onBeforeUnmount(() => {
   color: #687665;
   font-size: 26rpx;
   line-height: 1.65;
+}
+
+.rating-summary-pill {
+  flex-shrink: 0;
+  padding: 10rpx 16rpx;
+  border-radius: 18rpx;
+  text-align: right;
+  background: #fff7df;
+}
+
+.rating-summary-pill text {
+  display: block;
+}
+
+.rating-summary-pill text:first-child {
+  color: #a87520;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.rating-summary-pill text:last-child {
+  margin-top: 4rpx;
+  color: #8a9286;
+  font-size: 20rpx;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.review-item {
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #f7faf4;
+  border: 1rpx solid rgba(39, 61, 42, 0.06);
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.review-stars {
+  color: #e1ac3f;
+  font-size: 27rpx;
+  letter-spacing: 2rpx;
+}
+
+.review-date {
+  color: #9aa197;
+  font-size: 21rpx;
+}
+
+.review-comment {
+  display: block;
+  margin-top: 12rpx;
+  color: #39423a;
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.review-package {
+  display: block;
+  margin-top: 10rpx;
+  color: #8a9286;
+  font-size: 21rpx;
+}
+
+.review-empty {
+  margin-top: 22rpx;
+  padding: 28rpx 20rpx;
+  border-radius: 20rpx;
+  color: #8a9286;
+  font-size: 24rpx;
+  text-align: center;
+  background: #f7faf4;
 }
 
 .tip-list {
