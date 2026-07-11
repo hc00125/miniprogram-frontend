@@ -2,8 +2,8 @@
   <view class="waiting-page">
     <view class="status-bar">
       <view class="status-pulse"></view>
-      <view class="status-copy"><text>正在匹配陪玩</text><text>系统会自动刷新接单进度</text></view>
-      <text class="status-tag">匹配中</text>
+      <view class="status-copy"><text>订单已派发</text><text>陪玩接满后将自动进入付款页面</text></view>
+      <text class="status-tag">{{ orderInfo?.status || '待接单' }}</text>
     </view>
 
     <view class="hero-card">
@@ -38,7 +38,7 @@
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
-      <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">重要信息独立展示，便于核对</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
+      <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">派单、接单、付款、开打依次进行</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
       <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view>
       <view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view>
       <view class="info-row"><text>需要陪玩</text><text>{{ requiredCount }}人</text></view>
@@ -48,14 +48,14 @@
       </view>
       <view class="info-row"><text>预订时长</text><text>{{ bookedHoursText }}</text></view>
       <view class="info-row"><text>下单时间</text><text>{{ createdTimeText }}</text></view>
-      <view class="amount-row"><text>预计费用</text><text>{{ amountText }}</text></view>
+      <view class="amount-row"><text>订单金额</text><text>{{ amountText }}</text></view>
     </view>
 
     <view class="footer-actions">
       <button class="ghost-btn" @tap="goMain('home')">返回首页</button>
       <button class="primary-btn" @tap="checkOrder">刷新状态</button>
       <button v-if="orderInfo?.status === '待接单'" class="danger-btn" @tap="handleCancel">取消订单</button>
-      <button v-if="orderInfo?.status === '进行中'" class="primary-btn" @tap="goProgress">查看进度</button>
+      <button v-if="orderInfo?.status === '待支付'" class="primary-btn" @tap="goPayment">去付款</button>
     </view>
   </view>
 </template>
@@ -102,10 +102,13 @@ async function checkOrder() {
     prevPlayerCount = count
     orderInfo.value = res
     updateWaitTime()
-    if (res.status === '进行中') {
+    if (res.status === '待支付') {
+      stopTimers()
+      replace('/pages/boss/payment/index', { orderNo: orderNo.value })
+    } else if (res.status === '待开打' || res.status === '进行中') {
       stopTimers()
       replace('/pages/boss/in-progress/index', { orderNo: orderNo.value })
-    } else if (res.status === '待支付' || res.status === '已完成') {
+    } else if (res.status === '已完成') {
       stopTimers()
       replace('/pages/boss/payment/index', { orderNo: orderNo.value })
     } else if (res.status === '已取消') {
@@ -123,7 +126,7 @@ function copyRoom() {
   if (!room) return
   uni.setClipboardData({ data: room, success: () => success('KOOK房间号已复制') })
 }
-function goProgress() { replace('/pages/boss/in-progress/index', { orderNo: orderNo.value }) }
+function goPayment() { replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
 async function handleCancel() {
   if (!(await confirm('确定要取消这个订单吗？'))) return
   try {
