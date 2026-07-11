@@ -57,7 +57,9 @@
             <view class="info-row"><text>价格</text><text class="amount">¥{{ order.total_amount || order.total_price_per_hour }}</text></view>
             <view class="order-bottom">
               <text>{{ formatOrderTime(order.created_at) }}</text>
-              <button v-if="order.status === '进行中'" class="club-btn action-btn" @tap.stop="complete(order)">完成</button>
+              <text v-if="order.status === '待支付'" class="stage-tip">等待老板付款</text>
+              <text v-else-if="order.status === '待开打'" class="stage-tip stage-tip--ready">可进入详情确认开打</text>
+              <button v-else-if="order.status === '进行中'" class="club-btn action-btn" @tap.stop="complete(order)">完成</button>
             </view>
           </view>
         </view>
@@ -96,8 +98,9 @@ const ratingSummary = computed(() => ratingData.value?.summary || {
 function statusClass(status: string) {
   return {
     'club-status--wait': status === '待接单',
-    'club-status--run': status === '进行中',
     'club-status--pay': status === '待支付',
+    'club-status--ready': status === '待开打',
+    'club-status--run': status === '进行中',
     'club-status--done': status === '已完成',
     'club-status--cancel': status === '已取消'
   }
@@ -212,13 +215,16 @@ onUnmounted(() => {
 .rating-package { display: block; margin-top: 8rpx; color: #8a9286; font-size: 21rpx; }
 .ratings-empty { padding: 28rpx 20rpx; border-radius: 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; background: #f7faf4; }
 .order-list { display: flex; flex-direction: column; gap: 18rpx; }
-.order-card { padding: 24rpx; border-radius: 30rpx; background: #fff; border: 1px solid rgba(37,49,35,.08); box-shadow: 0 10rpx 24rpx rgba(39, 61, 42, 0.06); }
+.order-card { padding: 24rpx; border-radius: 30rpx; background: #fff; border: 1px solid rgba(37,49,35,.08); box-shadow: 0 10rpx 24rpx rgba(39,61,42,.06); }
 .order-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12rpx; }
 .order-no { color: #687665; font-size: 24rpx; font-family: monospace; }
+.club-status--ready { color: #8d651c; background: #fff4d5; }
 .info-row { min-height: 58rpx; display: flex; justify-content: space-between; align-items: center; font-size: 26rpx; border-bottom: 1px solid rgba(37,49,35,.06); }
 .info-row text:first-child { color: #687665; }
 .amount { color: #a87520; font-weight: 900; }
 .order-bottom { margin-top: 18rpx; display: flex; align-items: center; justify-content: space-between; color: #687665; font-size: 23rpx; }
+.stage-tip { color: #a87520; font-weight: 800; }
+.stage-tip--ready { color: #1f7c4b; }
 .action-btn { min-width: 150rpx; height: 70rpx; font-size: 26rpx; }
 .footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(28rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 </style>
