@@ -63,7 +63,7 @@ export function grabOrder(order_no: string, player_id: number) {
 }
 
 export function getMyOrders() {
-  return api.get<any[]>('/player/my-orders')
+  return api.get<any[]>('/player/my-orders').then(list => list.filter(order => order.order_type !== 'renewal'))
 }
 
 export function getPlayerOrder(orderNo: string) {
