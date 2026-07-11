@@ -112,7 +112,7 @@ export function uploadPlayerApplicationAudioApi(filePath: string, title?: string
   })
 }
 
-export function submitPlayerApplicationApi(payload: Pick<PlayerApplication, 'name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
+export function submitPlayerApplicationApi(payload: Pick<PlayerApplication, 'name' | 'real_name' | 'type_id' | 'contact_wechat' | 'bio' | 'audio_intro_url' | 'audio_intro_title'>) {
   return api.post<PlayerApplication>('/player/apply', payload)
 }
 
