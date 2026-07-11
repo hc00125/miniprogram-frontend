@@ -12,7 +12,7 @@
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">明星阵容，在线开局</view>
-      <view class="club-sub">仅展示已上传头像的陪玩师，点击卡片可查看 TA 的音频自我介绍。</view>
+      <view class="club-sub">仅展示已上传头像的陪玩师，点击卡片可查看评分、评价和音频介绍。</view>
     </view>
 
     <scroll-view scroll-x class="filters" show-scrollbar="false">
@@ -39,7 +39,7 @@
           </view>
           <view class="tags">
             <text>{{ player.type_name || '优质陪玩' }}</text>
-            <text>★ {{ player.avg_rating || '-' }}</text>
+            <text class="rating-tag">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'} · ${player.rating_count}条评价` : '暂无评分' }}</text>
             <text>接单 {{ player.total_orders || 0 }}</text>
             <text v-if="player.audio_intro_url" class="audio-tag">语音介绍</text>
           </view>
@@ -279,6 +279,12 @@ function goMain(tab: MainTab = 'home') {
   font-size: 22rpx;
 }
 
+.tags .rating-tag {
+  color: #9a6a14;
+  background: #fff7df;
+  font-weight: 900;
+}
+
 .tags .audio-tag {
   color: #1f7c4b;
   background: #eef8f1;
@@ -307,5 +313,4 @@ function goMain(tab: MainTab = 'home') {
   border-radius: 20rpx;
   font-size: 24rpx;
 }
-
 </style>
