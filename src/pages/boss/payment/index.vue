@@ -84,8 +84,11 @@
         <text></text>
         <text>{{ payNotice }}</text>
       </view>
-      <button class="pay-button" :disabled="paying" @tap="payByWechat">
+      <button class="pay-button" :disabled="paying || cancelling" @tap="payByWechat">
         {{ paying ? '正在拉起虚拟支付...' : `微信虚拟支付 ¥${orderAmount}` }}
+      </button>
+      <button v-if="isRenewal" class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelRenewalOrder">
+        {{ cancelling ? '正在取消续单...' : '取消本次续单' }}
       </button>
       <text class="pay-help">支付成功以后微信服务器仍需数秒确认，请勿连续点击。</text>
     </view>
@@ -122,9 +125,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { getOrder, ratePlayer } from '@/api/boss'
+import { cancelOrder, getOrder, ratePlayer } from '@/api/boss'
 import { createMiniProgramPayment } from '@/api/pay'
-import { getErrorMessage, success, toast } from '@/utils/feedback'
+import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { replace } from '@/utils/nav'
 import { requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
@@ -140,6 +143,7 @@ const orderInfo = ref<any>(null)
 const loading = ref(true)
 const loadError = ref('')
 const paying = ref(false)
+const cancelling = ref(false)
 const payError = ref<PayErrorState | null>(null)
 const ratings = ref<Record<number, number>>({})
 const ratingComment = ref('')
@@ -194,14 +198,7 @@ function formatHours(value: number) {
 }
 
 function extractCode(error: any) {
-  return String(
-    error?.error_id
-    || error?.reference_id
-    || error?.wechat_code
-    || error?.errCode
-    || error?.statusCode
-    || ''
-  )
+  return String(error?.error_id || error?.reference_id || error?.wechat_code || error?.errCode || error?.statusCode || '')
 }
 
 function classifyPayError(error: any): PayErrorState {
@@ -209,24 +206,12 @@ function classifyPayError(error: any): PayErrorState {
   const code = extractCode(error)
   const text = `${detail} ${error?.errMsg || ''}`.toLowerCase()
 
-  if (/未绑定|绑定微信虚拟支付道具|product/.test(text)) {
-    return { title: '商品暂不可支付', detail, action: '请联系管理员为当前商品规格绑定正确的微信虚拟道具。', code }
-  }
-  if (/金额|价格|不一致|price|fee/.test(text)) {
-    return { title: '订单金额校验未通过', detail, action: '请确认订单仅包含一个固定价格规格，且没有额外加价或动态计费。', code }
-  }
-  if (/openid|登录态|session|重新登录|jscode/.test(text)) {
-    return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入订单支付页。', code }
-  }
-  if (/appkey|offer|配置|configuration/.test(text)) {
-    return { title: '支付配置异常', detail, action: '请管理员检查AppKey、OfferID和虚拟支付环境配置。', code }
-  }
-  if (/尚未审核|道具状态|15010|15011|15013/.test(text)) {
-    return { title: '微信道具暂不可用', detail, action: '请确认虚拟道具已发布，并使用正确的小程序版本和支付环境。', code }
-  }
-  if (Number(error?.statusCode) >= 500 || /内部错误|请求失败（500）/.test(text)) {
-    return { title: '支付服务暂时异常', detail, action: '请稍后重试；如持续出现，请把错误编号提供给管理员查询服务器日志。', code }
-  }
+  if (/未绑定|绑定微信虚拟支付道具|product/.test(text)) return { title: '商品暂不可支付', detail, action: '请联系管理员为当前商品规格绑定正确的微信虚拟道具。', code }
+  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '订单金额校验未通过', detail, action: '请确认订单仅包含一个固定价格规格，且没有额外加价或动态计费。', code }
+  if (/openid|登录态|session|重新登录|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入订单支付页。', code }
+  if (/appkey|offer|配置|configuration/.test(text)) return { title: '支付配置异常', detail, action: '请管理员检查AppKey、OfferID和虚拟支付环境配置。', code }
+  if (/尚未审核|道具状态|15010|15011|15013/.test(text)) return { title: '微信道具暂不可用', detail, action: '请确认虚拟道具已发布，并使用正确的小程序版本和支付环境。', code }
+  if (Number(error?.statusCode) >= 500 || /内部错误|请求失败（500）/.test(text)) return { title: '支付服务暂时异常', detail, action: '请稍后重试；如持续出现，请把错误编号提供给管理员查询服务器日志。', code }
   return { title: '虚拟支付未完成', detail, action: '请检查网络后重试；若微信已扣款，请不要重复支付，先刷新订单状态。', code }
 }
 
@@ -245,7 +230,7 @@ async function fetchOrder() {
 }
 
 async function payByWechat() {
-  if (!orderNo.value || paying.value) return
+  if (!orderNo.value || paying.value || cancelling.value) return
   payError.value = null
   paying.value = true
   try {
@@ -270,6 +255,21 @@ async function payByWechat() {
   }
 }
 
+async function cancelRenewalOrder() {
+  if (!isRenewal.value || isPaid.value || cancelling.value) return
+  if (!(await confirm('取消后本次续单不会增加服务时长，确定取消吗？', '取消续单'))) return
+  cancelling.value = true
+  try {
+    await cancelOrder(orderNo.value)
+    success('续单已取消')
+    if (serviceOrderNo.value) replace('/pages/boss/in-progress/index', { orderNo: serviceOrderNo.value })
+  } catch (error) {
+    toast(getErrorMessage(error, '取消续单失败'))
+  } finally {
+    cancelling.value = false
+  }
+}
+
 function copyErrorInfo() {
   if (!payError.value) return
   const text = [
@@ -286,9 +286,7 @@ async function submitRatings() {
   if (!playerIds.length) return toast('请至少给一位陪玩评分')
   ratingSubmitting.value = true
   try {
-    for (const playerId of playerIds) {
-      await ratePlayer(orderNo.value, playerId, ratings.value[playerId], ratingComment.value || null)
-    }
+    for (const playerId of playerIds) await ratePlayer(orderNo.value, playerId, ratings.value[playerId], ratingComment.value || null)
     ratingsSubmitted.value = true
     success('评价成功')
   } catch (error) {
@@ -356,8 +354,9 @@ onShow(fetchOrder)
 .virtual-notice text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 11rpx; border-radius: 50%; background: #d8a144; }
 .virtual-notice text:last-child { flex: 1; }
 .pay-button { width: 100%; height: 92rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 30rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); box-shadow: 0 12rpx 26rpx rgba(31,156,81,.22); }
-.pay-button::after, .mini-button::after, .ghost-button::after, .retry-button::after, .rating-button::after, .progress-button::after { border: none; }
-.pay-button[disabled] { opacity: .62; }
+.cancel-renewal-button { width: 100%; height: 76rpx; margin-top: 14rpx; border-radius: 999rpx; color: #8f4d35; font-size: 25rpx; font-weight: 900; background: #fff2ec; border: 1rpx solid rgba(143,77,53,.16); }
+.pay-button::after, .cancel-renewal-button::after, .mini-button::after, .ghost-button::after, .retry-button::after, .rating-button::after, .progress-button::after { border: none; }
+.pay-button[disabled], .cancel-renewal-button[disabled] { opacity: .62; }
 .pay-help { display: block; margin-top: 14rpx; color: #9aa197; font-size: 21rpx; text-align: center; }
 .error-card, .pay-error-card { padding: 24rpx; border-color: rgba(196,50,50,.17); background: #fff6f4; }
 .error-card { display: flex; align-items: center; gap: 16rpx; }
