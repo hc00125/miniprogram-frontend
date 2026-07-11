@@ -22,6 +22,21 @@
 
       <view class="field">
         <view class="field-head">
+          <text class="field-label">真实姓名</text>
+          <text class="field-required">*</text>
+        </view>
+        <input
+          v-model="form.real_name"
+          class="field-input"
+          maxlength="30"
+          placeholder="请输入本人真实姓名"
+          placeholder-style="color: #aab1a5; font-size: 27rpx;"
+        />
+        <text class="privacy-tip">仅用于平台内部审核，不会展示给老板或其他用户</text>
+      </view>
+
+      <view class="field">
+        <view class="field-head">
           <text class="field-label">陪玩师名称</text>
           <text class="field-auto">来自昵称</text>
         </view>
@@ -113,7 +128,7 @@
         <view class="notice-icon">i</view>
         <view class="notice-text">
           <text class="notice-title">审核说明</text>
-          <text class="notice-sub">平台将按当前登录账号建立陪玩师身份，音频介绍会随申请一并进入后台审核。</text>
+          <text class="notice-sub">真实姓名仅供平台内部审核；老板端只会看到你的陪玩师名称、头像和公开介绍。</text>
         </view>
       </view>
     </view>
@@ -144,10 +159,10 @@
         </view>
         <scroll-view scroll-y class="rule-body">
           <text class="rule-line">1. 陪玩师需通过平台审核，资料真实有效。</text>
-          <text class="rule-line">2. 接到订单后须按约定时间上线服务，迟到/失约将影响信用分。</text>
-          <text class="rule-line">3. 服务过程中应保持专业态度，遵守平台行为规范。</text>
-          <text class="rule-line">4. 收益按订单结算。</text>
-          <text class="rule-line">5. 平台保留对违规行为的处罚与解约权利。</text>
+          <text class="rule-line">2. 真实姓名仅用于平台身份审核，不作为公开陪玩资料展示。</text>
+          <text class="rule-line">3. 接到订单后须按约定时间上线服务，迟到/失约将影响信用分。</text>
+          <text class="rule-line">4. 服务过程中应保持专业态度，遵守平台行为规范。</text>
+          <text class="rule-line">5. 收益按订单结算，平台保留对违规行为的处罚与解约权利。</text>
         </scroll-view>
         <button class="club-btn club-btn--primary rule-confirm" @tap="showRule = false">我知道了</button>
       </view>
@@ -177,6 +192,7 @@ const playerTypes = ref<PlayerType[]>([
 ])
 
 const form = reactive({
+  real_name: '',
   type_id: 0,
   contact_wechat: '',
   bio: '',
@@ -203,6 +219,7 @@ function applyProfileDefaults(current: ClientProfile | null) {
   profile.value = current
   const application = current?.application
   const player = current?.player
+  form.real_name = application?.real_name || form.real_name
   form.contact_wechat = application?.contact_wechat || player?.contact_wechat || form.contact_wechat
   form.bio = application?.bio || player?.bio || form.bio
   form.audio_intro_url = application?.audio_intro_url || player?.audio_intro_url || form.audio_intro_url
@@ -270,7 +287,17 @@ function removeAudio() {
   form.audio_intro_title = ''
 }
 
+function validateRealName(value: string) {
+  const normalized = value.trim().replace(/\s+/g, ' ')
+  if (normalized.replace(/\s/g, '').length < 2) return ''
+  if (!/^[\u3400-\u9fffA-Za-z·•'’\- ]+$/.test(normalized)) return ''
+  return normalized
+}
+
 async function submitApply() {
+  const realName = validateRealName(form.real_name)
+  if (!form.real_name.trim()) return toast('请输入真实姓名')
+  if (!realName) return toast('请输入完整、有效的真实姓名')
   if (!form.type_id) return toast('请选择陪玩类型')
   if (!form.contact_wechat.trim()) return toast('请输入联系微信')
   if (!form.bio.trim()) return toast('请简单介绍自己')
@@ -280,6 +307,7 @@ async function submitApply() {
   try {
     await submitPlayerApplication({
       name: playerNameText.value,
+      real_name: realName,
       type_id: form.type_id,
       contact_wechat: form.contact_wechat.trim(),
       bio: form.bio.trim(),
@@ -448,11 +476,13 @@ onShow(loadApplyContext)
   font-weight: 900;
 }
 
-.readonly-note {
+.readonly-note,
+.privacy-tip {
   display: block;
   margin-top: 8rpx;
   color: #8a9286;
   font-size: 22rpx;
+  line-height: 1.45;
 }
 
 .type-grid {
