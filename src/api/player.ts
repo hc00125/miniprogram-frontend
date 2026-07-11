@@ -11,12 +11,39 @@ export interface PlayerLoginResult {
   expires_at: string
 }
 
+export interface PlayerRatingItem {
+  id: number
+  rating: number
+  comment: string
+  package_name: string
+  created_at: string
+}
+
+export interface PlayerRatingsResult {
+  player_id: number
+  player_name: string
+  summary: {
+    average_rating: number
+    rating_count: number
+    total_orders: number
+  }
+  results: PlayerRatingItem[]
+}
+
 export function loginPlayer(name: string, type_id: number) {
   return api.post<PlayerLoginResult>('/player/login', { name, type_id })
 }
 
 export function getCurrentPlayer() {
   return api.get<any>('/player/me')
+}
+
+export function getPublicPlayerRatings(playerId: number) {
+  return api.get<PlayerRatingsResult>(`/player/${playerId}/ratings`)
+}
+
+export function getMyPlayerRatings() {
+  return api.get<PlayerRatingsResult>('/player/ratings/me')
 }
 
 export function updatePlayerOnlineStatus(is_online: boolean) {
