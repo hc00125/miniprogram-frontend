@@ -67,6 +67,7 @@ export interface OnlinePlayer {
   type_name: string
   price_extra: number
   avg_rating: number
+  rating_count?: number
   total_orders: number
   status: string
   is_online?: boolean
