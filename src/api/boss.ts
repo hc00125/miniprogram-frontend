@@ -146,6 +146,23 @@ export interface RenewalCreateResult {
   message: string
 }
 
+export interface OrderRatingRecord {
+  id: number
+  player_id: number
+  player_name: string
+  rating: number
+  comment: string
+  created_at: string
+}
+
+export interface OrderRatingStatus {
+  order_no: string
+  rated_player_ids: number[]
+  remaining_player_ids: number[]
+  all_rated: boolean
+  results: OrderRatingRecord[]
+}
+
 /** 保留规格类型示例，页面展示不再自动注入这些前端预设商品。 */
 export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-888', name: '电视台保底 888w', price: 58, guarantee_amount: '888w', sort_order: 1 },
@@ -243,6 +260,10 @@ export function createRenewal(orderNo: string, units = 1) {
 
 export function getOrder(orderNo: string) {
   return api.get<any>(`/boss/order/${orderNo}`).then(normalizeBossOrderDisplay)
+}
+
+export function getOrderRatings(orderNo: string) {
+  return api.get<OrderRatingStatus>(`/boss/order/${orderNo}/ratings`)
 }
 
 export function cancelOrder(orderNo: string) {
