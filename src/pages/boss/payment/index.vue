@@ -133,21 +133,27 @@
     </view>
 
     <view v-if="isCompleted && !isRenewal && orderInfo?.players?.length" class="card rating-card">
-      <view class="card-head"><text>评价陪玩</text><text>帮助其他老板选择</text></view>
-      <view v-for="player in orderInfo.players" :key="player.id" class="rating-item">
+      <view class="card-head"><text>评价陪玩</text><text>{{ allPlayersRated ? '本订单已评价完成' : '每位陪玩仅可评价一次' }}</text></view>
+      <view v-for="player in orderInfo.players" :key="player.id" class="rating-item" :class="{ 'rating-item--rated': isPlayerRated(player.id) }">
         <view class="rating-player">
           <image v-if="player.avatar_url" class="rating-avatar" :src="player.avatar_url" mode="aspectFill" />
           <view v-else class="rating-avatar rating-avatar--empty">{{ player.name?.[0] || '陪' }}</view>
           <view><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text></view>
         </view>
-        <view class="stars">
-          <text v-for="star in 5" :key="star" :class="{ active: (ratings[player.id] || 0) >= star }" @tap="ratings[player.id] = star">★</text>
+        <view class="rating-control">
+          <view class="stars" :class="{ locked: isPlayerRated(player.id) }">
+            <text v-for="star in 5" :key="star" :class="{ active: (ratings[player.id] || 0) >= star }" @tap="setRating(player.id, star)">★</text>
+          </view>
+          <text v-if="isPlayerRated(player.id)" class="rating-done-tag">已评价</text>
         </view>
       </view>
-      <textarea v-model="ratingComment" class="rating-textarea" maxlength="60" placeholder="留下您的真实评价（选填）" />
-      <button class="rating-button" :disabled="ratingSubmitting || ratingsSubmitted" @tap="submitRatings">
-        {{ ratingsSubmitted ? '已评价' : (ratingSubmitting ? '提交中...' : '提交评价') }}
-      </button>
+      <view v-if="allPlayersRated" class="rating-complete-tip">该订单的所有陪玩均已评价，无法再次提交或修改。</view>
+      <template v-else>
+        <textarea v-model="ratingComment" class="rating-textarea" maxlength="60" placeholder="留下您的真实评价（选填）" />
+        <button class="rating-button" :disabled="ratingSubmitting || !selectedUnratedPlayerIds.length" @tap="submitRatings">
+          {{ ratingSubmitting ? '提交中...' : (selectedUnratedPlayerIds.length ? `提交评价（${selectedUnratedPlayerIds.length}位）` : '请选择星级') }}
+        </button>
+      </template>
     </view>
 
     <view v-if="loading" class="loading-state">订单加载中...</view>
@@ -157,7 +163,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { cancelOrder, getOrder, ratePlayer } from '@/api/boss'
+import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
 import { createMiniProgramPayment } from '@/api/pay'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { replace } from '@/utils/nav'
@@ -178,9 +184,9 @@ const paying = ref(false)
 const cancelling = ref(false)
 const payError = ref<PayErrorState | null>(null)
 const ratings = ref<Record<number, number>>({})
+const existingRatings = ref<Record<number, OrderRatingRecord>>({})
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
-const ratingsSubmitted = ref(false)
 
 const isPaid = computed(() => Boolean(orderInfo.value?.paid))
 const isRenewal = computed(() => orderInfo.value?.order_type === 'renewal')
@@ -203,6 +209,13 @@ const amountCardLabel = computed(() => {
 const originalBookedHours = computed(() => formatHours(orderInfo.value?.booked_hours || 0))
 const renewalBookedHours = computed(() => formatHours(orderInfo.value?.renewal_booked_hours || 0))
 const totalBookedHours = computed(() => formatHours(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0))
+const allPlayersRated = computed(() => {
+  const players = orderInfo.value?.players || []
+  return Boolean(players.length) && players.every((player: any) => Boolean(existingRatings.value[player.id]))
+})
+const selectedUnratedPlayerIds = computed(() => Object.keys(ratings.value)
+  .map(Number)
+  .filter(playerId => ratings.value[playerId] > 0 && !existingRatings.value[playerId]))
 const payNotice = computed(() => isRenewal.value
   ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。付款成功后会自动合并到原订单，陪玩阵容和房间号保持不变。`
   : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。')
@@ -255,6 +268,36 @@ function formatRenewalTime(value?: string | null) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+function isPlayerRated(playerId: number) {
+  return Boolean(existingRatings.value[playerId])
+}
+
+function setRating(playerId: number, value: number) {
+  if (isPlayerRated(playerId)) {
+    toast('该陪玩已经评价过，不能重复评价')
+    return
+  }
+  ratings.value[playerId] = value
+}
+
+async function fetchRatingStatus() {
+  if (!orderNo.value || !isCompleted.value || isRenewal.value) {
+    existingRatings.value = {}
+    return
+  }
+  try {
+    const result = await getOrderRatings(orderNo.value)
+    const map: Record<number, OrderRatingRecord> = {}
+    for (const item of result.results || []) {
+      map[item.player_id] = item
+      ratings.value[item.player_id] = item.rating
+    }
+    existingRatings.value = map
+  } catch (error) {
+    toast(getErrorMessage(error, '评价状态加载失败'))
+  }
+}
+
 function extractCode(error: any) {
   return String(error?.error_id || error?.reference_id || error?.wechat_code || error?.errCode || error?.statusCode || '')
 }
@@ -280,6 +323,7 @@ async function fetchOrder() {
   try {
     orderInfo.value = await getOrder(orderNo.value)
     if (isPaid.value) payError.value = null
+    await fetchRatingStatus()
   } catch (error) {
     loadError.value = getErrorMessage(error, '订单加载失败')
   } finally {
@@ -340,15 +384,20 @@ function copyErrorInfo() {
 }
 
 async function submitRatings() {
-  const playerIds = Object.keys(ratings.value).map(Number).filter(id => ratings.value[id] > 0)
-  if (!playerIds.length) return toast('请至少给一位陪玩评分')
+  const playerIds = selectedUnratedPlayerIds.value
+  if (!playerIds.length) return toast('请至少给一位未评价的陪玩评分')
   ratingSubmitting.value = true
   try {
-    for (const playerId of playerIds) await ratePlayer(orderNo.value, playerId, ratings.value[playerId], ratingComment.value || null)
-    ratingsSubmitted.value = true
-    success('评价成功')
+    for (const playerId of playerIds) {
+      await ratePlayer(orderNo.value, playerId, ratings.value[playerId], ratingComment.value || null)
+    }
+    ratingComment.value = ''
+    await fetchRatingStatus()
+    success(allPlayersRated.value ? '本订单评价已全部完成' : '评价成功')
   } catch (error) {
-    toast(getErrorMessage(error, '评价失败'))
+    await fetchRatingStatus()
+    const detail = getErrorMessage(error, '评价失败')
+    toast(detail.includes('已评价') ? '评价状态已更新，该陪玩不能重复评价' : detail)
   } finally {
     ratingSubmitting.value = false
   }
@@ -454,16 +503,22 @@ onShow(fetchOrder)
 .completed-sub { margin-top: 10rpx; color: #7d877a; font-size: 23rpx; }
 .progress-button { min-width: 260rpx; margin-top: 24rpx; padding: 0 30rpx; color: #fff; background: #1f7c4b; }
 .rating-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-bottom: 1rpx solid rgba(39,61,42,.07); }
+.rating-item--rated { opacity: .78; }
 .rating-player { display: flex; align-items: center; gap: 12rpx; }
 .rating-avatar { width: 60rpx; height: 60rpx; border-radius: 50%; }
 .rating-avatar--empty { display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; background: #2f9b63; }
 .rating-player view text { display: block; }
 .rating-player view text:first-child { font-size: 25rpx; font-weight: 900; }
 .rating-player view text:last-child { margin-top: 4rpx; color: #8a9286; font-size: 20rpx; }
+.rating-control { display: flex; flex-direction: column; align-items: flex-end; gap: 5rpx; }
 .stars { display: flex; gap: 6rpx; }
+.stars.locked { pointer-events: none; }
 .stars text { color: #d9ded7; font-size: 34rpx; }
 .stars text.active { color: #e1ac3f; }
+.rating-done-tag { padding: 4rpx 10rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 19rpx; font-weight: 900; background: #eaf7ee; }
+.rating-complete-tip { margin-top: 16rpx; padding: 22rpx; border-radius: 18rpx; color: #55705e; font-size: 23rpx; line-height: 1.5; text-align: center; background: #eef8f1; }
 .rating-textarea { width: 100%; min-height: 130rpx; margin-top: 18rpx; padding: 18rpx; border-radius: 18rpx; background: #f7faf4; box-sizing: border-box; font-size: 25rpx; }
 .rating-button { width: 100%; height: 78rpx; margin-top: 16rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: #2f9b63; }
+.rating-button[disabled] { opacity: .55; }
 .loading-state { padding: 80rpx 20rpx; color: #8a9286; text-align: center; font-size: 26rpx; }
 </style>
