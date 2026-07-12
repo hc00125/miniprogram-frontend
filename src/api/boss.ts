@@ -283,7 +283,7 @@ export function confirmSelfPayment(orderNo: string, actual_amount: number) {
 }
 
 export function ratePlayer(orderNo: string, player_id: number, rating: number, comment: string | null) {
-  return api.post(`/boss/order/${orderNo}/rate`, { player_id, rating, comment })
+  return api.post(`/boss/order/${orderNo}/ratings`, { player_id, rating, comment })
 }
 
 export function queryBossOrders(bossWechat: string) {
