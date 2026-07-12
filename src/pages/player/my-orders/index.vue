@@ -9,6 +9,15 @@
       <button class="club-btn club-btn--ghost" @tap="refreshAll">刷新</button>
     </view>
 
+    <view class="wallet-entry" @tap="go('/pages/player/earnings/index')">
+      <view class="wallet-icon">鱼</view>
+      <view class="wallet-main">
+        <text>鱼干收益中心</text>
+        <text>查看工资、15%抽成、8天审核与提现记录</text>
+      </view>
+      <text class="wallet-arrow">›</text>
+    </view>
+
     <view class="club-card ratings-card">
       <view class="club-card__bd">
         <view class="rating-summary">
@@ -196,6 +205,13 @@ onUnmounted(() => {
 .eyebrow { color: #a87520; font-size: 22rpx; font-weight: 900; }
 .title { margin-top: 12rpx; color: #172116; font-size: 42rpx; font-weight: 900; }
 .sub { margin-top: 8rpx; color: #687665; font-size: 24rpx; }
+.wallet-entry { margin-top: 20rpx; padding: 22rpx 24rpx; display: flex; align-items: center; gap: 16rpx; border-radius: 26rpx; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); box-shadow: 0 14rpx 30rpx rgba(31,124,75,.16); }
+.wallet-icon { width: 70rpx; height: 70rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 28rpx; font-weight: 900; background: rgba(255,255,255,.14); }
+.wallet-main { flex: 1; min-width: 0; }
+.wallet-main text { display: block; }
+.wallet-main text:first-child { font-size: 29rpx; font-weight: 900; }
+.wallet-main text:last-child { margin-top: 5rpx; color: rgba(255,255,255,.72); font-size: 21rpx; }
+.wallet-arrow { font-size: 42rpx; font-weight: 300; }
 .ratings-card { margin-top: 22rpx; }
 .rating-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14rpx; }
 .rating-summary > view { padding: 20rpx 10rpx; border-radius: 22rpx; text-align: center; background: #f7faf4; }
