@@ -10,8 +10,11 @@
     </view>
 
     <view v-if="orderInfo" class="amount-card">
-      <text class="amount-label">{{ isPaid ? '已支付金额' : '待支付金额' }}</text>
-      <view class="amount-row"><text>¥</text><text>{{ orderAmount }}</text></view>
+      <text class="amount-label">{{ amountCardLabel }}</text>
+      <view class="amount-row"><text>¥</text><text>{{ amountCardValue }}</text></view>
+      <text v-if="showRenewalSummary" class="amount-breakdown">
+        主订单 ¥{{ mainOrderAmount }} · 续单 ¥{{ renewalPaidAmount }}
+      </text>
       <view class="secure-tip"><text>盾</text><text>微信官方小程序虚拟支付</text></view>
     </view>
 
@@ -37,9 +40,38 @@
         <text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text>
       </view>
       <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
-      <view v-if="orderInfo.booked_hours" class="info-row"><text>{{ isRenewal ? '新增时长' : '预订时长' }}</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
-      <view v-if="!isRenewal && orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
-      <view class="info-row total-row"><text>{{ isRenewal ? '续单金额' : '订单总额' }}</text><text>¥{{ orderAmount }}</text></view>
+
+      <template v-if="isRenewal">
+        <view v-if="orderInfo.booked_hours" class="info-row"><text>新增时长</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
+        <view class="info-row total-row"><text>续单金额</text><text>¥{{ orderAmount }}</text></view>
+      </template>
+      <template v-else>
+        <view v-if="orderInfo.booked_hours" class="info-row"><text>{{ showRenewalSummary ? '原预订时长' : '预订时长' }}</text><text>{{ originalBookedHours }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>续单时长</text><text>{{ renewalBookedHours }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row emphasis-row"><text>累计购买时长</text><text>{{ totalBookedHours }}</text></view>
+        <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>主订单金额</text><text>¥{{ mainOrderAmount }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>续单金额</text><text>¥{{ renewalPaidAmount }}</text></view>
+        <view class="info-row total-row"><text>{{ showRenewalSummary ? '累计金额' : '订单总额' }}</text><text>¥{{ amountCardValue }}</text></view>
+      </template>
+    </view>
+
+    <view v-if="!isRenewal && paidRenewals.length" class="card renewal-history-card">
+      <view class="card-head"><text>续单记录</text><text>共{{ paidRenewals.length }}次</text></view>
+      <view v-for="item in paidRenewals" :key="item.order_no" class="renewal-record">
+        <view class="renewal-record-head">
+          <text>第{{ item.renewal_index }}次续单</text>
+          <text>已支付</text>
+        </view>
+        <view class="renewal-record-grid">
+          <view><text>新增时长</text><text>{{ formatHours(item.booked_hours) }}</text></view>
+          <view><text>支付金额</text><text>¥{{ money(item.total_amount) }}</text></view>
+          <view><text>支付时间</text><text>{{ formatRenewalTime(item.payment_confirmed_at || item.created_at) }}</text></view>
+        </view>
+        <view class="renewal-order-no" @tap="copyText(item.order_no)">
+          <text>续单订单号</text><text>{{ item.order_no }} · 复制</text>
+        </view>
+      </view>
     </view>
 
     <view v-if="orderInfo?.players?.length" class="card players-card">
@@ -156,7 +188,21 @@ const isCompleted = computed(() => orderInfo.value?.status === '已完成')
 const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid))
 const showProgressButton = computed(() => isRenewal.value ? isPaid.value : ['待开打', '进行中'].includes(orderInfo.value?.status))
 const serviceOrderNo = computed(() => isRenewal.value ? orderInfo.value?.parent_order_no : orderNo.value)
-const orderAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
+const orderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
+const mainOrderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
+const renewalPaidAmount = computed(() => money(isRenewal.value ? 0 : orderInfo.value?.renewal_paid_amount || 0))
+const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid && item.status === '已完成'))
+const showRenewalSummary = computed(() => !isRenewal.value && Number(orderInfo.value?.renewal_paid_amount || 0) > 0)
+const cumulativePaidAmount = computed(() => money(Number(mainOrderAmount.value) + Number(renewalPaidAmount.value)))
+const amountCardValue = computed(() => isRenewal.value ? orderAmount.value : (isPaid.value ? cumulativePaidAmount.value : orderAmount.value))
+const amountCardLabel = computed(() => {
+  if (!isPaid.value) return '待支付金额'
+  if (showRenewalSummary.value) return '累计已支付'
+  return '已支付金额'
+})
+const originalBookedHours = computed(() => formatHours(orderInfo.value?.booked_hours || 0))
+const renewalBookedHours = computed(() => formatHours(orderInfo.value?.renewal_booked_hours || 0))
+const totalBookedHours = computed(() => formatHours(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0))
 const payNotice = computed(() => isRenewal.value
   ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。付款成功后会自动合并到原订单，陪玩阵容和房间号保持不变。`
   : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。')
@@ -187,14 +233,26 @@ const paidCardTitle = computed(() => {
 })
 const paidCardSub = computed(() => {
   if (isRenewal.value) return `新增${formatHours(orderInfo.value?.booked_hours || 0)}已自动计入原订单`
+  if (isCompleted.value && showRenewalSummary.value) return `服务已完成，本单累计购买${totalBookedHours.value}，可以对陪玩进行评价`
   if (isCompleted.value) return '服务已完成，可以对陪玩进行评价'
   if (orderInfo.value?.status === '进行中') return '陪玩已开打，订单正在计时'
   return '微信服务器已确认付款，请等待陪玩填写房间号并开打'
 })
 
+function money(value: number | string | null | undefined) {
+  return Number(value || 0).toFixed(2)
+}
+
 function formatHours(value: number) {
   const hours = Number(value || 0)
   return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
+}
+
+function formatRenewalTime(value?: string | null) {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 function extractCode(error: any) {
@@ -327,6 +385,7 @@ onShow(fetchOrder)
 .amount-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin-top: 12rpx; }
 .amount-row text:first-child { font-size: 38rpx; font-weight: 900; }
 .amount-row text:last-child { font-size: 76rpx; line-height: 1; font-weight: 900; }
+.amount-breakdown { display: block; margin-top: 14rpx; color: rgba(255,255,255,.78); font-size: 22rpx; font-weight: 700; }
 .secure-tip { display: inline-flex; align-items: center; gap: 10rpx; margin-top: 24rpx; padding: 10rpx 18rpx; border-radius: 999rpx; background: rgba(255,255,255,.12); font-size: 22rpx; }
 .card { padding: 26rpx; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 18rpx; }
@@ -336,8 +395,23 @@ onShow(fetchOrder)
 .info-row > text:first-child { flex-shrink: 0; color: #7d877a; }
 .info-row > text:last-child { flex: 1; text-align: right; font-weight: 700; word-break: break-all; }
 .room-row > text:last-child { color: #1f7c4b; }
+.emphasis-row > text:last-child { color: #1f7c4b; font-size: 28rpx; font-weight: 900; }
 .total-row { border-bottom: 0; }
 .total-row > text:last-child { color: #a87520; font-size: 31rpx; font-weight: 900; }
+.renewal-history-card { border-color: rgba(216,161,68,.18); background: linear-gradient(180deg, #fffdf8, #fff); }
+.renewal-record { margin-top: 16rpx; padding: 20rpx; border-radius: 20rpx; background: #f8faf5; border: 1rpx solid rgba(39,61,42,.07); }
+.renewal-record:first-of-type { margin-top: 0; }
+.renewal-record-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.renewal-record-head text:first-child { font-size: 26rpx; font-weight: 900; }
+.renewal-record-head text:last-child { padding: 6rpx 12rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 20rpx; font-weight: 900; background: #eaf7ee; }
+.renewal-record-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10rpx; margin-top: 16rpx; }
+.renewal-record-grid view { min-width: 0; padding: 14rpx 8rpx; border-radius: 14rpx; text-align: center; background: #fff; }
+.renewal-record-grid text { display: block; }
+.renewal-record-grid text:first-child { color: #879083; font-size: 19rpx; }
+.renewal-record-grid text:last-child { margin-top: 5rpx; font-size: 21rpx; font-weight: 900; word-break: break-all; }
+.renewal-order-no { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid rgba(39,61,42,.07); font-size: 20rpx; }
+.renewal-order-no text:first-child { flex-shrink: 0; color: #879083; }
+.renewal-order-no text:last-child { flex: 1; color: #1f7c4b; text-align: right; font-family: monospace; word-break: break-all; }
 .players-track { white-space: nowrap; }
 .player-item { width: 150rpx; display: inline-flex; flex-direction: column; align-items: center; margin-right: 14rpx; padding: 18rpx 10rpx; border-radius: 22rpx; background: #f7faf4; box-sizing: border-box; vertical-align: top; }
 .player-avatar { width: 76rpx; height: 76rpx; border-radius: 50%; background: #e8efe7; }
