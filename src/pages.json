@@ -130,6 +130,14 @@
       }
     },
     {
+      "path": "pages/player/earnings/index",
+      "style": {
+        "navigationBarTitleText": "鱼干收益中心",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/player/order-detail/index",
       "style": {
         "navigationBarTitleText": "订单详情"
