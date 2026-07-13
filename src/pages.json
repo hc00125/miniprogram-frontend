@@ -100,6 +100,22 @@
       }
     },
     {
+      "path": "pages/legal/privacy/index",
+      "style": {
+        "navigationBarTitleText": "隐私政策",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/legal/user-agreement/index",
+      "style": {
+        "navigationBarTitleText": "用户服务协议",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/client/account/index",
       "style": {
         "navigationBarTitleText": "账号信息"
