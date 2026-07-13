@@ -211,7 +211,7 @@ function baseOrderAmount(order: BossOrderListItem) {
 }
 
 function renewalPaidAmount(order: BossOrderListItem) {
-  return Number(order.renewal_paid_amount || 0)
+  return Number((order as any).renewal_paid_amount || 0)
 }
 
 function orderDisplayAmount(order: BossOrderListItem) {
