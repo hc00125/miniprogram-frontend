@@ -87,8 +87,13 @@
                 <text class="order-no">订单号 {{ order.order_no }}</text>
               </view>
               <view class="order-amount">
-                <text class="amount-currency">¥</text>
-                <text class="amount-value">{{ formatMoney(order.total_amount || order.total_price_per_hour || 0) }}</text>
+                <view class="order-amount-main">
+                  <text class="amount-currency">¥</text>
+                  <text class="amount-value">{{ formatMoney(orderDisplayAmount(order)) }}</text>
+                </view>
+                <text v-if="renewalPaidAmount(order) > 0" class="amount-renewal-note">
+                  含续单 ¥{{ formatMoney(renewalPaidAmount(order)) }}
+                </text>
               </view>
             </view>
 
@@ -199,6 +204,18 @@ function stageHint(status: string) {
   if (status === '已完成') return '服务已完成'
   if (status === '已取消') return '订单已取消'
   return status
+}
+
+function baseOrderAmount(order: BossOrderListItem) {
+  return Number(order.total_amount ?? order.total_price_per_hour ?? 0)
+}
+
+function renewalPaidAmount(order: BossOrderListItem) {
+  return Number(order.renewal_paid_amount || 0)
+}
+
+function orderDisplayAmount(order: BossOrderListItem) {
+  return baseOrderAmount(order) + renewalPaidAmount(order)
 }
 
 function formatMoney(value: number) {
@@ -349,9 +366,11 @@ function goMain(tab: MainTab = 'home') {
 .order-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .order-title { color: #14291f; font-size: 30rpx; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .order-no { color: #8b9788; font-size: 20rpx; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.order-amount { display: flex; align-items: baseline; gap: 2rpx; color: #1f7c4b; flex-shrink: 0; }
+.order-amount { display: flex; flex-direction: column; align-items: flex-end; color: #1f7c4b; flex-shrink: 0; }
+.order-amount-main { display: flex; align-items: baseline; gap: 2rpx; }
 .amount-currency { font-size: 22rpx; font-weight: 800; }
 .amount-value { font-size: 38rpx; font-weight: 900; line-height: 1; }
+.amount-renewal-note { margin-top: 7rpx; color: #a87520; font-size: 19rpx; font-weight: 800; white-space: nowrap; }
 .order-meta { display: flex; flex-direction: column; gap: 8rpx; color: #828a7e; font-size: 22rpx; }
 .meta-item { display: flex; align-items: center; gap: 6rpx; }
 .meta-icon { color: #5fb78a; font-size: 14rpx; }
