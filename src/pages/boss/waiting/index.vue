@@ -40,7 +40,7 @@
 
     <view v-if="orderInfo" class="card progress-card">
       <view class="card-head">
-        <view><text class="card-title">接单进度</text><text class="card-sub">{{ readyCount }}/{{ requiredCount }} 位陪玩已就位</text></view>
+        <view><text class="card-title">接单与入房进度</text><text class="card-sub">{{ readyCount }}/{{ requiredCount }} 位陪玩已就位，接单后需在10分钟内进入房间</text></view>
         <text class="open-slot">剩余{{ Math.max(0, requiredCount - readyCount) }}位</text>
       </view>
       <view class="progress-track"><view class="progress-fill" :style="{ width: progressPercent }"></view></view>
@@ -50,6 +50,7 @@
           <view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view>
           <text class="player-name">{{ player.name }}</text>
           <text class="player-type">{{ player.is_designated ? '指定已接受' : (player.type_name || '已接单') }}</text>
+          <text class="player-entry" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text>
         </view>
         <view v-for="item in waitingSlots" :key="item" class="player-item waiting">
           <view class="player-avatar waiting-avatar"><text></text><text></text><text></text></view>
@@ -57,6 +58,10 @@
           <text class="player-type">等待接单</text>
         </view>
       </scroll-view>
+      <view v-if="overduePlayers.length" class="entry-alert">
+        <text>有 {{ overduePlayers.length }} 位陪玩进入房间超时</text>
+        <text>系统只保留待核实记录，不会自动处罚；请结合实际沟通后由管理员处理。</text>
+      </view>
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
@@ -98,6 +103,7 @@ let waitTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
 
 const players = computed(() => orderInfo.value?.players || [])
+const overduePlayers = computed(() => players.value.filter((item: any) => ['overdue', 'late_confirmed'].includes(item.room_join_status)))
 const readyCount = computed(() => players.value.length)
 const requiredCount = computed(() => orderInfo.value?.required_players || 0)
 const waitingSlots = computed(() => Array.from({ length: Math.max(0, requiredCount.value - readyCount.value) }, (_, index) => index))
@@ -115,10 +121,23 @@ function countdownText(value: string) {
   return `${Math.floor(diff / 60)}分${diff % 60}秒后超时`
 }
 
+function playerRoomText(player: any) {
+  const status = player.room_join_status || 'pending'
+  if (status === 'confirmed') return '已进入房间'
+  if (status === 'late_confirmed') return '超时后已进入'
+  if (status === 'overdue') return '进入房间已超时'
+  if (status === 'waived') return '管理员已免除'
+  const deadline = player.room_join_deadline
+  if (!deadline) return '等待进入房间'
+  const seconds = Math.max(0, Math.floor((new Date(deadline).getTime() - now.value) / 1000))
+  if (!seconds) return '进入房间已超时'
+  return `入房 ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
+
 function updateWaitTime() {
   now.value = Date.now()
   if (!orderInfo.value?.created_at) { waitTime.value = ''; return }
-  const diff = Math.max(0, Math.floor((Date.now() - new Date(orderInfo.value.created_at).getTime()) / 1000))
+  const diff = Math.max(0, Math.floor((now.value - new Date(orderInfo.value.created_at).getTime()) / 1000))
   waitTime.value = `${Math.floor(diff / 60)}:${String(diff % 60).padStart(2, '0')}`
 }
 
@@ -169,7 +188,7 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 </script>
 
 <style lang="scss" scoped>
-.waiting-page { min-height: 100vh; padding: 20rpx 24rpx 220rpx; box-sizing: border-box; color: #172116; background: radial-gradient(ellipse at 12% 0%, rgba(216,161,68,.10), transparent 36%), radial-gradient(ellipse at 88% 14%, rgba(47,155,99,.10), transparent 32%), #f7f3ea; }
+.waiting-page { min-height: 100vh; padding: 20rpx 24rpx 220rpx; box-sizing: border-box; color: #172116; background: radial-gradient(ellipse at 12% 0%,rgba(216,161,68,.10),transparent 36%),radial-gradient(ellipse at 88% 14%,rgba(47,155,99,.10),transparent 32%),#f7f3ea; }
 .status-bar, .hero-card, .card { margin-top: 22rpx; border-radius: 28rpx; background: rgba(255,255,255,.96); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 36rpx rgba(39,61,42,.06); }
 .status-bar { margin-top: 0; display: flex; align-items: center; gap: 14rpx; padding: 18rpx 22rpx; }
 .status-pulse { width: 16rpx; height: 16rpx; border-radius: 50%; background: #2f9b63; box-shadow: 0 0 0 8rpx rgba(47,155,99,.12); }
@@ -178,7 +197,7 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .status-copy text:first-child { font-size: 25rpx; font-weight: 900; }
 .status-copy text:last-child { margin-top: 4rpx; color: #7d877a; font-size: 20rpx; }
 .status-tag, .order-status { padding: 7rpx 14rpx; border-radius: 999rpx; color: #a87520; font-size: 21rpx; font-weight: 900; background: #fff5d9; }
-.hero-card { padding: 34rpx 28rpx; background: linear-gradient(135deg, #fffaf0, #eef8f1); }
+.hero-card { padding: 34rpx 28rpx; background: linear-gradient(135deg,#fffaf0,#eef8f1); }
 .hero-eyebrow, .hero-title, .hero-sub { display: block; }
 .hero-eyebrow { color: #a87520; font-size: 21rpx; font-weight: 900; }
 .hero-title { margin-top: 12rpx; font-size: 40rpx; font-weight: 900; }
@@ -189,11 +208,11 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .hero-meta text:first-child { color: #879083; font-size: 20rpx; }
 .hero-meta text:last-child { margin-top: 6rpx; font-size: 24rpx; font-weight: 900; word-break: break-all; }
 .card { padding: 26rpx; }
-.designation-card { border-color: rgba(216,161,68,.22); background: linear-gradient(180deg, #fffaf0, #fff); }
+.designation-card { border-color: rgba(216,161,68,.22); background: linear-gradient(180deg,#fffaf0,#fff); }
 .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20rpx; margin-bottom: 20rpx; }
 .card-title, .card-sub { display: block; }
 .card-title { font-size: 30rpx; font-weight: 900; }
-.card-sub { margin-top: 6rpx; color: #879083; font-size: 21rpx; }
+.card-sub { margin-top: 6rpx; color: #879083; font-size: 21rpx; line-height: 1.45; }
 .mini-btn { min-width: 104rpx; height: 58rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 22rpx; font-weight: 900; background: #eef8f1; }
 .mini-btn::after, .designation-side button::after, .footer-actions button::after { border: none; }
 .designation-list { display: flex; flex-direction: column; gap: 14rpx; }
@@ -212,22 +231,29 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .status-declined, .status-expired, .status-cancelled { color: #8a9286; background: #f0f2ef; }
 .designation-side button { height: 50rpx; margin: 0; padding: 0 12rpx; border-radius: 999rpx; color: #a13d35; font-size: 19rpx; background: #fff0ed; }
 .progress-track { height: 12rpx; overflow: hidden; border-radius: 999rpx; background: #edf1ea; }
-.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, #5fc68a, #1f7c4b); }
+.progress-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#5fc68a,#1f7c4b); }
 .open-slot { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
 .player-track { margin-top: 22rpx; white-space: nowrap; }
-.player-item { width: 144rpx; display: inline-flex; flex-direction: column; align-items: center; margin-right: 14rpx; padding: 16rpx 10rpx; border-radius: 22rpx; background: #f7faf4; vertical-align: top; box-sizing: border-box; }
+.player-item { width: 168rpx; display: inline-flex; flex-direction: column; align-items: center; margin-right: 14rpx; padding: 16rpx 10rpx; border-radius: 22rpx; background: #f7faf4; vertical-align: top; box-sizing: border-box; }
 .player-avatar { width: 72rpx; height: 72rpx; border-radius: 50%; }
 .player-avatar--empty { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28rpx; font-weight: 900; background: #2f9b63; }
 .waiting-avatar { display: flex; align-items: center; justify-content: center; gap: 5rpx; background: #eef1ec; }
 .waiting-avatar text { width: 7rpx; height: 7rpx; border-radius: 50%; background: #a7afa4; }
-.player-name { max-width: 126rpx; margin-top: 9rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 23rpx; font-weight: 900; }
+.player-name { max-width: 146rpx; margin-top: 9rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 23rpx; font-weight: 900; }
 .player-type { margin-top: 4rpx; color: #879083; font-size: 19rpx; }
+.player-entry { max-width: 146rpx; margin-top: 7rpx; padding: 5rpx 9rpx; overflow: hidden; border-radius: 999rpx; color: #a87520; font-size: 17rpx; font-weight: 900; white-space: nowrap; text-overflow: ellipsis; background: #fff3d4; }
+.entry-confirmed, .entry-waived { color: #1f7c4b; background: #e5f6e9; }
+.entry-overdue, .entry-late_confirmed { color: #9c3d32; background: #fff0ed; }
+.entry-alert { margin-top: 18rpx; padding: 16rpx; border-radius: 16rpx; color: #8f4d35; background: #fff2ec; }
+.entry-alert text { display: block; }
+.entry-alert text:first-child { font-size: 23rpx; font-weight: 900; }
+.entry-alert text:last-child { margin-top: 6rpx; font-size: 20rpx; line-height: 1.5; }
 .info-row, .amount-row { min-height: 68rpx; display: flex; align-items: center; justify-content: space-between; gap: 20rpx; border-bottom: 1rpx solid rgba(39,61,42,.07); font-size: 24rpx; }
 .info-row text:first-child, .amount-row text:first-child { color: #7d877a; }
 .info-row text:last-child, .amount-row text:last-child { flex: 1; text-align: right; font-weight: 800; }
 .amount-row { border-bottom: none; }
 .amount-row text:last-child { color: #a87520; font-size: 30rpx; font-weight: 900; }
-.footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; }
+.footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2,1fr); gap: 12rpx; }
 .footer-actions button { min-height: 72rpx; border-radius: 999rpx; font-size: 24rpx; font-weight: 900; }
 .ghost-btn { color: #687665; background: #fff; }
 .primary-btn { color: #fff; background: #1f7c4b; }
