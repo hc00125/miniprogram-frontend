@@ -1,11 +1,9 @@
 import api from '@/utils/request'
 
-/** 过滤后端残留的测试数据（名称以 test / group_ 开头的条目） */
 function isTestEntry(name: string): boolean {
   const n = (name || '').trim().toLowerCase()
   if (!n) return true
-  if (n.startsWith('test') || n.startsWith('group_')) return true
-  return false
+  return n.startsWith('test') || n.startsWith('group_')
 }
 
 export interface BossPackageSpec {
@@ -107,6 +105,8 @@ export interface BossOrderListItem {
   kook_room_number?: string
   order_type?: 'normal' | 'renewal' | string
   renewal_count?: number
+  renewal_booked_hours?: number
+  renewal_paid_amount?: number
   total_booked_hours?: number
   pending_renewal_order_no?: string | null
   can_renew?: boolean
@@ -146,6 +146,22 @@ export interface RenewalCreateResult {
   message: string
 }
 
+export interface OrderDesignationItem {
+  id: number
+  player_id: number
+  player_name: string
+  player_type: string
+  avatar_url?: string | null
+  is_online: boolean
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'cancelled'
+  status_text: string
+  extra_amount: number
+  invited_at: string
+  responded_at?: string | null
+  expires_at: string
+  can_release: boolean
+}
+
 export interface OrderRatingRecord {
   id: number
   player_id: number
@@ -163,7 +179,6 @@ export interface OrderRatingStatus {
   results: OrderRatingRecord[]
 }
 
-/** 保留规格类型示例，页面展示不再自动注入这些前端预设商品。 */
 export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-888', name: '电视台保底 888w', price: 58, guarantee_amount: '888w', sort_order: 1 },
   { id: 'tv-1088', name: '电视台保底 1088w', price: 68, guarantee_amount: '1088w', sort_order: 2 },
@@ -180,7 +195,6 @@ function normalizePackageFromApi(pkg: BossPackage): BossPackage {
   const specs = [...(pkg.specs || [])]
     .filter(spec => spec.is_active !== false)
     .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
-
   return {
     ...pkg,
     specs,
@@ -189,10 +203,6 @@ function normalizePackageFromApi(pkg: BossPackage): BossPackage {
   }
 }
 
-/**
- * KOOK 房间号保持为独立字段，不再拼接进套餐名称或游戏ID。
- * raw 字段用于兼容旧页面以及历史缓存数据。
- */
 function normalizeBossOrderDisplay(order: any) {
   if (!order) return order
   const rawGameId = order.game_id_raw ?? order.game_id ?? ''
@@ -215,7 +225,6 @@ export function getPackages() {
       .filter(p => !isTestEntry(p.name))
       .map(normalizePackageFromApi)
       .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || a.id - b.id)
-
     const firstGroupId = filtered.find(p => p.group_id !== null)?.group_id ?? null
     if (firstGroupId !== null) {
       filtered.forEach(p => {
@@ -233,63 +242,18 @@ export function getPackageGroups() {
   return api.get<PackageGroup[]>('/boss/package-groups').then(list => list.filter(g => !isTestEntry(g.name)))
 }
 
-export function getAddons() {
-  return api.get<BossAddon[]>('/boss/addons')
-}
-
-export function getPlayerTypes() {
-  return api.get<PlayerType[]>('/boss/player-types').then(list => list.filter(t => !isTestEntry(t.name)))
-}
-
-export function getOnlinePlayers() {
-  return api.get<OnlinePlayer[]>('/boss/online-players')
-}
-
-/** 陪玩师列表（含自己），支持 type_id / is_online / search / ordering 筛选 */
-export function getPlayerList(params: PlayerListParams = {}) {
-  return api.get<OnlinePlayer[]>('/player/list', params)
-}
-
-export function createOrder(payload: OrderCreatePayload) {
-  return api.post<{ order_no: string }>('/boss/order', payload)
-}
-
-export function createRenewal(orderNo: string, units = 1) {
-  return api.post<RenewalCreateResult>(`/boss/order/${orderNo}/renew`, { units })
-}
-
-export function getOrder(orderNo: string) {
-  return api.get<any>(`/boss/order/${orderNo}`).then(normalizeBossOrderDisplay)
-}
-
-export function getOrderRatings(orderNo: string) {
-  return api.get<OrderRatingStatus>(`/boss/order/${orderNo}/ratings`)
-}
-
-export function cancelOrder(orderNo: string) {
-  return api.post(`/boss/order/${orderNo}/cancel`)
-}
-
-export function pauseOrder(orderNo: string) {
-  return api.post(`/boss/order/${orderNo}/pause`)
-}
-
-export function resumeOrder(orderNo: string) {
-  return api.post(`/boss/order/${orderNo}/resume`)
-}
-
-export function confirmSelfPayment(orderNo: string, actual_amount: number) {
-  return api.post(`/boss/order/${orderNo}/self-confirm-payment`, { actual_amount })
-}
-
-export function ratePlayer(orderNo: string, player_id: number, rating: number, comment: string | null) {
-  return api.post(`/boss/order/${orderNo}/ratings`, { player_id, rating, comment })
-}
-
-export function queryBossOrders(bossWechat: string) {
-  return api.get<BossOrderListItem[]>(`/boss/orders/${encodeURIComponent(bossWechat)}/`)
-}
-
-export function getMyBossOrders() {
-  return api.get<BossOrderListItem[]>('/boss/orders/me')
-}
+export function getAddons() { return api.get<BossAddon[]>('/boss/addons') }
+export function getPlayerTypes() { return api.get<PlayerType[]>('/boss/player-types').then(list => list.filter(t => !isTestEntry(t.name))) }
+export function getOnlinePlayers() { return api.get<OnlinePlayer[]>('/boss/online-players') }
+export function getPlayerList(params: PlayerListParams = {}) { return api.get<OnlinePlayer[]>('/player/list', params) }
+export function createOrder(payload: OrderCreatePayload) { return api.post<{ order_no: string }>('/boss/order', payload) }
+export function createRenewal(orderNo: string, units = 1) { return api.post<RenewalCreateResult>(`/boss/order/${orderNo}/renew`, { units }) }
+export function getOrder(orderNo: string) { return api.get<any>(`/boss/order/${orderNo}`).then(normalizeBossOrderDisplay) }
+export function getMyBossOrders() { return api.get<BossOrderListItem[]>('/boss/orders/me') }
+export function cancelOrder(orderNo: string, reason?: string) { return api.post(`/boss/order/${orderNo}/cancel`, { reason }) }
+export function pauseBossOrder(orderNo: string) { return api.post(`/boss/order/${orderNo}/pause`) }
+export function resumeBossOrder(orderNo: string) { return api.post(`/boss/order/${orderNo}/resume`) }
+export function ratePlayer(orderNo: string, player_id: number, rating: number, comment?: string | null) { return api.post(`/boss/order/${orderNo}/rate`, { player_id, rating, comment }) }
+export function getOrderRatings(orderNo: string) { return api.get<OrderRatingStatus>(`/boss/order/${orderNo}/ratings`) }
+export function getOrderDesignations(orderNo: string) { return api.get<{ order_no: string; results: OrderDesignationItem[] }>(`/boss/order/${orderNo}/designations`) }
+export function releaseOrderDesignation(orderNo: string, designationId: number) { return api.post<{ message: string; designation: OrderDesignationItem }>(`/boss/order/${orderNo}/designation/${designationId}/release`) }
