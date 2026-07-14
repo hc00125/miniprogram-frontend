@@ -27,6 +27,10 @@ export interface ClientProfile {
     total_orders: number
     avg_rating: number
     rating_count?: number
+    can_accept_orders?: boolean
+    can_be_designated?: boolean
+    is_publicly_visible?: boolean
+    can_withdraw?: boolean
   } | null
 }
 
