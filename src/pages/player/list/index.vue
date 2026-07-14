@@ -12,7 +12,7 @@
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">明星阵容，在线开局</view>
-      <view class="club-sub">仅展示已上传头像的陪玩师，点击卡片可查看评分、评价和音频介绍。</view>
+      <view class="club-sub">点击“指定TA”后选择商品，指定本人第一版不额外加价。</view>
     </view>
 
     <scroll-view scroll-x class="filters" show-scrollbar="false">
@@ -45,8 +45,11 @@
           </view>
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
           <view class="card-actions">
-            <text>+¥{{ formatMoney(player.price_extra || 0) }}/时</text>
-            <button class="club-btn" @tap.stop="showDesignateUnavailable">指定TA</button>
+            <view>
+              <text class="designate-price">指定本人不加价</text>
+              <text class="designate-state">{{ player.is_online ? '在线，可立即邀请' : '离线，仍可发出邀请' }}</text>
+            </view>
+            <button class="club-btn" @tap.stop="designatePlayer(player)">指定TA</button>
           </view>
         </view>
       </view>
@@ -64,8 +67,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
-import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
+import { relaunch, navigateToTab, type MainTab, go, goMain as switchMain } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
+import { saveDesignatedPlayer } from '@/utils/designatedPlayer'
 
 const filters = ['全部', '女陪', '技术陪', '金牌陪', '明星陪', '在线']
 const activeFilter = ref('全部')
@@ -86,10 +90,6 @@ const filteredPlayers = computed(() => {
   return source.filter(player => player.type_name === filter)
 })
 
-function formatMoney(value: number) {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(1)
-}
-
 function normalizeOnlineValue(value: unknown) {
   return value === true || value === 1 || value === '1' || value === 'true'
 }
@@ -105,7 +105,7 @@ async function fetchPlayers() {
       price_extra: p.player_type?.price_extra || p.price_extra || 0,
       status: normalizeOnlineValue(p.is_online) ? '在线' : '离线'
     }))
-  } catch (error) {
+  } catch (_error) {
     players.value = []
     toast('陪玩列表加载失败，请稍后重试')
   } finally {
@@ -119,8 +119,16 @@ function openPlayerDetail(player: OnlinePlayer) {
   go('/pages/player/detail/index', { playerId: player.id })
 }
 
-function showDesignateUnavailable() {
-  toast('该功能尚未上线')
+function designatePlayer(player: OnlinePlayer) {
+  saveDesignatedPlayer({
+    id: Number(player.id),
+    name: player.name,
+    type_name: player.type_name || player.player_type?.name || '陪玩',
+    avatar_url: player.avatar_url,
+    is_online: Boolean(player.is_online)
+  })
+  toast(`已选择指定 ${player.name}，请选择商品`)
+  switchMain('order')
 }
 
 function handleMainTabSelect(tab: MainTab) {
@@ -138,179 +146,32 @@ function goMain(tab: MainTab = 'home') {
 </script>
 
 <style lang="scss" scoped>
-.player-list-page {
-  padding-bottom: 160rpx;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-  margin-bottom: 24rpx;
-}
-
-.topbar button {
-  min-width: 72rpx;
-  height: 72rpx;
-  padding: 0 18rpx;
-  border-radius: 24rpx;
-  background: #fff;
-  color: #1f7c4b;
-  font-size: 26rpx;
-  font-weight: 900;
-  box-shadow: 0 10rpx 24rpx rgba(39, 61, 42, 0.08);
-}
-
-.topbar view {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.topbar text:first-child {
-  color: #172116;
-  font-size: 38rpx;
-  font-weight: 900;
-}
-
-.topbar text:last-child {
-  color: #687665;
-  font-size: 23rpx;
-}
-
-.list-hero {
-  min-height: 250rpx;
-}
-
-.filters {
-  margin: 24rpx 0;
-  white-space: nowrap;
-}
-
-.filter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 112rpx;
-  height: 58rpx;
-  padding: 0 22rpx;
-  margin-right: 12rpx;
-  border-radius: 999rpx;
-  background: #fff;
-  color: #687665;
-  font-size: 25rpx;
-  font-weight: 800;
-  border: 1px solid rgba(36, 55, 39, 0.09);
-}
-
-.filter.active {
-  background: #172116;
-  color: #fff;
-}
-
-.players {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-.player-card {
-  padding: 22rpx;
-  display: flex;
-  gap: 18rpx;
-  border-radius: 32rpx;
-  background: #fff;
-  border: 1px solid rgba(36, 55, 39, 0.09);
-  box-shadow: 0 10rpx 24rpx rgba(39, 61, 42, 0.06);
-}
-
-.portrait {
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 32rpx;
-  background: #eef3e9;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.portrait-img {
-  width: 100%;
-  height: 100%;
-}
-
-.pill-offline {
-  background: rgba(42, 63, 48, 0.06) !important;
-  color: #aab1a5 !important;
-}
-
-.player-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.name-row,
-.tags,
-.card-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12rpx;
-}
-
-.name-row text:first-child {
-  color: #172116;
-  font-size: 31rpx;
-  font-weight: 900;
-}
-
-.tags {
-  margin-top: 12rpx;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-}
-
-.tags text {
-  padding: 8rpx 14rpx;
-  border-radius: 999rpx;
-  background: #f7faf4;
-  color: #687665;
-  font-size: 22rpx;
-}
-
-.tags .rating-tag {
-  color: #9a6a14;
-  background: #fff7df;
-  font-weight: 900;
-}
-
-.tags .audio-tag {
-  color: #1f7c4b;
-  background: #eef8f1;
-}
-
-.bio {
-  margin-top: 14rpx;
-  color: #687665;
-  font-size: 24rpx;
-  line-height: 1.45;
-}
-
-.card-actions {
-  margin-top: 18rpx;
-}
-
-.card-actions text {
-  color: #a87520;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.card-actions .club-btn {
-  min-height: 62rpx;
-  padding: 0 22rpx;
-  border-radius: 20rpx;
-  font-size: 24rpx;
-}
+.player-list-page { padding-bottom: 160rpx; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-bottom: 24rpx; }
+.topbar button { min-width: 72rpx; height: 72rpx; padding: 0 18rpx; border-radius: 24rpx; background: #fff; color: #1f7c4b; font-size: 26rpx; font-weight: 900; box-shadow: 0 10rpx 24rpx rgba(39,61,42,.08); }
+.topbar view { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
+.topbar text:first-child { color: #172116; font-size: 38rpx; font-weight: 900; }
+.topbar text:last-child { color: #687665; font-size: 23rpx; }
+.list-hero { min-height: 250rpx; }
+.filters { margin: 24rpx 0; white-space: nowrap; }
+.filter { display: inline-flex; align-items: center; justify-content: center; min-width: 112rpx; height: 58rpx; padding: 0 22rpx; margin-right: 12rpx; border-radius: 999rpx; background: #fff; color: #687665; font-size: 25rpx; font-weight: 800; border: 1px solid rgba(36,55,39,.09); }
+.filter.active { background: #172116; color: #fff; }
+.players { display: flex; flex-direction: column; gap: 18rpx; }
+.player-card { padding: 22rpx; display: flex; gap: 18rpx; border-radius: 32rpx; background: #fff; border: 1px solid rgba(36,55,39,.09); box-shadow: 0 10rpx 24rpx rgba(39,61,42,.06); }
+.portrait { width: 108rpx; height: 108rpx; border-radius: 32rpx; background: #eef3e9; flex-shrink: 0; overflow: hidden; }
+.portrait-img { width: 100%; height: 100%; }
+.pill-offline { background: rgba(42,63,48,.06) !important; color: #aab1a5 !important; }
+.player-main { flex: 1; min-width: 0; }
+.name-row, .tags, .card-actions { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; }
+.name-row > text:first-child { font-size: 30rpx; font-weight: 900; }
+.tags { margin-top: 10rpx; flex-wrap: wrap; justify-content: flex-start; }
+.tags text { padding: 5rpx 10rpx; border-radius: 999rpx; color: #687665; font-size: 20rpx; background: #f4f7f1; }
+.rating-tag { color: #a87520 !important; background: #fff6df !important; }
+.bio { margin-top: 12rpx; color: #687665; font-size: 23rpx; line-height: 1.5; }
+.card-actions { margin-top: 16rpx; align-items: flex-end; }
+.card-actions > view { flex: 1; min-width: 0; }
+.card-actions text { display: block; }
+.designate-price { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
+.designate-state { margin-top: 4rpx; color: #8a9286; font-size: 19rpx; }
+.card-actions button { min-width: 140rpx; height: 64rpx; margin: 0; font-size: 24rpx; }
 </style>
