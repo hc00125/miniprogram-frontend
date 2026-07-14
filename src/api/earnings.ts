@@ -15,6 +15,8 @@ export interface EarningsOverview {
   gross_total: number
   commission_total: number
   net_total: number
+  can_withdraw: boolean
+  withdrawal_block_reason?: string
 }
 
 export interface PlayerEarningItem {
