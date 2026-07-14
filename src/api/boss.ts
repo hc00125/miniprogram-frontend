@@ -253,7 +253,7 @@ export function getMyBossOrders() { return api.get<BossOrderListItem[]>('/boss/o
 export function cancelOrder(orderNo: string, reason?: string) { return api.post(`/boss/order/${orderNo}/cancel`, { reason }) }
 export function pauseBossOrder(orderNo: string) { return api.post(`/boss/order/${orderNo}/pause`) }
 export function resumeBossOrder(orderNo: string) { return api.post(`/boss/order/${orderNo}/resume`) }
-export function ratePlayer(orderNo: string, player_id: number, rating: number, comment?: string | null) { return api.post(`/boss/order/${orderNo}/rate`, { player_id, rating, comment }) }
+export function ratePlayer(orderNo: string, player_id: number, rating: number, comment?: string | null) { return api.post(`/boss/order/${orderNo}/ratings`, { player_id, rating, comment }) }
 export function getOrderRatings(orderNo: string) { return api.get<OrderRatingStatus>(`/boss/order/${orderNo}/ratings`) }
 export function getOrderDesignations(orderNo: string) { return api.get<{ order_no: string; results: OrderDesignationItem[] }>(`/boss/order/${orderNo}/designations`) }
 export function releaseOrderDesignation(orderNo: string, designationId: number) { return api.post<{ message: string; designation: OrderDesignationItem }>(`/boss/order/${orderNo}/designation/${designationId}/release`) }
