@@ -1,4 +1,12 @@
-type StorageKey = 'token' | 'player' | 'admin_token' | 'admin' | 'client_profile' | 'player_application' | 'boss_wechat'
+type StorageKey =
+  | 'token'
+  | 'player'
+  | 'admin_token'
+  | 'admin'
+  | 'client_profile'
+  | 'player_application'
+  | 'boss_wechat'
+  | 'designated_player_selection'
 
 export function getStorage<T = any>(key: StorageKey): T | '' {
   return uni.getStorageSync(key) as T | ''
