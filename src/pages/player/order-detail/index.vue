@@ -31,6 +31,36 @@
       </view>
     </view>
 
+    <view v-if="orderInfo && myOrderPlayer" class="club-card room-entry-card" :class="`room-entry-${roomJoinStatus}`">
+      <view class="club-card__hd">
+        <view>
+          <text class="club-card__title">进入老板房间</text>
+          <text class="room-entry-sub">接单后10分钟内进入房间并主动确认</text>
+        </view>
+        <text class="room-entry-chip">{{ roomJoinStatusText }}</text>
+      </view>
+      <view v-if="roomJoinStatus === 'pending'" class="room-entry-countdown">
+        <text>剩余时间</text>
+        <text>{{ roomJoinCountdown }}</text>
+      </view>
+      <view v-else-if="roomJoinStatus === 'overdue'" class="room-entry-warning">
+        <text>已经超过10分钟</text>
+        <text>请尽快进入并确认。本次只生成待核实记录，不会自动扣款或处罚。</text>
+      </view>
+      <view v-else-if="roomJoinStatus === 'late_confirmed'" class="room-entry-warning">
+        <text>已在超时后确认</text>
+        <text>系统已保留记录，后续由管理员结合实际情况核实。</text>
+      </view>
+      <view v-else class="room-entry-success">
+        <text>已完成进入确认</text>
+        <text v-if="myOrderPlayer.room_join_confirmed_at">确认时间：{{ formatRoomTime(myOrderPlayer.room_join_confirmed_at) }}</text>
+      </view>
+      <button v-if="canConfirmRoomEntry" class="room-entry-btn" :disabled="confirmingRoom" @tap="handleConfirmRoomEntry">
+        {{ confirmingRoom ? '确认中...' : '我已进入老板房间' }}
+      </button>
+      <text class="room-entry-tip">请仅在实际进入游戏或KOOK房间后点击，老板端会同步看到状态。</text>
+    </view>
+
     <view v-if="orderInfo && (renewalCount || orderInfo.pending_renewal_order_no)" class="club-card renewal-card">
       <view class="club-card__hd">
         <text class="club-card__title">续单信息</text>
@@ -92,7 +122,7 @@
           <text class="avatar">{{ playerItem.name?.[0] }}</text>
           <view class="player-main">
             <text>{{ playerItem.name }}</text>
-            <text>{{ playerItem.type_name }} · {{ playerItem.status || '已接单' }}</text>
+            <text>{{ playerItem.type_name }} · {{ playerItem.room_join_status_text || playerItem.status || '已接单' }}</text>
           </view>
           <text v-if="playerItem.id === player?.id" class="me-tag">我</text>
         </view>
@@ -113,7 +143,15 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { completeOrder, getPlayerOrder, pausePlayerOrder, resumePlayerOrder, setPlayerOrderKookRoom, startTimer } from '@/api/player'
+import {
+  completeOrder,
+  confirmPlayerRoomEntry,
+  getPlayerOrder,
+  pausePlayerOrder,
+  resumePlayerOrder,
+  setPlayerOrderKookRoom,
+  startTimer
+} from '@/api/player'
 import { formatDuration } from '@/utils/format'
 import { getStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -126,11 +164,13 @@ const player = ref<any>(null)
 const loading = ref(true)
 const starting = ref(false)
 const completing = ref(false)
+const confirmingRoom = ref(false)
 const savingRoom = ref(false)
 const roomInput = ref('')
 const roomFocused = ref(false)
 const duration = ref('00:00:00')
 const waitTime = ref('')
+const now = ref(Date.now())
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
@@ -139,6 +179,27 @@ const canEditKookRoom = computed(() => Boolean(orderInfo.value && ['待开打', 
 const renewalCount = computed(() => Number(orderInfo.value?.renewal_count || 0))
 const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid))
 const totalBookedHoursText = computed(() => formatHours(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0))
+const myOrderPlayer = computed(() => (orderInfo.value?.players || []).find((item: any) => Number(item.id) === Number(player.value?.id)) || null)
+const roomJoinStatus = computed(() => String(myOrderPlayer.value?.room_join_status || 'pending'))
+const roomJoinStatusText = computed(() => myOrderPlayer.value?.room_join_status_text || ({
+  pending: '等待进入',
+  confirmed: '按时进入',
+  late_confirmed: '超时后进入',
+  overdue: '已超时待核实',
+  waived: '管理员已免除'
+} as Record<string, string>)[roomJoinStatus.value] || '等待进入')
+const roomJoinCountdown = computed(() => {
+  const deadline = myOrderPlayer.value?.room_join_deadline
+  if (!deadline) return '--:--'
+  const seconds = Math.max(0, Math.floor((new Date(deadline).getTime() - now.value) / 1000))
+  if (!seconds) return '已超时'
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+})
+const canConfirmRoomEntry = computed(() => Boolean(
+  myOrderPlayer.value?.can_confirm_room_join
+  && !['已完成', '已取消'].includes(orderInfo.value?.status)
+  && ['pending', 'overdue'].includes(roomJoinStatus.value)
+))
 
 function formatHours(value: number) {
   const hours = Number(value || 0)
@@ -157,6 +218,7 @@ function statusClass(status: string) {
 }
 
 function updateDuration() {
+  now.value = Date.now()
   if (!orderInfo.value) return
   if (orderInfo.value.timer_started_at) {
     const start = new Date(orderInfo.value.timer_started_at).getTime()
@@ -164,14 +226,14 @@ function updateDuration() {
       ? new Date(orderInfo.value.end_time).getTime()
       : orderInfo.value.is_paused && orderInfo.value.last_paused_at
         ? new Date(orderInfo.value.last_paused_at).getTime()
-        : Date.now()
+        : now.value
     duration.value = formatDuration(Math.max(0, Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0)))
   } else if (orderInfo.value.status === '待开打') {
     duration.value = '等待开打'
   }
 
   if (orderInfo.value.status === '待接单' && orderInfo.value.created_at) {
-    const diffSec = Math.floor((Date.now() - new Date(orderInfo.value.created_at).getTime()) / 1000)
+    const diffSec = Math.floor((now.value - new Date(orderInfo.value.created_at).getTime()) / 1000)
     const minutes = Math.floor(diffSec / 60)
     const seconds = String(diffSec % 60).padStart(2, '0')
     waitTime.value = `等待 ${minutes}:${seconds}`
@@ -200,6 +262,24 @@ function formatRoomTime(input: string) {
   if (!input) return '-'
   const date = new Date(input)
   return `${date.getMonth() + 1}-${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+async function handleConfirmRoomEntry() {
+  if (!canConfirmRoomEntry.value || confirmingRoom.value) return
+  const message = roomJoinStatus.value === 'overdue'
+    ? '当前已超过10分钟。请确认你已经实际进入老板房间，系统会记录为超时后进入并交由管理员核实。'
+    : '请确认你已经实际进入老板的游戏或KOOK房间。确认后老板端会同步显示。'
+  if (!(await confirm(message, '确认进入房间'))) return
+  confirmingRoom.value = true
+  try {
+    const result = await confirmPlayerRoomEntry(orderNo.value)
+    success(result.message)
+    await fetchOrder()
+  } catch (error) {
+    toast(getErrorMessage(error, '进入房间确认失败'))
+  } finally {
+    confirmingRoom.value = false
+  }
 }
 
 async function saveKookRoom() {
@@ -345,9 +425,28 @@ onUnmounted(stopTimers)
 .amount { color: #a87520; font-weight: 900; }
 .duration { color: #1f7c4b; font-weight: 900; }
 .copyable { color: #1f7c4b; font-weight: 800; }
-.renewal-card { background: linear-gradient(180deg, #fffdf7, #fff); border-color: rgba(216,161,68,.18); }
+.room-entry-card { border-color: rgba(47,155,99,.18); background: linear-gradient(180deg,#f3faf5,#fff); }
+.room-entry-card .club-card__hd > view { flex: 1; min-width: 0; }
+.room-entry-sub { display: block; margin-top: 6rpx; color: #879083; font-size: 21rpx; }
+.room-entry-chip { flex-shrink: 0; padding: 7rpx 13rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 20rpx; font-weight: 900; background: #e6f6ea; }
+.room-entry-overdue, .room-entry-late_confirmed { border-color: rgba(216,161,68,.28); background: linear-gradient(180deg,#fff9e9,#fff); }
+.room-entry-overdue .room-entry-chip, .room-entry-late_confirmed .room-entry-chip { color: #945f12; background: #fff0c8; }
+.room-entry-countdown { display: flex; align-items: baseline; justify-content: space-between; gap: 16rpx; padding: 22rpx; border-radius: 20rpx; background: rgba(255,255,255,.82); }
+.room-entry-countdown text:first-child { color: #687665; font-size: 23rpx; }
+.room-entry-countdown text:last-child { color: #1f7c4b; font-size: 46rpx; font-weight: 900; font-family: monospace; }
+.room-entry-warning, .room-entry-success { padding: 18rpx; border-radius: 18rpx; }
+.room-entry-warning { color: #7f5e25; background: #fff3d7; }
+.room-entry-success { color: #276d43; background: #e9f7ed; }
+.room-entry-warning text, .room-entry-success text { display: block; }
+.room-entry-warning text:first-child, .room-entry-success text:first-child { font-size: 24rpx; font-weight: 900; }
+.room-entry-warning text:last-child, .room-entry-success text:last-child { margin-top: 6rpx; font-size: 21rpx; line-height: 1.5; }
+.room-entry-btn { width: 100%; height: 78rpx; margin-top: 18rpx; border-radius: 999rpx; color: #fff; font-size: 26rpx; font-weight: 900; background: linear-gradient(135deg,#5fc68a,#1f7c4b); }
+.room-entry-btn::after { border: none; }
+.room-entry-btn[disabled] { opacity: .58; }
+.room-entry-tip { display: block; margin-top: 12rpx; color: #879083; font-size: 20rpx; line-height: 1.45; text-align: center; }
+.renewal-card { background: linear-gradient(180deg,#fffdf7,#fff); border-color: rgba(216,161,68,.18); }
 .renewal-badge { padding: 6rpx 13rpx; border-radius: 999rpx; color: #9a6a16; font-size: 22rpx; font-weight: 900; background: #fff3d4; }
-.renewal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12rpx; margin-top: 10rpx; }
+.renewal-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12rpx; margin-top: 10rpx; }
 .renewal-grid view { padding: 18rpx 8rpx; border-radius: 18rpx; text-align: center; background: #f7faf4; }
 .renewal-grid text { display: block; }
 .renewal-grid text:first-child { color: #879083; font-size: 20rpx; }
@@ -360,13 +459,13 @@ onUnmounted(stopTimers)
 .renewal-row { min-height: 58rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-bottom: 1rpx solid rgba(39,61,42,.07); font-size: 22rpx; }
 .renewal-row text:first-child { color: #4f5d50; }
 .renewal-row text:last-child { color: #1f7c4b; font-weight: 900; text-align: right; }
-.kook-card { background: linear-gradient(180deg, #fff, #f8fbf4); }
+.kook-card { background: linear-gradient(180deg,#fff,#f8fbf4); }
 .room-status { color: #1f7c4b; font-size: 23rpx; font-weight: 900; }
 .room-status--warn { color: #a87520; }
 .kook-desc { margin-top: 8rpx; color: #687665; font-size: 24rpx; line-height: 1.5; }
 .kook-input-row { display: flex; align-items: center; gap: 14rpx; margin-top: 20rpx; }
 .kook-input { flex: 1; height: 78rpx; padding: 0 20rpx; border-radius: 18rpx; color: #172116; font-size: 26rpx; background: #fff; border: 1px solid rgba(37,49,35,.10); box-sizing: border-box; }
-.save-room-btn { width: 142rpx; height: 78rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 18rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg, #65c980, #1f7c4b); }
+.save-room-btn { width: 142rpx; height: 78rpx; display: flex; align-items: center; justify-content: center; padding: 0; margin: 0; border-radius: 18rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg,#65c980,#1f7c4b); }
 .save-room-btn::after { border: none; }
 .save-room-btn[disabled] { opacity: .6; }
 .kook-tip { margin-top: 14rpx; color: #9a8b6b; font-size: 22rpx; }
@@ -375,9 +474,9 @@ onUnmounted(stopTimers)
 .note-card text:last-child { color: #5d4d25; font-size: 27rpx; }
 .player-stack { display: flex; flex-direction: column; gap: 14rpx; }
 .player-row { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; border-radius: 24rpx; background: #fff; border: 1px solid rgba(37,49,35,.08); }
-.avatar { width: 62rpx; height: 62rpx; border-radius: 50%; background: linear-gradient(135deg, #65c980, #1f7c4b); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+.avatar { width: 62rpx; height: 62rpx; border-radius: 50%; background: linear-gradient(135deg,#65c980,#1f7c4b); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; }
 .player-main { flex: 1; display: flex; flex-direction: column; gap: 4rpx; font-size: 28rpx; }
 .player-main text:last-child { color: #687665; font-size: 23rpx; }
 .me-tag { padding: 6rpx 14rpx; border-radius: 999rpx; background: #eef9ef; color: #1f7c4b; font-size: 22rpx; font-weight: 800; }
-.footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(28rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
+.footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(28rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(2,1fr); gap: 16rpx; }
 </style>
