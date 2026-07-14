@@ -12,9 +12,12 @@ export interface EarningsOverview {
   available_balance: number
   withdrawing_balance: number
   withdrawn_total: number
+  debt_balance: number
   gross_total: number
   commission_total: number
   net_total: number
+  reversed_total?: number
+  debt_offset_total?: number
   can_withdraw: boolean
   withdrawal_block_reason?: string
 }
@@ -27,6 +30,8 @@ export interface PlayerEarningItem {
   commission_rate: number
   commission_amount: number
   net_amount: number
+  reversed_amount: number
+  debt_offset_amount: number
   status: string
   status_text: string
   review_until: string
