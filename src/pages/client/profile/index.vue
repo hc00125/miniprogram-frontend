@@ -30,8 +30,12 @@
     <view v-if="profile?.player" class="player-summary-card">
       <view class="card-head player-summary-head">
         <text class="card-eyebrow">陪玩师信息</text>
-        <view class="online-toggle" :class="{ off: !isPlayerOnline, syncing: onlineUpdating }" @tap="togglePlayerOnline">
-          <text class="online-text">{{ onlineUpdating ? '同步中' : (isPlayerOnline ? '在线' : '离线') }}</text>
+        <view
+          class="online-toggle"
+          :class="{ off: !isPlayerOnline, syncing: onlineUpdating, disabled: !canAcceptOrders }"
+          @tap="togglePlayerOnline"
+        >
+          <text class="online-text">{{ onlineUpdating ? '同步中' : (!canAcceptOrders ? '接单暂停' : (isPlayerOnline ? '在线' : '离线')) }}</text>
           <view class="online-dot"></view>
         </view>
       </view>
@@ -55,6 +59,10 @@
             <text class="stat-value">{{ profile.player.rating_count || 0 }}</text>
             <text class="stat-label">评价数量</text>
           </view>
+        </view>
+        <view v-if="!canAcceptOrders" class="permission-banner">
+          <text class="reject-icon">!</text>
+          <text class="reject-text">管理员已暂停你的接单权限，请到设置页查看或联系客服。</text>
         </view>
         <view v-if="profile?.application?.reject_reason" class="reject-banner">
           <text class="reject-icon">!</text>
@@ -82,7 +90,7 @@
         <view class="quick-icon">抢</view>
         <view class="quick-text">
           <text class="quick-title">抢单大厅</text>
-          <text class="quick-sub">查看并抢新订单</text>
+          <text class="quick-sub">{{ canAcceptOrders ? '查看并抢新订单' : '接单权限已暂停' }}</text>
         </view>
       </view>
       <view class="quick-item" @tap="handlePlayerCenterAction">
@@ -113,15 +121,11 @@
           <text class="list-icon list-icon--green">服</text>
           <text class="list-label">服务条款</text>
         </view>
-        <text class="list-arrow">查看陪玩师签约协议条款</text>
+        <text class="list-arrow">查看隐私政策与服务说明</text>
         <text class="list-chevron">›</text>
       </view>
 
-      <button
-        class="list-item contact-button"
-        open-type="contact"
-        hover-class="list-item--active"
-      >
+      <button class="list-item contact-button" open-type="contact" hover-class="list-item--active">
         <view class="list-left">
           <text class="list-icon list-icon--blue">客</text>
           <text class="list-label">联系客服</text>
@@ -135,7 +139,7 @@
           <text class="list-icon list-icon--gold">设</text>
           <text class="list-label">设置</text>
         </view>
-        <text class="list-arrow">账号安全 · 通知等设置</text>
+        <text class="list-arrow">账号、陪玩资料与权限设置</text>
         <text class="list-chevron">›</text>
       </view>
     </view>
@@ -156,6 +160,7 @@ import { getErrorMessage, toast } from '@/utils/feedback'
 const profile = ref<ClientProfile | null>(null)
 const onlineUpdating = ref(false)
 const displayAvatarUrl = computed(() => normalizeAvatarUrl(profile.value?.avatarUrl || profile.value?.avatar_url))
+const canAcceptOrders = computed(() => profile.value?.player?.can_accept_orders !== false)
 
 const displayName = computed(() => {
   const nickname = profile.value?.nickname?.trim()
@@ -191,7 +196,7 @@ const statusClass = computed(() => ({
   rejected: profile.value?.player_status === 'rejected'
 }))
 const playerActionTitle = computed(() => {
-  if (profile.value?.player_status === 'approved') return '抢单大厅'
+  if (profile.value?.player_status === 'approved') return canAcceptOrders.value ? '抢单大厅' : '接单已暂停'
   if (profile.value?.player_status === 'pending') return '审核中'
   return '申请成为陪玩师'
 })
@@ -236,6 +241,10 @@ async function loadProfile() {
 
 async function togglePlayerOnline() {
   if (!profile.value?.player || onlineUpdating.value) return
+  if (!canAcceptOrders.value) {
+    toast('管理员已暂停你的接单权限')
+    return
+  }
   const nextOnline = !isPlayerOnline.value
   onlineUpdating.value = true
   try {
@@ -259,6 +268,11 @@ async function togglePlayerOnline() {
 
 function handlePlayerAction() {
   if (profile.value?.player_status === 'approved') {
+    if (!canAcceptOrders.value) {
+      toast('管理员已暂停你的接单权限，请到设置页查看')
+      go('/pages/client/settings/index')
+      return
+    }
     go('/pages/player/grab/index')
     return
   }
@@ -282,7 +296,7 @@ function handleService() {
 }
 
 function handleSettings() {
-  toast('设置页面建设中')
+  go('/pages/client/settings/index')
 }
 
 onShow(loadProfile)
@@ -314,21 +328,13 @@ function goMain(tab: MainTab = 'home') {
     linear-gradient(180deg, #f7f3ea 0%, #faf8f2 48%, #fffaf2 100%);
 }
 
-.profile-hero {
-  position: relative;
-  padding: 32rpx 30rpx 28rpx;
-  overflow: hidden;
-  border: 1px solid rgba(47, 155, 99, 0.12);
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #173426 0%, #1f7c4b 60%, #2f9b63 100%);
-  box-shadow: 0 20rpx 44rpx rgba(23, 52, 38, 0.18);
-}
+.profile-hero { position: relative; padding: 32rpx 30rpx 28rpx; overflow: hidden; border: 1px solid rgba(47,155,99,.12); border-radius: 28rpx; background: linear-gradient(135deg,#173426 0%,#1f7c4b 60%,#2f9b63 100%); box-shadow: 0 20rpx 44rpx rgba(23,52,38,.18); }
 .hero-bg { position: absolute; inset: 0; pointer-events: none; }
 .ambient-glow { position: absolute; border-radius: 50%; filter: blur(40rpx); opacity: .5; }
-.ambient-glow--left { top: -60rpx; left: -40rpx; width: 220rpx; height: 220rpx; background: radial-gradient(circle, rgba(216,161,68,.40), transparent 70%); }
-.ambient-glow--right { right: -60rpx; bottom: -80rpx; width: 280rpx; height: 280rpx; background: radial-gradient(circle, rgba(95,183,138,.40), transparent 70%); }
+.ambient-glow--left { top: -60rpx; left: -40rpx; width: 220rpx; height: 220rpx; background: radial-gradient(circle,rgba(216,161,68,.40),transparent 70%); }
+.ambient-glow--right { right: -60rpx; bottom: -80rpx; width: 280rpx; height: 280rpx; background: radial-gradient(circle,rgba(95,183,138,.40),transparent 70%); }
 .hero-top { position: relative; z-index: 1; display: flex; align-items: center; gap: 24rpx; }
-.avatar-wrap { position: relative; width: 140rpx; height: 140rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 36rpx; color: #173426; background: linear-gradient(135deg, #f3d79b, #d8a144); box-shadow: 0 12rpx 28rpx rgba(0,0,0,.18); }
+.avatar-wrap { position: relative; width: 140rpx; height: 140rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 36rpx; color: #173426; background: linear-gradient(135deg,#f3d79b,#d8a144); box-shadow: 0 12rpx 28rpx rgba(0,0,0,.18); }
 .avatar-img { width: 100%; height: 100%; }
 .avatar-text { font-size: 56rpx; font-weight: 900; line-height: 1; }
 .avatar-ring { position: absolute; inset: -4rpx; border: 2rpx solid rgba(255,255,255,.30); border-radius: 40rpx; pointer-events: none; }
@@ -345,16 +351,7 @@ function goMain(tab: MainTab = 'home') {
 .hero-status.rejected { background: rgba(239,91,91,.22); }
 .hero-status.rejected .status-dot { background: #ef5b5b; }
 
-.player-summary-card,
-.player-card,
-.list-card {
-  margin-top: 22rpx;
-  overflow: hidden;
-  border: 1px solid rgba(42,63,48,.06);
-  border-radius: 28rpx;
-  background: rgba(255,255,255,.96);
-  box-shadow: 0 14rpx 36rpx rgba(38,69,54,.06);
-}
+.player-summary-card, .player-card, .list-card { margin-top: 22rpx; overflow: hidden; border: 1px solid rgba(42,63,48,.06); border-radius: 28rpx; background: rgba(255,255,255,.96); box-shadow: 0 14rpx 36rpx rgba(38,69,54,.06); }
 .player-summary-card { margin-top: 14rpx; border-radius: 24rpx; }
 .card-head { display: flex; align-items: center; justify-content: space-between; padding: 24rpx 28rpx 18rpx; border-bottom: 1px solid rgba(42,63,48,.06); }
 .player-summary-head { padding: 22rpx 24rpx 12rpx; border-bottom: 0; }
@@ -367,16 +364,18 @@ function goMain(tab: MainTab = 'home') {
 .player-id { color: #8b9788; font-size: 20rpx; font-family: 'SF Mono','DIN Alternate',monospace; }
 .online-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6rpx; min-width: 96rpx; padding: 8rpx 14rpx; border: 1px solid rgba(47,155,99,.20); border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 800; background: rgba(47,155,99,.12); }
 .online-toggle.off { color: #5a6b5b; border-color: rgba(42,63,48,.12); background: rgba(42,63,48,.06); }
-.online-toggle.syncing { opacity: .72; }
+.online-toggle.syncing, .online-toggle.disabled { opacity: .62; }
 .online-dot { width: 8rpx; height: 8rpx; border-radius: 50%; background: #5fb78a; }
-.online-toggle.off .online-dot { background: #aab1a5; }
+.online-toggle.off .online-dot, .online-toggle.disabled .online-dot { background: #aab1a5; }
 .stats-row { display: grid; grid-template-columns: 1fr 1px 1fr 1px 1fr; align-items: center; padding: 20rpx 0; border: 1px solid rgba(47,155,99,.08); border-radius: 20rpx; background: linear-gradient(180deg,#f7faf4,#fff); }
 .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4rpx; }
 .stat-value { color: #1f7c4b; font-size: 36rpx; font-weight: 900; }
 .stat-label { color: #5a6b5b; font-size: 21rpx; }
 .stat-divider { width: 1px; height: 48rpx; background: rgba(42,63,48,.08); }
-.reject-banner { display: flex; align-items: center; gap: 12rpx; padding: 14rpx 18rpx; border: 1px solid rgba(239,91,91,.20); border-radius: 16rpx; color: #c43232; font-size: 24rpx; background: rgba(239,91,91,.08); }
+.reject-banner, .permission-banner { display: flex; align-items: center; gap: 12rpx; padding: 14rpx 18rpx; border: 1px solid rgba(239,91,91,.20); border-radius: 16rpx; color: #c43232; font-size: 24rpx; background: rgba(239,91,91,.08); }
+.permission-banner { color: #8f4d35; border-color: rgba(216,161,68,.24); background: #fff5e4; }
 .reject-icon { width: 32rpx; height: 32rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; font-weight: 900; background: #ef5b5b; }
+.permission-banner .reject-icon { background: #d8a144; }
 .reject-text { flex: 1; line-height: 1.4; }
 
 .quick-grid { margin-top: 22rpx; display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
