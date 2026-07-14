@@ -277,7 +277,7 @@ function handlePlayerCenterAction() {
 }
 
 function handleService() {
-  toast('服务条款页面建设中')
+  go('/pages/legal/privacy/index')
 }
 
 function handleContact() {
