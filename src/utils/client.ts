@@ -2,6 +2,23 @@ import { getClientProfileApi, getPlayerApplyStatusApi, submitPlayerApplicationAp
 
 export type PlayerApplyStatus = 'none' | 'pending' | 'approved' | 'rejected'
 
+export interface VipTierInfo {
+  id: number
+  code: string
+  name: string
+  min_consumption: string
+  benefits: string[]
+  badge_color: string
+}
+
+export interface VipSnapshot {
+  cumulative_consumption: string
+  current_tier: VipTierInfo | null
+  next_tier: VipTierInfo | null
+  remaining_to_next: string
+  progress_percent: number
+}
+
 export interface ClientProfile {
   id?: number
   code?: string
@@ -13,6 +30,8 @@ export interface ClientProfile {
   avatar_url?: string
   role?: string
   player_status: PlayerApplyStatus
+  cumulative_consumption?: string | number
+  vip?: VipSnapshot | null
   application?: PlayerApplication | null
   player?: {
     id: number
@@ -74,10 +93,24 @@ export function shouldUploadAvatarUrl(url?: string) {
 
 function normalizeProfile(profile: ClientProfile): ClientProfile {
   const avatarUrl = normalizeAvatarUrl(profile.avatarUrl || profile.avatar_url)
+  const vip = profile.vip
+    ? {
+        ...profile.vip,
+        progress_percent: Math.max(0, Math.min(100, Number(profile.vip.progress_percent || 0))),
+        current_tier: profile.vip.current_tier
+          ? { ...profile.vip.current_tier, benefits: profile.vip.current_tier.benefits || [] }
+          : null,
+        next_tier: profile.vip.next_tier
+          ? { ...profile.vip.next_tier, benefits: profile.vip.next_tier.benefits || [] }
+          : null
+      }
+    : null
   return {
     ...profile,
     avatarUrl,
     avatar_url: avatarUrl,
+    cumulative_consumption: profile.cumulative_consumption ?? vip?.cumulative_consumption ?? 0,
+    vip,
     player: profile.player || null,
     application: profile.application || null
   }
@@ -100,7 +133,9 @@ export function ensureClientProfile() {
     nickname: '微信用户',
     avatarUrl: '',
     avatar_url: '',
-    player_status: 'none'
+    player_status: 'none',
+    cumulative_consumption: 0,
+    vip: null
   }
   saveClientProfile(guest)
   return guest
