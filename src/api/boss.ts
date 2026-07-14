@@ -12,6 +12,8 @@ export interface BossPackageSpec {
   price: number
   description?: string
   guarantee_amount?: string
+  required_player_type_id?: number | null
+  required_player_type_name?: string | null
   sort_order?: number
   is_active?: boolean
 }
@@ -63,6 +65,7 @@ export interface OnlinePlayer {
   name: string
   type_id: number
   type_name: string
+  type_priority?: number
   price_extra: number
   avg_rating: number
   rating_count?: number
@@ -73,9 +76,11 @@ export interface OnlinePlayer {
   bio?: string
   audio_intro_url?: string
   audio_intro_title?: string
+  can_be_designated?: boolean
   player_type?: {
     id: number
     name: string
+    priority?: number
     price_extra: number
   }
 }
