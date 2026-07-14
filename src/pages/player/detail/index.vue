@@ -23,7 +23,7 @@
       <view v-if="player" class="detail-card designate-card" :class="{ blocked: !canDesignate }">
         <view>
           <text class="card-title">{{ canDesignate ? '指定该陪玩师' : '当前不接受指定' }}</text>
-          <text class="card-subtitle">{{ canDesignate ? '第一版指定本人不额外加价；下单后TA有10分钟接受邀请。' : '该陪玩师的被指定权限已由管理员暂停，仍可查看公开资料。' }}</text>
+          <text class="card-subtitle">{{ canDesignate ? '指定本人不额外加价；下单时只能选择与该陪玩类型匹配的规格，邀请10分钟内有效。' : '该陪玩师的被指定权限已由管理员暂停，仍可查看公开资料。' }}</text>
         </view>
         <text class="designate-state">{{ canDesignate ? (player.is_online ? '在线，可立即邀请' : '当前离线，仍可发出邀请') : '暂不可指定' }}</text>
       </view>
@@ -85,7 +85,7 @@ const isPlaying = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
 
 const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
-const canDesignate = computed(() => (player.value as (OnlinePlayer & { can_be_designated?: boolean }) | null)?.can_be_designated !== false)
+const canDesignate = computed(() => player.value?.can_be_designated !== false)
 const ratingSummary = computed(() => ratingData.value?.summary || {
   average_rating: Number(player.value?.avg_rating || 0),
   rating_count: Number(player.value?.rating_count || 0),
@@ -94,7 +94,14 @@ const ratingSummary = computed(() => ratingData.value?.summary || {
 
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 function normalizePlayer(p: OnlinePlayer): OnlinePlayer {
-  return { ...p, is_online: normalizeOnlineValue(p.is_online), type_name: p.player_type?.name || p.type_name || '优质陪玩', status: normalizeOnlineValue(p.is_online) ? '在线' : '离线' }
+  return {
+    ...p,
+    type_id: Number(p.type_id || p.player_type?.id || 0),
+    type_name: p.player_type?.name || p.type_name || '优质陪玩',
+    type_priority: Number(p.type_priority ?? p.player_type?.priority ?? 0),
+    is_online: normalizeOnlineValue(p.is_online),
+    status: normalizeOnlineValue(p.is_online) ? '在线' : '离线'
+  }
 }
 function starText(value: number) { const count = Math.max(1, Math.min(5, Number(value || 0))); return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}` }
 function formatReviewDate(value: string) {
@@ -132,8 +139,18 @@ function toggleAudio() { const context = getAudioContext(); if (!context) return
 function designatePlayer() {
   if (!player.value) return
   if (!canDesignate.value) return toast('该陪玩当前不接受指定')
-  saveDesignatedPlayer({ id: Number(player.value.id), name: player.value.name, type_name: player.value.type_name || '陪玩', avatar_url: player.value.avatar_url, is_online: Boolean(player.value.is_online) })
-  toast(`已选择指定 ${player.value.name}，请选择商品`)
+  const typeId = Number(player.value.type_id || player.value.player_type?.id || 0)
+  if (!typeId) return toast('该陪玩的类型信息不完整，请刷新后重试')
+  saveDesignatedPlayer({
+    id: Number(player.value.id),
+    name: player.value.name,
+    type_id: typeId,
+    type_name: player.value.type_name || player.value.player_type?.name || '陪玩',
+    type_priority: Number(player.value.type_priority ?? player.value.player_type?.priority ?? 0),
+    avatar_url: player.value.avatar_url,
+    is_online: Boolean(player.value.is_online)
+  })
+  toast(`已选择指定 ${player.value.name}，请选择对应类型规格`)
   goMain('order')
 }
 function goBack() { uni.navigateBack({ delta: 1 }) }
