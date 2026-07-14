@@ -122,9 +122,25 @@
       }
     },
     {
+      "path": "pages/client/settings/index",
+      "style": {
+        "navigationBarTitleText": "设置与权限",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/player/apply/index",
       "style": {
         "navigationBarTitleText": "申请陪玩师"
+      }
+    },
+    {
+      "path": "pages/player/profile-settings/index",
+      "style": {
+        "navigationBarTitleText": "陪玩资料设置",
+        "navigationBarBackgroundColor": "#f7f3ea",
+        "navigationBarTextStyle": "black"
       }
     },
     {
