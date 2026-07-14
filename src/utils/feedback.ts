@@ -1,4 +1,13 @@
+const navigationMessages: Record<string, string> = {
+  '服务条款页面建设中': '/pages/legal/privacy/index'
+}
+
 export function toast(title: string, icon: UniApp.ShowToastOptions['icon'] = 'none') {
+  const target = navigationMessages[title]
+  if (target) {
+    uni.navigateTo({ url: target })
+    return
+  }
   uni.showToast({ title, icon, duration: 1800 })
 }
 
