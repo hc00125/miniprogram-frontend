@@ -12,7 +12,7 @@
       <view class="available-block">
         <text>可提现鱼干</text>
         <view><text class="currency">鱼干</text><text>{{ fish(overview?.available_balance) }}</text></view>
-        <text>人民币：鱼干 = 1：10，即10鱼干可兑换1元，实际到账以财务打款为准</text>
+        <text>10鱼干可兑换1元；钱包接口与提现表单统一使用鱼干，实际到账以财务打款为准</text>
       </view>
     </view>
 
@@ -25,17 +25,21 @@
         <text>{{ fish(overview?.withdrawing_balance) }}</text>
         <text>提现中鱼干</text>
       </view>
-      <view class="balance-item">
-        <text>{{ fish(overview?.withdrawn_total) }}</text>
-        <text>累计已提鱼干</text>
+      <view class="balance-item" :class="{ debt: debtFish > 0 }">
+        <text>{{ fish(overview?.debt_balance) }}</text>
+        <text>待抵扣鱼干</text>
       </view>
+    </view>
+
+    <view v-if="overview?.withdrawal_block_reason" class="wallet-warning">
+      <text>!</text><text>{{ overview.withdrawal_block_reason }}</text>
     </view>
 
     <view class="card stats-card">
       <view><text>{{ overview?.accepted_orders || 0 }}</text><text>累计接单</text></view>
       <view><text>{{ overview?.completed_orders || 0 }}</text><text>已结算订单</text></view>
-      <view><text>{{ fish(overview?.commission_total) }}</text><text>累计抽成鱼干</text></view>
-      <view><text>{{ Number(overview?.default_commission_rate || 15).toFixed(0) }}%</text><text>默认抽成</text></view>
+      <view><text>{{ fish(overview?.withdrawn_total) }}</text><text>累计已提鱼干</text></view>
+      <view><text>{{ Number(overview?.default_commission_rate ?? 16).toFixed(0) }}%</text><text>默认抽成</text></view>
     </view>
 
     <view class="card withdrawal-card">
@@ -74,9 +78,9 @@
       </view>
 
       <button class="withdraw-btn" :disabled="submitting || !canSubmit" @tap="submitWithdrawal">
-        {{ submitting ? '正在提交...' : '提交提现申请' }}
+        {{ submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请') }}
       </button>
-      <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(overview?.min_withdrawal_amount || 1) }}）；鱼干数量最多保留1位小数。</text>
+      <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(fishToYuan(minWithdrawalFishValue)) }}）；鱼干数量最多保留1位小数。</text>
     </view>
 
     <view class="tabs">
@@ -96,12 +100,15 @@
         <view class="amount-detail">
           <view><text>分配收入</text><text>{{ fish(item.gross_amount) }} 鱼干</text></view>
           <view><text>平台抽成 {{ Number(item.commission_rate || 0).toFixed(0) }}%</text><text>-{{ fish(item.commission_amount) }} 鱼干</text></view>
-          <view class="net-row"><text>应得鱼干</text><text>{{ fish(item.net_amount) }}</text></view>
-          <view class="yuan-row"><text>折合人民币</text><text>¥{{ money(item.net_amount) }}</text></view>
+          <view v-if="Number(item.reversed_amount || 0) > 0"><text>退款/异常冲销</text><text>-{{ fish(item.reversed_amount) }} 鱼干</text></view>
+          <view v-if="Number(item.debt_offset_amount || 0) > 0"><text>抵扣历史欠款</text><text>-{{ fish(item.debt_offset_amount) }} 鱼干</text></view>
+          <view class="net-row"><text>订单应得鱼干</text><text>{{ fish(item.net_amount) }}</text></view>
+          <view class="yuan-row"><text>订单应得折合人民币</text><text>¥{{ money(fishToYuan(item.net_amount)) }}</text></view>
         </view>
         <view class="record-foot">
           <text v-if="item.status === 'pending'">预计 {{ dateTime(item.review_until) }} 审核完成</text>
           <text v-else-if="item.status === 'frozen'">冻结原因：{{ item.freeze_reason || '请联系管理员' }}</text>
+          <text v-else-if="item.status === 'reversed'">该订单工资已完成冲销</text>
           <text v-else>可提现 {{ fish(item.available_amount) }} · 提现中 {{ fish(item.withdrawing_amount) }} · 已提现 {{ fish(item.withdrawn_amount) }} 鱼干</text>
         </view>
       </view>
@@ -118,7 +125,7 @@
           <text class="status-chip" :class="withdrawalStatusClass(item.status)">{{ item.status_text }}</text>
         </view>
         <view class="withdrawal-info">
-          <view><text>折合人民币</text><text>¥{{ money(item.amount) }}</text></view>
+          <view><text>折合人民币</text><text>¥{{ money(fishToYuan(item.amount)) }}</text></view>
           <view><text>收款方式</text><text>{{ item.payment_method_text }}</text></view>
           <view><text>收款账号</text><text>{{ item.account_name }} · {{ item.account_no_masked }}</text></view>
           <view><text>申请时间</text><text>{{ dateTime(item.created_at) }}</text></view>
@@ -165,16 +172,12 @@ const methods = [
 ]
 const methodLabels = methods.map(item => item.label)
 const methodIndex = ref(0)
-const form = reactive({
-  amount: '',
-  account_name: '',
-  account_no: '',
-  request_note: ''
-})
+const form = reactive({ amount: '', account_name: '', account_no: '', request_note: '' })
 
-const availableFish = computed(() => toFish(overview.value?.available_balance))
-const minWithdrawalFishValue = computed(() => toFish(overview.value?.min_withdrawal_amount || 1))
-const minWithdrawalFish = computed(() => fish(overview.value?.min_withdrawal_amount || 1))
+const availableFish = computed(() => Number(overview.value?.available_balance || 0))
+const debtFish = computed(() => Number(overview.value?.debt_balance || 0))
+const minWithdrawalFishValue = computed(() => Number(overview.value?.min_withdrawal_amount || 10))
+const minWithdrawalFish = computed(() => fish(minWithdrawalFishValue.value))
 const withdrawalFish = computed(() => Number(form.amount || 0))
 const withdrawalYuan = computed(() => fishToYuan(withdrawalFish.value))
 const hasValidFishPrecision = computed(() => Math.abs(withdrawalFish.value * 10 - Math.round(withdrawalFish.value * 10)) < 0.000001)
@@ -188,57 +191,44 @@ const accountPlaceholder = computed(() => {
 })
 const canSubmit = computed(() => {
   const amount = withdrawalFish.value
-  return amount >= minWithdrawalFishValue.value
+  return overview.value?.can_withdraw !== false
+    && debtFish.value <= 0
+    && amount >= minWithdrawalFishValue.value
     && amount <= availableFish.value
     && hasValidFishPrecision.value
     && Boolean(form.account_name.trim())
     && Boolean(form.account_no.trim())
 })
 
-function money(value?: number | string | null) {
-  return Number(value || 0).toFixed(2)
-}
-
-function toFish(value?: number | string | null) {
-  return Number(value || 0) * FISH_PER_YUAN
-}
-
-function fish(value?: number | string | null) {
-  return toFish(value).toFixed(2)
-}
-
-function fishToYuan(value?: number | string | null) {
-  return Number((Number(value || 0) / FISH_PER_YUAN).toFixed(2))
-}
-
+function money(value?: number | string | null) { return Number(value || 0).toFixed(2) }
+function fish(value?: number | string | null) { return Number(value || 0).toFixed(2) }
+function fishToYuan(value?: number | string | null) { return Number((Number(value || 0) / FISH_PER_YUAN).toFixed(2)) }
 function dateTime(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
-
 function earningStatusClass(status: string) {
   if (status === '审核中') return 'status-pending'
-  if (status === '已冻结') return 'status-danger'
+  if (status === '已冻结' || status === '已冲销') return 'status-danger'
   if (status === '提现中') return 'status-paying'
   if (status.includes('已提现')) return 'status-done'
   return 'status-ready'
 }
-
 function withdrawalStatusClass(status: string) {
   if (status === 'pending_review') return 'status-pending'
   if (status === 'pending_payment') return 'status-paying'
   if (status === 'paid') return 'status-done'
   return 'status-danger'
 }
-
-function handleMethodChange(event: any) {
-  methodIndex.value = Number(event?.detail?.value || 0)
-}
-
+function handleMethodChange(event: any) { methodIndex.value = Number(event?.detail?.value || 0) }
 function fillAll() {
-  form.amount = availableFish.value.toFixed(2)
+  if (overview.value?.can_withdraw === false || debtFish.value > 0) {
+    toast(overview.value?.withdrawal_block_reason || '当前暂不能提现')
+    return
+  }
+  form.amount = availableFish.value.toFixed(1).replace(/\.0$/, '')
 }
 
 async function loadAll() {
@@ -261,23 +251,19 @@ async function loadAll() {
 
 async function submitWithdrawal() {
   if (submitting.value) return
-  if (!hasValidFishPrecision.value) {
-    toast('鱼干数量最多保留1位小数')
+  if (overview.value?.can_withdraw === false || debtFish.value > 0) {
+    toast(overview.value?.withdrawal_block_reason || '当前暂不能提现')
     return
   }
-  if (withdrawalFish.value < minWithdrawalFishValue.value) {
-    toast(`最低提现${minWithdrawalFish.value}鱼干`)
-    return
-  }
-  if (!canSubmit.value) {
-    toast('请完整填写提现信息，并确认鱼干余额充足')
-    return
-  }
+  if (!hasValidFishPrecision.value) return toast('鱼干数量最多保留1位小数')
+  if (withdrawalFish.value < minWithdrawalFishValue.value) return toast(`最低提现${minWithdrawalFish.value}鱼干`)
+  if (!canSubmit.value) return toast('请完整填写提现信息，并确认鱼干余额充足')
+
   const fishAmount = withdrawalFish.value
   const yuanAmount = withdrawalYuan.value
   const method = methods[methodIndex.value]
   const ok = await confirm(
-    `确认申请提现${fishAmount.toFixed(2)}鱼干（折合人民币¥${money(yuanAmount)}）到${method.label}账号 ${form.account_no.trim()} 吗？`,
+    `确认申请提现${fishAmount.toFixed(1)}鱼干（折合人民币¥${money(yuanAmount)}）到${method.label}账号 ${form.account_no.trim()} 吗？`,
     '确认提现'
   )
   if (!ok) return
@@ -285,7 +271,7 @@ async function submitWithdrawal() {
   submitting.value = true
   try {
     await createWithdrawal({
-      amount: yuanAmount,
+      amount: fishAmount,
       payment_method: method.value,
       account_name: form.account_name.trim(),
       account_no: form.account_no.trim(),
@@ -334,9 +320,13 @@ onShow(async () => {
 .available-block > text:last-child { margin-top: 10rpx; color: rgba(255,255,255,.64); font-size: 20rpx; line-height: 1.5; }
 .balance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rpx; margin-top: 20rpx; overflow: hidden; }
 .balance-item { padding: 24rpx 8rpx; text-align: center; background: #fff; }
+.balance-item.debt { background: #fff0ed; }
 .balance-item text { display: block; }
 .balance-item text:first-child { color: #172116; font-size: 31rpx; font-weight: 900; }
+.balance-item.debt text:first-child { color: #a13d35; }
 .balance-item text:last-child { margin-top: 5rpx; color: #879083; font-size: 20rpx; }
+.wallet-warning { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 18rpx; color: #8f3d32; background: #fff0ed; font-size: 22rpx; line-height: 1.5; }
+.wallet-warning text:first-child { width: 34rpx; height: 34rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; background: #a13d35; font-weight: 900; }
 .card { margin-top: 20rpx; padding: 26rpx; }
 .stats-card { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8rpx; }
 .stats-card view { text-align: center; }
