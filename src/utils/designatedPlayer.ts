@@ -5,7 +5,9 @@ export const DESIGNATED_PLAYER_STORAGE_KEY = 'designated_player_selection'
 export interface DesignatedPlayerSelection {
   id: number
   name: string
+  type_id?: number
   type_name: string
+  type_priority?: number
   avatar_url?: string
   is_online?: boolean
 }
