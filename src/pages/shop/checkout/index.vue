@@ -36,7 +36,7 @@
         <view class="card-head">
           <view>
             <text class="card-title">已指定陪玩 {{ designatedPlayers.length }}/{{ orderRequiredPlayers }}</text>
-            <text class="card-subtitle">同类型陪玩分别收到10分钟邀请；未指定的 {{ remainingPublicSlots }} 个名额继续公开抢单</text>
+            <text class="card-subtitle">同类型陪玩分别收到10分钟邀请；高等级可接低等级规格，未指定的 {{ remainingPublicSlots }} 个名额继续公开抢单</text>
           </view>
           <button class="remove-designate" @tap="removeAllDesignations">取消全部</button>
         </view>
@@ -59,14 +59,14 @@
         <view class="card-head">
           <view>
             <text class="card-title">{{ isGuaranteeProduct ? '选择保底规格' : '选择规格' }}</text>
-            <text class="card-subtitle">{{ designatedPlayers.length ? `仅展示适用于“${designatedPlayers[0].type_name}”的固定价格规格` : '固定价格规格可直接使用微信虚拟支付' }}</text>
+            <text class="card-subtitle">{{ designatedPlayers.length ? `展示“${designatedPlayers[0].type_name}”等级可接的固定价格规格` : '固定价格规格可直接使用微信虚拟支付' }}</text>
           </view>
           <text class="count-pill">{{ specs.length }}档</text>
         </view>
         <view class="spec-grid">
           <view v-for="spec in specs" :key="spec.id" class="spec-chip" :class="{ active: selectedSpec?.id === spec.id }" @tap="selectSpec(spec)">
             <text>{{ spec.name }}</text>
-            <text v-if="spec.required_player_type_name" class="spec-type">仅限 {{ spec.required_player_type_name }}</text>
+            <text v-if="spec.required_player_type_name" class="spec-type">要求 {{ spec.required_player_type_name }} 及以上</text>
             <text v-if="spec.guarantee_amount">保底 {{ spec.guarantee_amount }}</text>
             <text>¥{{ formatMoney(Number(spec.price)) }}</text>
           </view>
@@ -155,16 +155,14 @@ const isCartCheckout = computed(() => cartItemIds.value.length > 0)
 const hasCheckoutData = computed(() => isCartCheckout.value ? cartItems.value.length > 0 : Boolean(product.value))
 const allSpecs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 const designatedPlayerTypeId = computed(() => Number(designatedPlayers.value[0]?.type_id || 0))
+const designatedPlayerPriority = computed(() => Number(designatedPlayers.value[0]?.type_priority || 0))
 const sameTypeSelection = computed(() => {
   if (!designatedPlayers.value.length || !designatedPlayerTypeId.value) return false
   return designatedPlayers.value.every(item => Number(item.type_id || 0) === designatedPlayerTypeId.value)
 })
 const specs = computed(() => {
-  if (!designatedPlayers.value.length || !designatedPlayerTypeId.value) return allSpecs.value
-  return allSpecs.value.filter(spec => {
-    const requiredTypeId = Number(spec.required_player_type_id || 0)
-    return !requiredTypeId || requiredTypeId === designatedPlayerTypeId.value
-  })
+  if (!designatedPlayers.value.length) return allSpecs.value
+  return allSpecs.value.filter(spec => specMatchesDesignatedPlayers(spec))
 })
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(allSpecs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
@@ -185,7 +183,13 @@ const totalAmount = computed(() => isCartCheckout.value ? cartTotalAmount.value 
 function specMatchesDesignatedPlayers(spec: BossPackageSpec | null | undefined) {
   if (!spec || !designatedPlayers.value.length) return true
   const requiredTypeId = Number(spec.required_player_type_id || 0)
-  return !requiredTypeId || (sameTypeSelection.value && requiredTypeId === designatedPlayerTypeId.value)
+  if (!requiredTypeId) return true
+  if (!sameTypeSelection.value) return false
+  const requiredPriority = Number(spec.required_player_type_priority || 0)
+  if (designatedPlayerPriority.value > 0 && requiredPriority > 0) {
+    return designatedPlayerPriority.value >= requiredPriority
+  }
+  return requiredTypeId === designatedPlayerTypeId.value
 }
 
 const virtualPayBlockReason = computed(() => {
@@ -194,15 +198,15 @@ const virtualPayBlockReason = computed(() => {
   if (isCartCheckout.value && cartItems.value.length !== 1) return '当前阶段暂不支持多个不同商品合并虚拟支付，请返回购物车仅选择一个商品规格。'
   if (designatedPlayers.value.length && !sameTypeSelection.value) return '当前指定阵容包含不同类型陪玩，请返回陪玩列表重新选择同类型阵容。'
   if (designatedPlayers.value.length > orderRequiredPlayers.value) return `当前商品只需要${orderRequiredPlayers.value}名陪玩，请移除${designatedPlayers.value.length - orderRequiredPlayers.value}名指定陪玩。`
-  if (designatedPlayers.value.length && allSpecs.value.length && !specs.value.length) return `当前商品没有适用于“${designatedPlayers.value[0].type_name}”的规格，请更换商品或取消指定。`
-  if (designatedPlayers.value.length && selectedSpec.value && !specMatchesDesignatedPlayers(selectedSpec.value)) return '所选规格与指定陪玩类型不匹配，请重新选择规格。'
+  if (designatedPlayers.value.length && allSpecs.value.length && !specs.value.length) return `当前商品没有“${designatedPlayers.value[0].type_name}”等级可以承接的规格，请更换商品或取消指定。`
+  if (designatedPlayers.value.length && selectedSpec.value && !specMatchesDesignatedPlayers(selectedSpec.value)) return '所选规格要求的陪玩等级更高，请重新选择规格或更换陪玩。'
   if (!isCartCheckout.value && !isSpecProduct.value) return '当前阶段暂不支持按人数和服务时长动态计价，请选择带固定价格规格的商品。'
   if (!isCartCheckout.value && allSpecs.value.length && !selectedSpec.value) return '请选择一个固定价格规格。'
   return ''
 })
 
 const virtualPayReadyText = computed(() => {
-  if (designatedPlayers.value.length && selectedSpec.value) return `将按“${selectedSpec.value.name}”价格向${designatedPlayers.value.length}名${designatedPlayers.value[0].type_name}发出10分钟邀请，剩余${remainingPublicSlots.value}个名额公开抢单。`
+  if (designatedPlayers.value.length && selectedSpec.value) return `将按“${selectedSpec.value.name}”价格向${designatedPlayers.value.length}名${designatedPlayers.value[0].type_name}发出10分钟邀请；高等级陪玩可承接较低等级规格，剩余${remainingPublicSlots.value}个名额公开抢单。`
   if (isCartCheckout.value) return '已选择一个固定价格商品；同一商品数量可以大于1。'
   return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，支付时将按该规格与购买数量核对金额。` : '请选择一个固定价格规格。'
 })
@@ -229,7 +233,7 @@ function syncSelectedSpec() {
 }
 async function fetchCartCheckout() { loading.value = true; try { const selectedIds = new Set(cartItemIds.value); cartItems.value = (await getShopCart()).filter(item => selectedIds.has(String(item.id))); if (!cartItems.value.length) toast('选中的购物车商品不存在或已删除') } catch (error) { toast(getErrorMessage(error, '购物车加载失败')) } finally { loading.value = false } }
 async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const matched = (await getPackages()).find(item => item.id === packageId.value) || null; product.value = matched; if (matched) form.playerCount = getPackagePlayerCount(matched); syncSelectedSpec() } catch (error) { toast(getErrorMessage(error, '商品加载失败')) } finally { loading.value = false } }
-function selectSpec(spec: BossPackageSpec) { if (!specMatchesDesignatedPlayers(spec)) return toast('该规格与指定陪玩类型不匹配'); selectedSpec.value = spec }
+function selectSpec(spec: BossPackageSpec) { if (!specMatchesDesignatedPlayers(spec)) return toast('指定陪玩等级不足，不能选择该规格'); selectedSpec.value = spec }
 function adjustQuantity(delta: number) { const next = form.quantity + delta; if (next < 1) return; if (next > 99) return toast('单次最多选择99件'); form.quantity = next }
 function adjustPlayerCount(delta: number) { const next = form.playerCount + delta; if (next < 1) return; if (next > MAX_PLAYER_COUNT) return toast(`下单人数最多${MAX_PLAYER_COUNT}人`); form.playerCount = next }
 function adjustHours(delta: number) { const next = Math.round((form.bookedHours + delta) * 10) / 10; if (next >= .5) form.bookedHours = next }
@@ -252,7 +256,7 @@ async function submitOrder() {
   if (virtualPayBlockReason.value) return showVirtualPayBlock()
   if (!isCartCheckout.value && product.value?.is_frontend_preset) return toast('请先在后端创建同名商品后再下单')
   if (!isCartCheckout.value && allSpecs.value.length && !selectedSpec.value) return toast('请选择规格')
-  if (designatedPlayers.value.length && !specMatchesDesignatedPlayers(selectedSpec.value)) return toast('指定陪玩与规格类型不匹配')
+  if (designatedPlayers.value.length && !specMatchesDesignatedPlayers(selectedSpec.value)) return toast('指定陪玩等级不足，不能选择该规格')
   if (!getStorage<string>('token')) { toast('请先微信登录'); go('/pages/client/login/index'); return }
   if (!form.contact.trim()) return toast('请填写联系昵称')
   if (!form.gameId.trim()) return toast('请填写游戏ID/队伍码')
