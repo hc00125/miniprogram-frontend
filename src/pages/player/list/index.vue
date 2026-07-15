@@ -78,8 +78,10 @@ async function fetchPlayers() {
     const list = await getPlayerList()
     players.value = (list || []).map(p => ({
       ...p,
-      is_online: normalizeOnlineValue(p.is_online),
+      type_id: Number(p.type_id || p.player_type?.id || 0),
       type_name: p.player_type?.name || p.type_name || '优质陪玩',
+      type_priority: Number(p.type_priority ?? p.player_type?.priority ?? 0),
+      is_online: normalizeOnlineValue(p.is_online),
       price_extra: p.player_type?.price_extra || p.price_extra || 0,
       status: normalizeOnlineValue(p.is_online) ? '在线' : '离线'
     }))
@@ -93,8 +95,18 @@ onMounted(fetchPlayers)
 function openPlayerDetail(player: OnlinePlayer) { go('/pages/player/detail/index', { playerId: player.id }) }
 function designatePlayer(player: OnlinePlayer) {
   if (!canDesignate(player)) return toast('该陪玩当前不接受指定')
-  saveDesignatedPlayer({ id: Number(player.id), name: player.name, type_name: player.type_name || player.player_type?.name || '陪玩', avatar_url: player.avatar_url, is_online: Boolean(player.is_online) })
-  toast(`已选择指定 ${player.name}，请选择商品`)
+  const typeId = Number(player.type_id || player.player_type?.id || 0)
+  if (!typeId) return toast('该陪玩的类型信息不完整，请刷新后重试')
+  saveDesignatedPlayer({
+    id: Number(player.id),
+    name: player.name,
+    type_id: typeId,
+    type_name: player.type_name || player.player_type?.name || '陪玩',
+    type_priority: Number(player.type_priority ?? player.player_type?.priority ?? 0),
+    avatar_url: player.avatar_url,
+    is_online: Boolean(player.is_online)
+  })
+  toast(`已选择指定 ${player.name}，请选择对应类型规格`)
   switchMain('order')
 }
 function handleMainTabSelect(tab: MainTab) {
