@@ -2,20 +2,43 @@
   <view class="page">
     <view class="top" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="search"><text>⌕</text><input v-model="keyword" placeholder="搜索套餐或服务" /></view>
-      <scroll-view scroll-x show-scrollbar="false" class="tabs"><view class="tab-row"><view v-for="item in categories" :key="item.id" class="tab" :class="{ active: activeCategoryId === item.id }" @tap="activeCategoryId = item.id">{{ item.name }}</view></view></scroll-view>
+      <scroll-view scroll-x show-scrollbar="false" class="tabs">
+        <view class="tab-row">
+          <view v-for="item in categories" :key="item.id" class="tab" :class="{ active: activeCategoryId === item.id }" @tap="activeCategoryId = item.id">{{ item.name }}</view>
+        </view>
+      </scroll-view>
     </view>
+
     <view class="body">
-      <scroll-view scroll-y class="side"><view v-for="item in categories" :key="item.id" class="side-item" :class="{ active: activeCategoryId === item.id }" @tap="activeCategoryId = item.id">{{ item.name }}</view></scroll-view>
+      <scroll-view scroll-y class="side" show-scrollbar="false">
+        <view v-for="item in categories" :key="item.id" class="side-item" :class="{ active: activeCategoryId === item.id }" @tap="activeCategoryId = item.id">{{ item.name }}</view>
+      </scroll-view>
+
       <scroll-view scroll-y class="content" refresher-enabled :refresher-triggered="refreshing" @refresherrefresh="refreshData">
         <view class="inner">
-          <view class="banner"><text>TOUCHI CLUB</text><strong>{{ activeCategoryName }}</strong><small>固定价格规格可使用微信官方虚拟支付，具体以下单页校验结果为准</small></view>
+          <view class="banner">
+            <view><text>TOUCHI CLUB</text><strong>{{ activeCategoryName }}</strong></view>
+            <small>固定价格规格支持微信官方虚拟支付，以下单页校验为准</small>
+          </view>
+
           <view v-if="loading" class="state">加载商品中...</view>
           <view v-else-if="loadFailed" class="state"><text>商品加载失败</text><button @tap="load">重新加载</button></view>
           <view v-else-if="!filteredProducts.length" class="state">暂无相关商品</view>
-          <view v-else class="grid">
+
+          <view v-else class="list">
             <view v-for="product in filteredProducts" :key="product.id" class="card" @tap="openDetail(product.id)">
-              <ProductCover :image="productImage(product)" :title="product.name" :summary="product.description || '查看当前商品规格和服务说明'" :badge="productBadge(product)" :sold-text="soldText(product)" :theme="productTheme(product)" />
-              <view class="info"><text class="desc">{{ product.description || '商品内容与价格以后端当前配置为准' }}</text><view class="bottom"><view class="price"><text v-if="product.specs?.length > 1">起</text><b>¥{{ money(productPrice(product)) }}</b><text>{{ priceUnit(product) }}</text></view><text class="view-link">查看 ›</text></view></view>
+              <image v-if="productImage(product)" class="cover" :src="productImage(product)" mode="aspectFill" />
+              <view v-else class="cover placeholder" :class="`theme-${productTheme(product)}`"><text>{{ product.name.slice(0, 1) }}</text><small>偷吃电竞</small></view>
+
+              <view class="info">
+                <view class="title-row"><text class="name">{{ product.name }}</text><text class="badge">{{ productBadge(product) }}</text></view>
+                <text class="desc">{{ product.description || '商品内容与价格以后端当前配置为准' }}</text>
+                <view class="sold-row"><text>{{ soldText(product) }}</text><text>{{ product.specs?.length ? `${product.specs.length}个规格` : '按页面规则计价' }}</text></view>
+                <view class="bottom">
+                  <view class="price"><text v-if="product.specs?.length > 1">起</text><b>¥{{ money(productPrice(product)) }}</b><text>{{ priceUnit(product) }}</text></view>
+                  <button @tap.stop="openDetail(product.id)">查看</button>
+                </view>
+              </view>
             </view>
           </view>
         </view>
@@ -28,7 +51,6 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPackageGroups, getPackages, type BossPackage, type PackageGroup } from '@/api/boss'
-import ProductCover from '@/components/ProductCover.vue'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go } from '@/utils/nav'
 
@@ -83,5 +105,5 @@ onShow(() => { if (!loaded.value || loadFailed.value) load() })
 </script>
 
 <style lang="scss" scoped>
-.page{min-height:100vh;padding-bottom:calc(120rpx + env(safe-area-inset-bottom));background:#f5f7f3}.top{position:sticky;top:0;z-index:10;padding:16rpx 22rpx 10rpx;background:#fff}.search{height:66rpx;display:flex;align-items:center;gap:12rpx;padding:0 20rpx;border-radius:999rpx;background:#f0f3ee}.search input{flex:1}.tabs{margin-top:16rpx;white-space:nowrap}.tab-row{display:inline-flex;gap:12rpx}.tab{padding:12rpx 20rpx;border-radius:999rpx;color:#687665;background:#f3f5f1;font-size:22rpx}.tab.active{color:#fff;background:#1f7c4b;font-weight:900}.body{display:flex;height:calc(100vh - 170rpx - env(safe-area-inset-bottom))}.side{width:150rpx;height:100%;background:#e9eee8}.side-item{min-height:104rpx;display:flex;align-items:center;justify-content:center;padding:14rpx;color:#637064;text-align:center;font-size:24rpx}.side-item.active{color:#173426;background:#f5f7f3;font-weight:900;border-left:7rpx solid #d8a144}.content{flex:1;height:100%}.inner{padding:18rpx}.banner{display:flex;flex-direction:column;padding:24rpx;border-radius:24rpx;color:#fff;background:linear-gradient(135deg,#173426,#1f7c4b)}.banner text{color:#f3d79b;font-size:17rpx;font-weight:900;letter-spacing:3rpx}.banner strong{margin-top:6rpx;font-size:32rpx}.banner small{margin-top:7rpx;opacity:.8;font-size:19rpx;line-height:1.45}.state{margin-top:18rpx;padding:60rpx 20rpx;border-radius:22rpx;color:#7a857b;text-align:center;background:#fff}.state text{display:block}.state button{margin-top:20rpx;color:#fff;background:#1f7c4b}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14rpx;margin-top:18rpx}.card{min-width:0;padding:10rpx;border-radius:26rpx;background:#fff;box-shadow:0 10rpx 26rpx rgba(34,62,43,.07)}.info{padding:12rpx 5rpx 5rpx}.desc{display:-webkit-box;min-height:56rpx;overflow:hidden;color:#6f7b70;font-size:19rpx;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}.bottom{margin-top:10rpx;display:flex;align-items:center;justify-content:space-between;gap:6rpx}.price{display:flex;align-items:baseline;color:#a87520;white-space:nowrap}.price text{font-size:16rpx}.price b{font-size:28rpx}.view-link{color:#1f7c4b;font-size:18rpx;font-weight:900}
+.page{min-height:100vh;padding-bottom:calc(112rpx + env(safe-area-inset-bottom));background:#f6f7f4}.top{position:sticky;top:0;z-index:10;padding:12rpx 20rpx 8rpx;background:#fff;border-bottom:1rpx solid #eef0ec}.search{height:60rpx;display:flex;align-items:center;gap:10rpx;padding:0 18rpx;border-radius:999rpx;background:#f1f3ef}.search text{color:#8b9389;font-size:28rpx}.search input{flex:1;height:60rpx;font-size:25rpx}.tabs{margin-top:12rpx;white-space:nowrap}.tab-row{display:inline-flex;gap:8rpx}.tab{padding:9rpx 16rpx;border-radius:999rpx;color:#687665;background:#f3f5f1;font-size:21rpx}.tab.active{color:#fff;background:#1f7c4b;font-weight:900}.body{display:flex;height:calc(100vh - 148rpx - env(safe-area-inset-bottom))}.side{width:132rpx;height:100%;flex-shrink:0;background:#ebefea}.side-item{position:relative;min-height:88rpx;display:flex;align-items:center;justify-content:center;padding:10rpx;color:#647066;text-align:center;font-size:22rpx;line-height:1.3;box-sizing:border-box}.side-item.active{color:#173426;background:#f6f7f4;font-weight:900}.side-item.active::before{content:'';position:absolute;left:0;width:6rpx;height:38rpx;border-radius:0 5rpx 5rpx 0;background:#d8a144}.content{flex:1;height:100%}.inner{padding:14rpx}.banner{display:flex;align-items:center;justify-content:space-between;gap:14rpx;padding:16rpx 18rpx;border-radius:16rpx;color:#fff;background:linear-gradient(135deg,#173426,#1f7c4b)}.banner>view{flex-shrink:0}.banner text,.banner strong{display:block}.banner text{color:#f3d79b;font-size:14rpx;font-weight:900;letter-spacing:2rpx}.banner strong{margin-top:3rpx;font-size:25rpx}.banner small{max-width:260rpx;opacity:.78;font-size:17rpx;line-height:1.4;text-align:right}.state{margin-top:14rpx;padding:48rpx 14rpx;border-radius:18rpx;color:#7a857b;text-align:center;background:#fff}.state text{display:block}.state button{width:180rpx;height:62rpx;margin-top:16rpx;color:#fff;font-size:22rpx;background:#1f7c4b}.list{display:flex;flex-direction:column;gap:12rpx;margin-top:14rpx}.card{min-width:0;display:flex;gap:14rpx;padding:12rpx;border-radius:18rpx;background:#fff;box-shadow:0 7rpx 18rpx rgba(34,62,43,.06)}.cover{width:150rpx;height:150rpx;flex-shrink:0;border-radius:14rpx;background:#eef1ed}.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}.placeholder>text{font-size:44rpx;font-weight:900}.placeholder small{margin-top:6rpx;font-size:16rpx;opacity:.72}.theme-green{background:linear-gradient(135deg,#173426,#45ae72)}.theme-gold{background:linear-gradient(135deg,#322819,#c59a44)}.theme-rose{background:linear-gradient(135deg,#482333,#c85f7f)}.theme-blue{background:linear-gradient(135deg,#1f3149,#5588bc)}.info{flex:1;min-width:0;display:flex;flex-direction:column}.title-row{display:flex;align-items:flex-start;gap:8rpx}.name{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#172116;font-size:25rpx;font-weight:900}.badge{flex-shrink:0;padding:4rpx 8rpx;border-radius:999rpx;color:#1f7c4b;background:#eef8f1;font-size:15rpx;font-weight:800}.desc{display:-webkit-box;margin-top:7rpx;overflow:hidden;color:#707a70;font-size:18rpx;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}.sold-row{display:flex;gap:10rpx;margin-top:8rpx;color:#9aa198;font-size:16rpx}.bottom{display:flex;align-items:flex-end;justify-content:space-between;gap:8rpx;margin-top:auto;padding-top:8rpx}.price{display:flex;align-items:baseline;color:#a87520;white-space:nowrap}.price>text{font-size:14rpx}.price b{font-size:27rpx}.bottom button{width:76rpx;height:48rpx;margin:0;padding:0;border-radius:999rpx;color:#fff;font-size:18rpx;font-weight:900;background:#1f7c4b}.bottom button::after{border:none}
 </style>
