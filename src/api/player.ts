@@ -69,6 +69,33 @@ export interface PlayerProfileUpdateRequest {
   reviewed_at?: string | null
 }
 
+export interface EscortQualificationApplication {
+  id: number
+  experience: string
+  evidence_urls: string[]
+  status: 'pending' | 'approved' | 'rejected'
+  status_text: string
+  reject_reason?: string
+  review_note?: string
+  submitted_at: string
+  reviewed_at?: string | null
+}
+
+export interface EscortQualificationResult {
+  qualification: {
+    status: 'none' | 'pending' | 'approved' | 'rejected' | 'suspended'
+    status_text: string
+    has_qualification: boolean
+    review_note?: string
+    reviewed_at?: string | null
+    can_submit: boolean
+  }
+  pending_application: EscortQualificationApplication | null
+  latest_application: EscortQualificationApplication | null
+  application_notice: string
+  message?: string
+}
+
 export interface PlayerProfileSettingsResult {
   player: {
     id: number
@@ -87,6 +114,9 @@ export interface PlayerProfileSettingsResult {
     can_be_designated: boolean
     is_publicly_visible: boolean
     can_withdraw: boolean
+    escort_status?: 'none' | 'pending' | 'approved' | 'rejected' | 'suspended'
+    escort_status_text?: string
+    has_escort_qualification?: boolean
   }
   permissions: PlayerPermissionState
   pending_update: PlayerProfileUpdateRequest | null
@@ -113,6 +143,10 @@ export function logoutPlayer() { return api.post('/player/logout') }
 export function getPlayerProfileSettings() { return api.get<PlayerProfileSettingsResult>('/player/profile-settings') }
 export function submitPlayerProfileUpdate(payload: { bio: string; audio_intro_url: string; audio_intro_title: string }) {
   return api.post<PlayerProfileSettingsResult>('/player/profile-settings', payload)
+}
+export function getEscortQualification() { return api.get<EscortQualificationResult>('/player/escort-qualification') }
+export function submitEscortQualification(payload: { experience: string; evidence_urls: string[] }) {
+  return api.post<EscortQualificationResult>('/player/escort-qualification', payload)
 }
 export function getAvailableOrders() { return api.get<any[]>('/player/available-orders') }
 export function getDesignationInvitations() { return api.get<DesignationInvitation[]>('/player/designation-invitations') }
