@@ -25,7 +25,11 @@ button {
   padding: 0;
   border: 0;
   background: transparent;
-  line-height: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  vertical-align: middle;
 }
 
 button::after {
