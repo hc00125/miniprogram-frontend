@@ -13,7 +13,7 @@
       <view class="wallet-icon">鱼</view>
       <view class="wallet-main">
         <text>鱼干收益中心</text>
-        <text>查看工资、15%抽成、8天审核与提现记录</text>
+        <text>查看工资、16%抽成、8天审核与提现记录</text>
       </view>
       <text class="wallet-arrow">›</text>
     </view>
@@ -67,8 +67,8 @@
             <view class="order-bottom">
               <text>{{ formatOrderTime(order.created_at) }}</text>
               <text v-if="order.status === '待支付'" class="stage-tip">等待老板付款</text>
-              <text v-else-if="order.status === '待开打'" class="stage-tip stage-tip--ready">可进入详情确认开打</text>
-              <button v-else-if="order.status === '进行中'" class="club-btn action-btn" @tap.stop="complete(order)">完成</button>
+              <text v-else-if="order.status === '待开打'" class="stage-tip stage-tip--ready">进入详情确认开打</text>
+              <text v-else-if="order.status === '进行中'" class="stage-tip stage-tip--ready">进入详情管理服务</text>
             </view>
           </view>
         </view>
@@ -85,10 +85,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { completeOrder, getMyOrders, getMyPlayerRatings, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
+import { getMyOrders, getMyPlayerRatings, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
-import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
+import { getErrorMessage, toast } from '@/utils/feedback'
 import { go, goMain, replace, backToRoute } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
@@ -152,22 +152,9 @@ async function refreshAll() {
   await Promise.all([fetchOrders(), fetchRatings()])
 }
 
-async function complete(order: any) {
-  const ok = await confirm('确定要标记订单完成吗？')
-  if (!ok) return
-  try {
-    await completeOrder(order.order_no, player.value.id)
-    success('已标记完成')
-    await refreshAll()
-  } catch (error) {
-    toast(getErrorMessage(error, '操作失败'))
-  }
-}
-
 async function handleLogout() {
   try { await logoutPlayer() } catch {}
   removeStorage('token')
-  removeStorage('player')
   replace('/pages/client/login/index')
 }
 
@@ -241,6 +228,5 @@ onUnmounted(() => {
 .order-bottom { margin-top: 18rpx; display: flex; align-items: center; justify-content: space-between; color: #687665; font-size: 23rpx; }
 .stage-tip { color: #a87520; font-weight: 800; }
 .stage-tip--ready { color: #1f7c4b; }
-.action-btn { min-width: 150rpx; height: 70rpx; font-size: 26rpx; }
 .footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(28rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1fr; gap: 16rpx; }
 </style>
