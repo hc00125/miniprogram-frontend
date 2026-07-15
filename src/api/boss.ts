@@ -14,6 +14,7 @@ export interface BossPackageSpec {
   guarantee_amount?: string
   required_player_type_id?: number | null
   required_player_type_name?: string | null
+  required_player_type_priority?: number | null
   sort_order?: number
   is_active?: boolean
 }
