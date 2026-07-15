@@ -65,6 +65,7 @@ import { logoutPlayer, updatePlayerOnlineStatus } from '@/api/player'
 import { getClientProfile, saveClientProfile, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
+import { clearPlayerAuth } from '@/utils/storage'
 
 const profile = ref<ClientProfile | null>(getClientProfile())
 const onlineUpdating = ref(false)
@@ -125,7 +126,7 @@ async function toggleOnline(event: any) {
 async function logout() {
   if (!(await confirm('退出后需要重新微信登录，确定退出吗？', '退出账号'))) return
   try { if (profile.value?.player) await logoutPlayer() } catch {}
-  ;['token', 'player', 'client_profile', 'player_application', 'player_online_status', 'designated_player_selection'].forEach(key => uni.removeStorageSync(key))
+  clearPlayerAuth()
   success('已退出登录')
   replace('/pages/client/login/index')
 }
