@@ -24,14 +24,14 @@
           <text class="vip-eyebrow">TOUCHI VIP</text>
           <text class="vip-title">{{ vipName }}</text>
         </view>
-        <text class="vip-spend">累计消费 ¥{{ money(cumulativeConsumption) }}</text>
+        <text class="vip-spend">累计钻石 💎{{ diamond(cumulativeConsumption) }}</text>
       </view>
       <view class="vip-progress-track">
         <view class="vip-progress-bar" :style="{ width: `${vipProgress}%` }"></view>
       </view>
       <view class="vip-progress-text">
-        <text v-if="nextVipName">距离{{ nextVipName }}还差 ¥{{ money(vipRemaining) }}</text>
-        <text v-else>已达到当前最高等级</text>
+        <text v-if="nextVipName">距离{{ nextVipName }}还差 💎{{ diamond(vipRemaining) }}</text>
+        <text v-else>已达到当前最高头衔</text>
         <text>{{ vipProgress }}%</text>
       </view>
       <view v-if="vipBenefits.length" class="vip-benefits">
@@ -88,15 +88,19 @@ const statusText = computed(() => {
 })
 const displayInitial = computed(() => (draftNickname.value.trim().slice(0, 1) || '微'))
 const cumulativeConsumption = computed(() => Number(profile.value?.vip?.cumulative_consumption ?? profile.value?.cumulative_consumption ?? 0))
-const vipName = computed(() => profile.value?.vip?.current_tier?.name || '普通会员')
-const vipTheme = computed(() => profile.value?.vip?.current_tier?.badge_color || 'green')
+const vipName = computed(() => profile.value?.vip?.current_tier?.name || '鼠鼠')
+const vipTheme = computed(() => profile.value?.vip?.current_tier?.badge_color || 'mouse')
 const vipProgress = computed(() => Math.max(0, Math.min(100, Number(profile.value?.vip?.progress_percent || 0))))
 const vipRemaining = computed(() => Number(profile.value?.vip?.remaining_to_next || 0))
 const nextVipName = computed(() => profile.value?.vip?.next_tier?.name || '')
 const vipBenefits = computed(() => profile.value?.vip?.current_tier?.benefits || [])
 
-function money(value: number) {
-  return Number(value || 0).toFixed(2)
+function diamond(value: number) {
+  const converted = Math.round(Number(value || 0) * 100) / 10
+  const fixed = converted.toFixed(1)
+  const [integer, decimal] = fixed.split('.')
+  const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return decimal === '0' ? formatted : `${formatted}.${decimal}`
 }
 
 function syncDraft(current: ClientProfile | null) {
@@ -176,23 +180,33 @@ onShow(loadAccount)
 .identity-tip { margin-top: 16rpx; color: #687665; font-size: 22rpx; }
 
 .vip-card { margin: 22rpx 0; padding: 28rpx; border-radius: 30rpx; color: #fff; background: linear-gradient(135deg,#173426,#1f7c4b); box-shadow: 0 18rpx 40rpx rgba(23,52,38,.16); }
+.vip-card--mouse { background: linear-gradient(135deg,#59655b,#26372d); }
+.vip-card--bronze { color: #fff8eb; background: linear-gradient(135deg,#8b5a2b,#c68b52); }
 .vip-card--silver { color: #24302d; background: linear-gradient(135deg,#f7f9f8,#cfd8d5); }
 .vip-card--gold { color: #3b2a0e; background: linear-gradient(135deg,#fff4ce,#d8a144); }
-.vip-card--black { background: linear-gradient(135deg,#111,#40331c 72%,#a87520); }
+.vip-card--platinum { color: #26383c; background: linear-gradient(135deg,#f5fbfc,#a9c8cf); }
+.vip-card--emerald { background: linear-gradient(135deg,#083f31,#1aa876); }
+.vip-card--diamond { color: #123447; background: linear-gradient(135deg,#f4fdff,#74d7ef 58%,#b7a8ff); }
+.vip-card--glory { background: linear-gradient(135deg,#4c174e,#b43779 58%,#f0a85d); }
+.vip-card--brilliant { color: #301d4a; background: linear-gradient(135deg,#fff0fb,#d39cff 48%,#79e5e0); }
+.vip-card--dream { background: linear-gradient(135deg,#392762,#7d5bd7 52%,#e388c7); }
+.vip-card--elegant { color: #472439; background: linear-gradient(135deg,#fff0f5,#f2a9cc 50%,#e9c56d); }
+.vip-card--supreme { background: linear-gradient(135deg,#090909,#38230d 58%,#d8a144); box-shadow: 0 18rpx 46rpx rgba(23,15,5,.28); }
 .vip-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20rpx; }
 .vip-head text { display: block; }
 .vip-eyebrow { font-size: 19rpx; font-weight: 900; letter-spacing: 3rpx; opacity: .68; }
 .vip-title { margin-top: 7rpx; font-size: 38rpx; font-weight: 900; }
-.vip-spend { font-size: 22rpx; font-weight: 800; opacity: .82; text-align: right; }
+.vip-spend { font-size: 22rpx; font-weight: 800; opacity: .88; text-align: right; }
 .vip-progress-track { height: 12rpx; margin-top: 24rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255,255,255,.22); }
-.vip-card--silver .vip-progress-track,.vip-card--gold .vip-progress-track { background: rgba(23,52,38,.14); }
+.vip-card--silver .vip-progress-track,.vip-card--gold .vip-progress-track,.vip-card--platinum .vip-progress-track,.vip-card--diamond .vip-progress-track,.vip-card--brilliant .vip-progress-track,.vip-card--elegant .vip-progress-track { background: rgba(23,52,38,.14); }
 .vip-progress-bar { height: 100%; border-radius: 999rpx; background: #f3d79b; transition: width .25s ease; }
-.vip-card--silver .vip-progress-bar { background: #1f7c4b; }
-.vip-card--gold .vip-progress-bar { background: #6a4814; }
-.vip-progress-text { margin-top: 10rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 20rpx; opacity: .78; }
+.vip-card--silver .vip-progress-bar,.vip-card--platinum .vip-progress-bar,.vip-card--diamond .vip-progress-bar { background: #1f7c6d; }
+.vip-card--gold .vip-progress-bar,.vip-card--elegant .vip-progress-bar { background: #6a4814; }
+.vip-card--brilliant .vip-progress-bar { background: #61388f; }
+.vip-progress-text { margin-top: 10rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 20rpx; opacity: .82; }
 .vip-benefits { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 22rpx; }
 .vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 800; background: rgba(255,255,255,.14); }
-.vip-card--silver .vip-benefits text,.vip-card--gold .vip-benefits text { background: rgba(23,52,38,.10); }
+.vip-card--silver .vip-benefits text,.vip-card--gold .vip-benefits text,.vip-card--platinum .vip-benefits text,.vip-card--diamond .vip-benefits text,.vip-card--brilliant .vip-benefits text,.vip-card--elegant .vip-benefits text { background: rgba(23,52,38,.10); }
 
 .form-card { padding-bottom: 10rpx; }
 .form-head { display: flex; flex-direction: column; gap: 8rpx; }
