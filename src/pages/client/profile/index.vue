@@ -125,14 +125,14 @@
         <text class="list-chevron">›</text>
       </view>
 
-      <button class="list-item contact-button" open-type="contact" hover-class="list-item--active">
+      <view class="list-item" hover-class="list-item--active" @tap="go('/pages/client/customer-service/index')">
         <view class="list-left">
           <text class="list-icon list-icon--blue">客</text>
           <text class="list-label">联系客服</text>
         </view>
-        <text class="list-arrow">进入微信官方客服会话</text>
+        <text class="list-arrow">微信官方客服与人工客服微信</text>
         <text class="list-chevron">›</text>
-      </button>
+      </view>
 
       <view class="list-item" @tap="handleSettings">
         <view class="list-left">
