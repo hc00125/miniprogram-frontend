@@ -86,7 +86,8 @@ const filteredProducts = computed(() => {
   const q = keyword.value.trim().toLowerCase()
   if (!activeGame.value || !activeCategory.value) return []
   return products.value.filter(item => {
-    const matchesGame = Number(item.game_service_id || 0) === activeGame.value?.id
+    const packageGameId = Number((item as BossPackage & { game_service_id?: number | null }).game_service_id || 0)
+    const matchesGame = packageGameId === activeGame.value?.id
       || activeGame.value?.groups.some(group => group.id === item.group_id)
     const matchesCategory = item.group_id === activeCategory.value?.id
     const matchesKeyword = !q || `${item.name} ${item.description || ''}`.toLowerCase().includes(q)
