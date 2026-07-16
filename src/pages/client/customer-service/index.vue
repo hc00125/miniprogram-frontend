@@ -16,13 +16,13 @@
       <text class="state-sub">请稍候...</text>
     </view>
 
-    <view v-else-if="loadError" class="state-card state-card--error">
-      <text class="state-title">客服信息加载失败</text>
-      <text class="state-sub">{{ loadError }}</text>
-      <button class="retry-button" @tap="loadSupportCenter">重新加载</button>
-    </view>
-
     <template v-else>
+      <view v-if="loadError" class="state-card state-card--error">
+        <text class="state-title">人工客服信息加载失败</text>
+        <text class="state-sub">{{ loadError }}，微信官方客服仍可继续使用。</text>
+        <button class="retry-button" @tap="loadSupportCenter">重新加载</button>
+      </view>
+
       <view v-if="officialEnabled" class="channel-card official-card">
         <view class="channel-icon channel-icon--official">微</view>
         <view class="channel-main">
@@ -94,7 +94,9 @@ async function loadSupportCenter() {
     officialEnabled.value = payload.official_customer_service_enabled !== false
     contacts.value = Array.isArray(payload.contacts) ? payload.contacts : []
   } catch (error) {
-    loadError.value = getErrorMessage(error, '暂时无法获取客服信息')
+    loadError.value = getErrorMessage(error, '暂时无法获取人工客服信息')
+    officialEnabled.value = true
+    contacts.value = []
   } finally {
     loading.value = false
   }
