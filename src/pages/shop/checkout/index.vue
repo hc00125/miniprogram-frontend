@@ -59,7 +59,7 @@
         <view class="card-head">
           <view>
             <text class="card-title">{{ isGuaranteeProduct ? '选择保底规格' : '选择规格' }}</text>
-            <text class="card-subtitle">{{ designatedPlayers.length ? `展示“${designatedPlayers[0].type_name}”等级可接的固定价格规格` : '固定价格规格可直接使用微信虚拟支付' }}</text>
+            <text class="card-subtitle">{{ designatedPlayers.length ? `展示“${designatedPlayers[0].type_name}”等级可接的固定价格规格` : '商品固定人数，规格决定陪玩等级与整单价格' }}</text>
           </view>
           <text class="count-pill">{{ specs.length }}档</text>
         </view>
@@ -82,7 +82,7 @@
         <text class="card-title standalone-title">下单信息</text>
         <view class="field"><text class="field-label">联系昵称</text><input v-model="form.contact" class="field-input" placeholder="请输入您的联系昵称" /></view>
         <view class="field"><text class="field-label">游戏ID / 队伍码</text><input v-model="form.gameId" class="field-input" placeholder="请输入游戏ID或队伍码" /></view>
-        <view v-if="!isCartCheckout" class="field">
+        <view v-if="!isCartCheckout && !isPlayerTypeSpec" class="field">
           <text class="field-label">购买数量</text>
           <view class="stepper"><button :disabled="form.quantity <= 1" @tap="adjustQuantity(-1)">−</button><text>{{ form.quantity }}</text><button class="plus" @tap="adjustQuantity(1)">＋</button></view>
           <text class="field-tip">同一固定价格规格可以购买多份</text>
@@ -99,9 +99,10 @@
         <template v-if="isCartCheckout"><view class="amount-line"><text>商品项目</text><text>{{ cartItems.length }}项</text></view><view class="amount-line"><text>商品数量</text><text>×{{ cartQuantity }}</text></view></template>
         <template v-else>
           <view v-if="selectedSpec" class="amount-line"><text>已选规格</text><text>{{ selectedSpec.name }}</text></view>
-          <view class="amount-line"><text>{{ isSpecProduct ? '规格单价' : '套餐单价' }}</text><text>¥{{ formatMoney(basePrice) }}</text></view>
+          <view v-if="selectedSpec?.required_player_type_name" class="amount-line"><text>陪玩要求</text><text>{{ selectedSpec.required_player_type_name }}及以上 × {{ orderRequiredPlayers }}人</text></view>
+          <view class="amount-line"><text>{{ isSpecProduct ? '规格整单价' : '套餐单价' }}</text><text>¥{{ formatMoney(basePrice) }}</text></view>
           <view class="amount-line"><text>订单人数</text><text>{{ orderRequiredPlayers }}人</text></view>
-          <view class="amount-line"><text>购买数量</text><text>×{{ form.quantity }}</text></view>
+          <view v-if="!isPlayerTypeSpec" class="amount-line"><text>购买数量</text><text>×{{ form.quantity }}</text></view>
           <view v-if="!isSpecProduct" class="amount-line"><text>人数与时长</text><text>{{ form.playerCount }}人 · {{ formatHours(form.bookedHours) }}</text></view>
         </template>
         <view v-if="designatedPlayers.length" class="amount-line"><text>指定 {{ designatedPlayers.length }} 名陪玩</text><text>¥0.00</text></view>
@@ -166,6 +167,7 @@ const specs = computed(() => {
 })
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const isSpecProduct = computed(() => Boolean(allSpecs.value.length) || product.value?.product_type === 'guarantee' || product.value?.product_type === 'escort')
+const isPlayerTypeSpec = computed(() => Boolean(selectedSpec.value?.required_player_type_id))
 const orderRequiredPlayers = computed(() => {
   if (isCartCheckout.value) return 1
   return isSpecProduct.value ? getPackagePlayerCount(product.value) : form.playerCount
@@ -175,7 +177,8 @@ const productImage = computed(() => product.value ? getProductImage(product.valu
 const productDesc = computed(() => isGuaranteeProduct.value ? (selectedSpec.value ? `当前规格：${selectedSpec.value.guarantee_amount || selectedSpec.value.name}` : '请选择固定价格保底规格。') : selectedSpec.value?.name || product.value?.description || '精选套餐，平台保障，快速匹配陪玩。')
 const basePrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (allSpecs.value.length ? 0 : (product.value ? getDisplayPrice(product.value) : 0)))
 const unitAmount = computed(() => isSpecProduct.value ? basePrice.value : basePrice.value * form.playerCount * form.bookedHours)
-const singleTotalAmount = computed(() => unitAmount.value * form.quantity)
+const effectiveQuantity = computed(() => isPlayerTypeSpec.value ? 1 : form.quantity)
+const singleTotalAmount = computed(() => unitAmount.value * effectiveQuantity.value)
 const cartQuantity = computed(() => cartItems.value.reduce((sum, item) => sum + normalizeQuantity(item.quantity), 0))
 const cartTotalAmount = computed(() => cartItems.value.reduce((sum, item) => sum + itemAmount(item), 0))
 const totalAmount = computed(() => isCartCheckout.value ? cartTotalAmount.value : singleTotalAmount.value)
@@ -208,6 +211,7 @@ const virtualPayBlockReason = computed(() => {
 const virtualPayReadyText = computed(() => {
   if (designatedPlayers.value.length && selectedSpec.value) return `将按“${selectedSpec.value.name}”价格向${designatedPlayers.value.length}名${designatedPlayers.value[0].type_name}发出10分钟邀请；高等级陪玩可承接较低等级规格，剩余${remainingPublicSlots.value}个名额公开抢单。`
   if (isCartCheckout.value) return '已选择一个固定价格商品；同一商品数量可以大于1。'
+  if (selectedSpec.value?.required_player_type_name) return `商品固定需要${orderRequiredPlayers.value}人；本规格要求${selectedSpec.value.required_player_type_name}及以上等级，整单价格为¥${formatMoney(basePrice.value)}。`
   return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，支付时将按该规格与购买数量核对金额。` : '请选择一个固定价格规格。'
 })
 
@@ -230,10 +234,11 @@ function syncSelectedSpec() {
   const preferred = nextSpecs.find(item => String(item.id) === initialSpecId.value)
   const current = nextSpecs.find(item => String(item.id) === String(selectedSpec.value?.id || ''))
   selectedSpec.value = preferred || current || nextSpecs[0]
+  if (selectedSpec.value?.required_player_type_id) form.quantity = 1
 }
 async function fetchCartCheckout() { loading.value = true; try { const selectedIds = new Set(cartItemIds.value); cartItems.value = (await getShopCart()).filter(item => selectedIds.has(String(item.id))); if (!cartItems.value.length) toast('选中的购物车商品不存在或已删除') } catch (error) { toast(getErrorMessage(error, '购物车加载失败')) } finally { loading.value = false } }
 async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const matched = (await getPackages()).find(item => item.id === packageId.value) || null; product.value = matched; if (matched) form.playerCount = getPackagePlayerCount(matched); syncSelectedSpec() } catch (error) { toast(getErrorMessage(error, '商品加载失败')) } finally { loading.value = false } }
-function selectSpec(spec: BossPackageSpec) { if (!specMatchesDesignatedPlayers(spec)) return toast('指定陪玩等级不足，不能选择该规格'); selectedSpec.value = spec }
+function selectSpec(spec: BossPackageSpec) { if (!specMatchesDesignatedPlayers(spec)) return toast('指定陪玩等级不足，不能选择该规格'); selectedSpec.value = spec; if (spec.required_player_type_id) form.quantity = 1 }
 function adjustQuantity(delta: number) { const next = form.quantity + delta; if (next < 1) return; if (next > 99) return toast('单次最多选择99件'); form.quantity = next }
 function adjustPlayerCount(delta: number) { const next = form.playerCount + delta; if (next < 1) return; if (next > MAX_PLAYER_COUNT) return toast(`下单人数最多${MAX_PLAYER_COUNT}人`); form.playerCount = next }
 function adjustHours(delta: number) { const next = Math.round((form.bookedHours + delta) * 10) / 10; if (next >= .5) form.bookedHours = next }
@@ -241,7 +246,7 @@ function buildBossNote() {
   const parts: string[] = []
   if (designatedPlayers.value.length) parts.push(`指定陪玩：${designatedPlayers.value.map(item => item.name).join('、')}（${designatedPlayers.value[0].type_name}，指定本人不加价）`)
   if (!isCartCheckout.value && selectedSpec.value) parts.push(`规格：${selectedSpec.value.name}，价格：¥${formatMoney(Number(selectedSpec.value.price || 0))}`)
-  if (!isCartCheckout.value && form.quantity > 1) parts.push(`购买数量：${form.quantity}`)
+  if (!isCartCheckout.value && effectiveQuantity.value > 1) parts.push(`购买数量：${effectiveQuantity.value}`)
   if (form.note.trim()) parts.push(form.note.trim())
   return parts.join('\n') || null
 }
@@ -273,7 +278,7 @@ async function submitOrder() {
       game_id: form.gameId.trim(),
       package_id: isCartCheckout.value ? mergedItems?.[0]?.package_id : product.value?.id,
       spec_id: !isCartCheckout.value && selectedSpec.value ? Number(selectedSpec.value.id) : null,
-      quantity: form.quantity,
+      quantity: effectiveQuantity.value,
       items: mergedItems,
       required_players: orderRequiredPlayers.value,
       addon_details: null,
