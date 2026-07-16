@@ -46,12 +46,12 @@
       <view class="setting-row" @tap="go('/pages/legal/privacy/index')">
         <view><text>隐私政策</text><text>了解个人信息的收集与使用</text></view><text>›</text>
       </view>
-      <button class="setting-row contact-row" open-type="contact">
-        <view><text>联系客服</text><text>进入微信官方客服会话</text></view><text>›</text>
-      </button>
-      <button class="setting-row contact-row danger-link" open-type="contact">
+      <view class="setting-row" @tap="go('/pages/client/customer-service/index')">
+        <view><text>联系客服</text><text>微信官方客服与人工客服微信</text></view><text>›</text>
+      </view>
+      <view class="setting-row danger-link" @tap="go('/pages/client/customer-service/index?scene=account-cancellation')">
         <view><text>申请账号注销</text><text>联系客服核验未完成订单、提现和身份后处理</text></view><text>›</text>
-      </button>
+      </view>
     </view>
 
     <button class="logout-btn" @tap="logout">退出当前账号</button>
@@ -155,8 +155,6 @@ onShow(loadProfile)
 .setting-row view text:first-child { font-size: 26rpx; font-weight: 900; }
 .setting-row view text:last-child { margin-top: 5rpx; color: #879083; font-size: 20rpx; line-height: 1.45; }
 .setting-row > text { color: #aaa; font-size: 34rpx; }
-.contact-row { margin: 0; border-radius: 0; color: inherit; text-align: left; line-height: normal; background: transparent; }
-.contact-row::after { border: none; }
 .danger-link view text:first-child { color: #a13d35; }
 .permission-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-top: 18rpx; }
 .permission-grid view { padding: 18rpx; border-radius: 18rpx; text-align: center; background: #eef8f1; }
