@@ -39,6 +39,27 @@
       </view>
     </view>
 
+    <view class="club-card vip-room-card">
+      <view class="vip-room-head">
+        <view>
+          <text class="vip-room-eyebrow">会员权益</text>
+          <text class="vip-room-title">专属KOOK房间</text>
+        </view>
+        <text class="vip-room-state" :class="vipKookRoomStatusClass">{{ vipKookRoomStatusText }}</text>
+      </view>
+      <view class="vip-room-body">
+        <view class="vip-room-icon">房</view>
+        <view class="vip-room-main">
+          <text class="vip-room-description">{{ vipKookRoomDescription }}</text>
+          <view v-if="vipKookRoomNumber" class="vip-room-number-row">
+            <text class="vip-room-number">{{ vipKookRoomNumber }}</text>
+            <view class="vip-room-copy" @tap="copyVipKookRoom">复制</view>
+          </view>
+          <text v-else class="vip-room-threshold">解锁条件：累计达到 💎20,000</text>
+        </view>
+      </view>
+    </view>
+
     <view class="club-card form-card">
       <view class="club-card__hd form-head">
         <text class="club-card__title">基础资料</text>
@@ -94,6 +115,23 @@ const vipProgress = computed(() => Math.max(0, Math.min(100, Number(profile.valu
 const vipRemaining = computed(() => Number(profile.value?.vip?.remaining_to_next || 0))
 const nextVipName = computed(() => profile.value?.vip?.next_tier?.name || '')
 const vipBenefits = computed(() => profile.value?.vip?.current_tier?.benefits || [])
+const vipKookRoom = computed(() => profile.value?.vip?.private_kook_room)
+const vipKookRoomNumber = computed(() => vipKookRoom.value?.room_number?.trim() || '')
+const vipKookRoomStatusText = computed(() => {
+  const status = vipKookRoom.value?.status || 'locked'
+  if (status === 'active') return '已配置'
+  if (status === 'pending_configuration') return '等待配置'
+  if (status === 'disabled') return '暂未启用'
+  return '💎20,000解锁'
+})
+const vipKookRoomStatusClass = computed(() => `vip-room-state--${vipKookRoom.value?.status || 'locked'}`)
+const vipKookRoomDescription = computed(() => {
+  const status = vipKookRoom.value?.status || 'locked'
+  if (status === 'active') return '后续创建的新订单会自动使用该专属房间。'
+  if (status === 'pending_configuration') return '权益已解锁，等待平台超管填写专属房间号。'
+  if (status === 'disabled') return '房间记录已保留，当前暂不应用到新订单。'
+  return '累计钻石达到20,000后解锁，由平台超管统一配置。'
+})
 
 function diamond(value: number) {
   const converted = Math.round(Number(value || 0) * 100) / 10
@@ -101,6 +139,14 @@ function diamond(value: number) {
   const [integer, decimal] = fixed.split('.')
   const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return decimal === '0' ? formatted : `${formatted}.${decimal}`
+}
+
+function copyVipKookRoom() {
+  if (!vipKookRoomNumber.value) return
+  uni.setClipboardData({
+    data: vipKookRoomNumber.value,
+    success: () => success('KOOK房间号已复制')
+  })
 }
 
 function syncDraft(current: ClientProfile | null) {
@@ -207,6 +253,25 @@ onShow(loadAccount)
 .vip-benefits { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 22rpx; }
 .vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 800; background: rgba(255,255,255,.14); }
 .vip-card--silver .vip-benefits text,.vip-card--gold .vip-benefits text,.vip-card--platinum .vip-benefits text,.vip-card--diamond .vip-benefits text,.vip-card--brilliant .vip-benefits text,.vip-card--elegant .vip-benefits text { background: rgba(23,52,38,.10); }
+
+.vip-room-card { margin-bottom: 22rpx; padding: 28rpx; }
+.vip-room-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
+.vip-room-head text { display: block; }
+.vip-room-eyebrow { color: #a87520; font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
+.vip-room-title { margin-top: 6rpx; color: #172116; font-size: 32rpx; font-weight: 900; }
+.vip-room-state { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; }
+.vip-room-state--locked { color: #7c5a1c; background: #fff5dc; }
+.vip-room-state--pending_configuration { color: #1f6f48; background: #eef8f1; }
+.vip-room-state--disabled { color: #8d4c3b; background: #fff0ea; }
+.vip-room-state--active { color: #fff; background: #1f7c4b; }
+.vip-room-body { margin-top: 22rpx; display: flex; align-items: flex-start; gap: 18rpx; padding: 22rpx; border-radius: 24rpx; background: linear-gradient(180deg,#f7faf4,#f1f6ee); }
+.vip-room-icon { width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 20rpx; color: #fff; font-size: 28rpx; font-weight: 900; background: #2f9b63; }
+.vip-room-main { flex: 1; min-width: 0; }
+.vip-room-description { display: block; color: #687665; font-size: 22rpx; line-height: 1.55; }
+.vip-room-number-row { margin-top: 16rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.vip-room-number { flex: 1; min-width: 0; color: #172116; font-size: 30rpx; font-weight: 900; word-break: break-all; }
+.vip-room-copy { flex-shrink: 0; padding: 9rpx 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; background: #fff; border: 1rpx solid rgba(31,124,75,.16); }
+.vip-room-threshold { display: block; margin-top: 14rpx; color: #8a6a31; font-size: 21rpx; font-weight: 800; }
 
 .form-card { padding-bottom: 10rpx; }
 .form-head { display: flex; flex-direction: column; gap: 8rpx; }
