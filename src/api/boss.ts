@@ -33,6 +33,8 @@ export interface BossPackage {
   thumb_url?: string
   picture_url?: string
   detail_images?: string[]
+  detail_text?: string
+  rules_text?: string
   product_type?: 'normal' | 'guarantee' | 'escort' | string
   specs?: BossPackageSpec[]
   price?: number
