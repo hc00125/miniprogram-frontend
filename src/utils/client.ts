@@ -8,7 +8,19 @@ export interface VipTierInfo {
   name: string
   min_consumption: string
   benefits: string[]
+  feature_codes: string[]
   badge_color: string
+}
+
+export interface VipPrivateKookRoom {
+  feature_code: 'private_kook_room'
+  unlock_diamonds: number
+  unlocked: boolean
+  configured: boolean
+  active: boolean
+  available: boolean
+  status: 'locked' | 'pending_configuration' | 'disabled' | 'active'
+  room_number: string
 }
 
 export interface VipSnapshot {
@@ -17,6 +29,7 @@ export interface VipSnapshot {
   next_tier: VipTierInfo | null
   remaining_to_next: string
   progress_percent: number
+  private_kook_room?: VipPrivateKookRoom
 }
 
 export interface ClientProfile {
@@ -98,11 +111,26 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
         ...profile.vip,
         progress_percent: Math.max(0, Math.min(100, Number(profile.vip.progress_percent || 0))),
         current_tier: profile.vip.current_tier
-          ? { ...profile.vip.current_tier, benefits: profile.vip.current_tier.benefits || [] }
+          ? {
+              ...profile.vip.current_tier,
+              benefits: profile.vip.current_tier.benefits || [],
+              feature_codes: profile.vip.current_tier.feature_codes || []
+            }
           : null,
         next_tier: profile.vip.next_tier
-          ? { ...profile.vip.next_tier, benefits: profile.vip.next_tier.benefits || [] }
-          : null
+          ? {
+              ...profile.vip.next_tier,
+              benefits: profile.vip.next_tier.benefits || [],
+              feature_codes: profile.vip.next_tier.feature_codes || []
+            }
+          : null,
+        private_kook_room: profile.vip.private_kook_room
+          ? {
+              ...profile.vip.private_kook_room,
+              unlock_diamonds: Number(profile.vip.private_kook_room.unlock_diamonds || 20000),
+              room_number: String(profile.vip.private_kook_room.room_number || '')
+            }
+          : undefined
       }
     : null
   return {
