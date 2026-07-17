@@ -109,7 +109,7 @@
         <view class="wechat-icon">微</view>
         <view>
           <text>微信虚拟支付</text>
-          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '队伍已就位 · 付款后等待陪玩开打' }}</text>
+          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '队伍已就位 · 可付款或取消订单' }}</text>
         </view>
       </view>
       <view class="virtual-notice">
@@ -122,7 +122,10 @@
       <button v-if="isRenewal" class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelRenewalOrder">
         {{ cancelling ? '正在取消续单...' : '取消本次续单' }}
       </button>
-      <text class="pay-help">支付成功以后微信服务器仍需数秒确认，请勿连续点击。</text>
+      <button v-else class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelMainOrder">
+        {{ cancelling ? '正在取消订单...' : '取消订单' }}
+      </button>
+      <text class="pay-help">未支付订单可以取消；支付成功后需联系客服按退款流程处理。</text>
     </view>
 
     <view v-if="isPaid" class="card completed-card">
@@ -166,7 +169,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
 import { createMiniProgramPayment } from '@/api/pay'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { replace } from '@/utils/nav'
+import { relaunch, replace } from '@/utils/nav'
 import { requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
 type PayErrorState = {
@@ -218,7 +221,7 @@ const selectedUnratedPlayerIds = computed(() => Object.keys(ratings.value)
   .filter(playerId => ratings.value[playerId] > 0 && !existingRatings.value[playerId]))
 const payNotice = computed(() => isRenewal.value
   ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。付款成功后会自动合并到原订单，陪玩阵容和房间号保持不变。`
-  : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”，由陪玩确认开打并开始计时。')
+  : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
 const payStatusText = computed(() => {
   if (!orderInfo.value) return '加载中'
   if (isRenewal.value && orderInfo.value.status === '待支付') return '续单待支付'
@@ -232,7 +235,7 @@ const payStatusText = computed(() => {
 const stripText = computed(() => {
   if (!orderInfo.value) return '订单加载中'
   if (isRenewal.value) return isPaid.value ? '续单支付完成' : '续单已创建，请完成付款'
-  if (orderInfo.value.status === '待支付') return '队伍已就位，请先完成付款'
+  if (orderInfo.value.status === '待支付') return '队伍已就位，请付款或取消订单'
   if (orderInfo.value.status === '待开打') return '付款成功，等待陪玩开打'
   if (orderInfo.value.status === '进行中') return '付款已完成，服务进行中'
   if (orderInfo.value.status === '已完成') return '订单服务已完成'
@@ -357,6 +360,26 @@ async function payByWechat() {
   }
 }
 
+async function cancelMainOrder() {
+  if (isRenewal.value || isPaid.value || !showPayPanel.value || cancelling.value) return
+  const acceptedCount = Number(orderInfo.value?.players?.length || 0)
+  const acceptedText = acceptedCount ? `当前已有${acceptedCount}位陪玩接单。` : ''
+  const message = `${acceptedText}取消后订单不会扣款，当前阵容会立即释放。确定取消吗？`
+  if (!(await confirm(message, '取消订单'))) return
+
+  cancelling.value = true
+  try {
+    // 普通主订单在付款前允许取消；后端负责停止入房倒计时并释放已接单陪玩。
+    await cancelOrder(orderNo.value, '老板在支付前主动取消')
+    success('订单已取消，服务阵容已释放')
+    relaunch('/pages/boss/home/index', { tab: 'home' })
+  } catch (error) {
+    toast(getErrorMessage(error, '取消订单失败'))
+  } finally {
+    cancelling.value = false
+  }
+}
+
 async function cancelRenewalOrder() {
   if (!isRenewal.value || isPaid.value || cancelling.value) return
   if (!(await confirm('取消后本次续单不会增加服务时长，确定取消吗？', '取消续单'))) return
@@ -417,108 +440,4 @@ onLoad((query) => { orderNo.value = String(query?.orderNo || '') })
 onShow(fetchOrder)
 </script>
 
-<style lang="scss" scoped>
-.payment-page { min-height: 100vh; padding: 24rpx 24rpx calc(70rpx + env(safe-area-inset-bottom)); box-sizing: border-box; color: #172116; background: radial-gradient(circle at 10% 0%, rgba(47,155,99,.12), transparent 30%), radial-gradient(circle at 90% 12%, rgba(216,161,68,.12), transparent 28%), #f7f3ea; }
-.card, .status-card, .amount-card, .error-card, .pay-error-card { margin-bottom: 20rpx; border-radius: 28rpx; background: rgba(255,255,255,.96); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.status-card { display: flex; align-items: center; gap: 16rpx; padding: 22rpx 24rpx; }
-.status-dot { width: 16rpx; height: 16rpx; flex-shrink: 0; border-radius: 50%; background: #d8a144; box-shadow: 0 0 0 8rpx rgba(216,161,68,.12); }
-.status-card.paid .status-dot { background: #2f9b63; box-shadow: 0 0 0 8rpx rgba(47,155,99,.12); }
-.status-main { flex: 1; min-width: 0; }
-.status-title, .status-sub { display: block; }
-.status-title { font-size: 27rpx; font-weight: 900; }
-.status-sub { margin-top: 6rpx; color: #8a9286; font-size: 21rpx; }
-.status-pill { padding: 7rpx 14rpx; border-radius: 999rpx; color: #a87520; font-size: 22rpx; font-weight: 900; background: #fff6df; }
-.paid .status-pill { color: #1f7c4b; background: #eef8f1; }
-.amount-card { padding: 36rpx 28rpx 30rpx; text-align: center; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
-.amount-label { color: rgba(255,255,255,.78); font-size: 24rpx; }
-.amount-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin-top: 12rpx; }
-.amount-row text:first-child { font-size: 38rpx; font-weight: 900; }
-.amount-row text:last-child { font-size: 76rpx; line-height: 1; font-weight: 900; }
-.amount-breakdown { display: block; margin-top: 14rpx; color: rgba(255,255,255,.78); font-size: 22rpx; font-weight: 700; }
-.secure-tip { display: inline-flex; align-items: center; gap: 10rpx; margin-top: 24rpx; padding: 10rpx 18rpx; border-radius: 999rpx; background: rgba(255,255,255,.12); font-size: 22rpx; }
-.card { padding: 26rpx; }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 18rpx; }
-.card-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.card-head text:last-child { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
-.info-row { min-height: 70rpx; display: flex; align-items: center; justify-content: space-between; gap: 24rpx; border-bottom: 1rpx solid rgba(39,61,42,.07); font-size: 25rpx; }
-.info-row > text:first-child { flex-shrink: 0; color: #7d877a; }
-.info-row > text:last-child { flex: 1; text-align: right; font-weight: 700; word-break: break-all; }
-.room-row > text:last-child { color: #1f7c4b; }
-.emphasis-row > text:last-child { color: #1f7c4b; font-size: 28rpx; font-weight: 900; }
-.total-row { border-bottom: 0; }
-.total-row > text:last-child { color: #a87520; font-size: 31rpx; font-weight: 900; }
-.renewal-history-card { border-color: rgba(216,161,68,.18); background: linear-gradient(180deg, #fffdf8, #fff); }
-.renewal-record { margin-top: 16rpx; padding: 20rpx; border-radius: 20rpx; background: #f8faf5; border: 1rpx solid rgba(39,61,42,.07); }
-.renewal-record:first-of-type { margin-top: 0; }
-.renewal-record-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.renewal-record-head text:first-child { font-size: 26rpx; font-weight: 900; }
-.renewal-record-head text:last-child { padding: 6rpx 12rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 20rpx; font-weight: 900; background: #eaf7ee; }
-.renewal-record-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10rpx; margin-top: 16rpx; }
-.renewal-record-grid view { min-width: 0; padding: 14rpx 8rpx; border-radius: 14rpx; text-align: center; background: #fff; }
-.renewal-record-grid text { display: block; }
-.renewal-record-grid text:first-child { color: #879083; font-size: 19rpx; }
-.renewal-record-grid text:last-child { margin-top: 5rpx; font-size: 21rpx; font-weight: 900; word-break: break-all; }
-.renewal-order-no { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-top: 14rpx; padding-top: 14rpx; border-top: 1rpx solid rgba(39,61,42,.07); font-size: 20rpx; }
-.renewal-order-no text:first-child { flex-shrink: 0; color: #879083; }
-.renewal-order-no text:last-child { flex: 1; color: #1f7c4b; text-align: right; font-family: monospace; word-break: break-all; }
-.players-track { white-space: nowrap; }
-.player-item { width: 150rpx; display: inline-flex; flex-direction: column; align-items: center; margin-right: 14rpx; padding: 18rpx 10rpx; border-radius: 22rpx; background: #f7faf4; box-sizing: border-box; vertical-align: top; }
-.player-avatar { width: 76rpx; height: 76rpx; border-radius: 50%; background: #e8efe7; }
-.player-avatar--empty { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 30rpx; font-weight: 900; background: #2f9b63; }
-.player-name { max-width: 130rpx; margin-top: 10rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 24rpx; font-weight: 900; }
-.player-type { margin-top: 4rpx; color: #8a9286; font-size: 20rpx; }
-.virtual-pay-card { border-color: rgba(47,155,99,.18); }
-.virtual-head { display: flex; align-items: center; gap: 18rpx; }
-.virtual-head view:last-child text { display: block; }
-.virtual-head view:last-child text:first-child { font-size: 30rpx; font-weight: 900; }
-.virtual-head view:last-child text:last-child { margin-top: 6rpx; color: #7d877a; font-size: 22rpx; }
-.wechat-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #16954d); }
-.virtual-notice { display: flex; gap: 12rpx; margin-top: 22rpx; padding: 18rpx; border-radius: 18rpx; color: #78643a; font-size: 22rpx; line-height: 1.5; background: #fff8e8; }
-.virtual-notice text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 11rpx; border-radius: 50%; background: #d8a144; }
-.virtual-notice text:last-child { flex: 1; }
-.pay-button { width: 100%; height: 92rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 30rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); box-shadow: 0 12rpx 26rpx rgba(31,156,81,.22); }
-.cancel-renewal-button { width: 100%; height: 76rpx; margin-top: 14rpx; border-radius: 999rpx; color: #8f4d35; font-size: 25rpx; font-weight: 900; background: #fff2ec; border: 1rpx solid rgba(143,77,53,.16); }
-.pay-button::after, .cancel-renewal-button::after, .mini-button::after, .ghost-button::after, .retry-button::after, .rating-button::after, .progress-button::after { border: none; }
-.pay-button[disabled], .cancel-renewal-button[disabled] { opacity: .62; }
-.pay-help { display: block; margin-top: 14rpx; color: #9aa197; font-size: 21rpx; text-align: center; }
-.error-card, .pay-error-card { padding: 24rpx; border-color: rgba(196,50,50,.17); background: #fff6f4; }
-.error-card { display: flex; align-items: center; gap: 16rpx; }
-.pay-error-head { display: flex; align-items: flex-start; gap: 16rpx; }
-.error-icon { width: 52rpx; height: 52rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 900; background: #c43232; }
-.error-main { flex: 1; min-width: 0; }
-.error-title, .error-detail, .error-action { display: block; }
-.error-title { color: #8f2929; font-size: 27rpx; font-weight: 900; }
-.error-detail { margin-top: 8rpx; color: #7c514d; font-size: 23rpx; line-height: 1.5; word-break: break-all; }
-.error-code { display: flex; justify-content: space-between; gap: 20rpx; margin-top: 18rpx; padding: 16rpx 18rpx; border-radius: 16rpx; color: #8f2929; font-size: 22rpx; background: rgba(196,50,50,.07); }
-.error-code text:last-child { flex: 1; text-align: right; font-weight: 900; word-break: break-all; }
-.error-action { margin-top: 14rpx; color: #7d645f; font-size: 22rpx; line-height: 1.5; }
-.error-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 20rpx; }
-.ghost-button, .retry-button, .mini-button, .progress-button { height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; font-size: 24rpx; font-weight: 900; }
-.ghost-button { color: #8f2929; background: #fff; border: 1rpx solid rgba(196,50,50,.20); }
-.retry-button, .mini-button { color: #fff; background: #c43232; }
-.mini-button { min-width: 150rpx; margin: 0; padding: 0 20rpx; }
-.completed-card { display: flex; flex-direction: column; align-items: center; padding: 36rpx 28rpx; text-align: center; }
-.completed-icon { width: 90rpx; height: 90rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 48rpx; font-weight: 900; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
-.completed-title { margin-top: 18rpx; font-size: 34rpx; font-weight: 900; }
-.completed-sub { margin-top: 10rpx; color: #7d877a; font-size: 23rpx; }
-.progress-button { min-width: 260rpx; margin-top: 24rpx; padding: 0 30rpx; color: #fff; background: #1f7c4b; }
-.rating-item { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 16rpx 0; border-bottom: 1rpx solid rgba(39,61,42,.07); }
-.rating-item--rated { opacity: .78; }
-.rating-player { display: flex; align-items: center; gap: 12rpx; }
-.rating-avatar { width: 60rpx; height: 60rpx; border-radius: 50%; }
-.rating-avatar--empty { display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; background: #2f9b63; }
-.rating-player view text { display: block; }
-.rating-player view text:first-child { font-size: 25rpx; font-weight: 900; }
-.rating-player view text:last-child { margin-top: 4rpx; color: #8a9286; font-size: 20rpx; }
-.rating-control { display: flex; flex-direction: column; align-items: flex-end; gap: 5rpx; }
-.stars { display: flex; gap: 6rpx; }
-.stars.locked { pointer-events: none; }
-.stars text { color: #d9ded7; font-size: 34rpx; }
-.stars text.active { color: #e1ac3f; }
-.rating-done-tag { padding: 4rpx 10rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 19rpx; font-weight: 900; background: #eaf7ee; }
-.rating-complete-tip { margin-top: 16rpx; padding: 22rpx; border-radius: 18rpx; color: #55705e; font-size: 23rpx; line-height: 1.5; text-align: center; background: #eef8f1; }
-.rating-textarea { width: 100%; min-height: 130rpx; margin-top: 18rpx; padding: 18rpx; border-radius: 18rpx; background: #f7faf4; box-sizing: border-box; font-size: 25rpx; }
-.rating-button { width: 100%; height: 78rpx; margin-top: 16rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: #2f9b63; }
-.rating-button[disabled] { opacity: .55; }
-.loading-state { padding: 80rpx 20rpx; color: #8a9286; text-align: center; font-size: 26rpx; }
-</style>
+<style lang="scss" src="./index.scss" scoped></style>
