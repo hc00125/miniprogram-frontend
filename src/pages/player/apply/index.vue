@@ -26,6 +26,13 @@
       <view class="field">
         <view class="field-head"><text class="field-label">陪玩师名称</text><text class="field-auto">来自昵称</text></view>
         <view class="readonly-field"><text class="readonly-value">{{ playerNameText }}</text><text class="readonly-note">使用当前账号昵称作为陪玩师名称，可在账号信息中修改</text></view>
+        <view v-if="needsCustomNickname" class="nickname-warning">
+          <view>
+            <text>请先设置公开昵称</text>
+            <text>系统编号昵称只用于账号初始化，成为陪玩师前需要设置公开展示名称。</text>
+          </view>
+          <button @tap="openAccountSettings">去设置</button>
+        </view>
       </view>
 
       <view class="field">
@@ -84,7 +91,7 @@
     </view>
 
     <view class="footer-actions">
-      <button class="club-btn club-btn--primary" :disabled="submitting || audioUploading" @tap="submitApply">{{ submitting ? '提交中...' : '提交申请' }}</button>
+      <button class="club-btn club-btn--primary" :disabled="submitting || audioUploading || needsCustomNickname" @tap="submitApply">{{ needsCustomNickname ? '请先设置公开昵称' : (submitting ? '提交中...' : '提交申请') }}</button>
     </view>
 
     <view v-if="showRule" class="rule-mask" @tap="showRule = false">
@@ -129,6 +136,7 @@ const playerNameText = computed(() => {
   const current = profile.value
   return current?.nickname?.trim() || current?.player?.name?.trim() || current?.application?.nickname?.trim() || current?.application?.name?.trim() || '微信用户'
 })
+const needsCustomNickname = computed(() => Boolean(profile.value && profile.value.nickname_customized !== true))
 
 function appendBio(tag: string) {
   if (form.bio.split('、').includes(tag)) return
@@ -164,6 +172,7 @@ async function loadApplyContext() {
 }
 
 function openPrivacy() { go('/pages/legal/privacy/index') }
+function openAccountSettings() { go('/pages/client/account/index') }
 
 function chooseAudio() {
   const chooseFile = (uni as any).chooseMessageFile
@@ -203,6 +212,11 @@ function validateRealName(value: string) {
 }
 
 async function submitApply() {
+  if (needsCustomNickname.value) {
+    toast('申请成为陪玩师前，请先设置公开昵称')
+    openAccountSettings()
+    return
+  }
   const realName = validateRealName(form.real_name)
   if (!form.real_name.trim()) return toast('请输入真实姓名')
   if (!realName) return toast('请输入完整、有效的真实姓名')
@@ -252,6 +266,9 @@ onShow(loadApplyContext)
 .readonly-field,.field-input,.field-textarea { width:100%;border-radius:20rpx;background:#f7faf4;border:1px solid rgba(36,55,39,.08);box-sizing:border-box; }
 .readonly-field { padding:20rpx; }.readonly-value { display:block;color:#172116;font-size:30rpx;font-weight:900; }
 .readonly-note,.privacy-tip { display:block;margin-top:8rpx;color:#8a9286;font-size:22rpx;line-height:1.45; }
+.nickname-warning { display:flex;align-items:center;gap:16rpx;margin-top:14rpx;padding:18rpx;border-radius:18rpx;background:#fff3e8;border:1px solid rgba(168,117,32,.16); }
+.nickname-warning > view { flex:1;min-width:0; }.nickname-warning text { display:block; }.nickname-warning text:first-child { color:#8c5d16;font-size:24rpx;font-weight:900; }.nickname-warning text:last-child { margin-top:5rpx;color:#8a6f48;font-size:21rpx;line-height:1.45; }
+.nickname-warning button { min-width:116rpx;height:60rpx;margin:0;padding:0 18rpx;border-radius:999rpx;color:#fff;font-size:22rpx;font-weight:900;background:#a87520; }.nickname-warning button::after { border:none; }
 .type-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:14rpx; }
 .type-option { min-height:90rpx;display:flex;align-items:center;justify-content:center;padding:0 20rpx;border-radius:20rpx;background:#f7faf4;border:1px solid rgba(36,55,39,.08); }
 .type-option.active { background:#eef8f1;border-color:rgba(47,155,99,.45); }.type-name { color:#172116;font-size:27rpx;font-weight:900; }
