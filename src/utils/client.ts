@@ -39,6 +39,7 @@ export interface ClientProfile {
   open_id?: string
   wechat_openid?: string
   nickname: string
+  nickname_customized?: boolean
   avatarUrl?: string
   avatar_url?: string
   role?: string
@@ -135,6 +136,7 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
     : null
   return {
     ...profile,
+    nickname_customized: Boolean(profile.nickname_customized),
     avatarUrl,
     avatar_url: avatarUrl,
     cumulative_consumption: profile.cumulative_consumption ?? vip?.cumulative_consumption ?? 0,
@@ -159,6 +161,7 @@ export function ensureClientProfile() {
   if (profile) return profile
   const guest: ClientProfile = {
     nickname: '微信用户',
+    nickname_customized: false,
     avatarUrl: '',
     avatar_url: '',
     player_status: 'none',
