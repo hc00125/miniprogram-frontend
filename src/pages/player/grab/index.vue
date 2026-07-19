@@ -55,15 +55,10 @@
 
       <view v-if="orders.length" class="order-list">
         <view v-for="order in orders" :key="order.order_no" class="order-card">
-          <view class="order-head">
-            <view><text class="order-title">{{ order.package_name || '套餐订单' }}</text><text class="order-no">{{ order.order_no }}</text></view>
-            <text class="public-tag">公开名额</text>
-          </view>
-          <view class="meta-grid">
+          <view class="meta-grid meta-grid--single">
             <view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view>
-            <view><text>价格</text><text>¥{{ money(order.total_price_per_hour) }}</text></view>
           </view>
-          <text v-if="order.boss_note" class="boss-note">老板备注：{{ order.boss_note }}</text>
+          <text class="boss-note">老板备注：{{ order.boss_note || '无' }}</text>
           <button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button>
         </view>
       </view>
@@ -173,7 +168,7 @@ async function decline(item: DesignationInvitation & { responding?: boolean }) {
 
 async function grab(order: any) {
   if (!order.can_grab || order.grabbing) return
-  if (!(await confirm(`确定抢这个公开订单吗？\n套餐：${order.package_name}`))) return
+  if (!(await confirm('确定抢这个公开订单吗？'))) return
   order.grabbing = true
   try {
     await apiGrabOrder(order.order_no, player.value.id)
@@ -275,16 +270,17 @@ onUnmounted(() => {
 .section-head text { display: block; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
 .section-head text:last-child { margin-top: 5rpx; color: #879083; font-size: 21rpx; }
-.count-chip, .public-tag, .invite-label { padding: 7rpx 12rpx; border-radius: 999rpx; color: #a87520; font-size: 20rpx; font-weight: 900; background: #fff3d4; }
+.count-chip, .invite-label { padding: 7rpx 12rpx; border-radius: 999rpx; color: #a87520; font-size: 20rpx; font-weight: 900; background: #fff3d4; }
 .invitation-card, .order-card { margin-top: 14rpx; padding: 20rpx; box-shadow: none; }
 .invitation-card { border-color: rgba(216,161,68,.20); }
-.invite-top, .order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
-.invite-top > view, .order-head > view { flex: 1; min-width: 0; }
+.invite-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.invite-top > view { flex: 1; min-width: 0; }
 .invite-label, .order-no { display: block; }
 .order-no { margin-top: 6rpx; color: #9aa197; font-size: 19rpx; font-family: monospace; word-break: break-all; }
 .countdown { color: #a87520; font-size: 22rpx; font-weight: 900; }
 .order-title { display: block; margin-top: 16rpx; font-size: 29rpx; font-weight: 900; }
 .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10rpx; margin-top: 16rpx; }
+.meta-grid--single { grid-template-columns: 1fr; margin-top: 0; }
 .meta-grid view { padding: 14rpx; border-radius: 16rpx; background: #f7faf4; }
 .meta-grid text { display: block; }
 .meta-grid text:first-child { color: #879083; font-size: 19rpx; }
@@ -294,7 +290,6 @@ onUnmounted(() => {
 .invite-actions button, .grab-btn { height: 72rpx; margin: 0; border-radius: 999rpx; font-size: 25rpx; font-weight: 900; }
 .decline-btn { color: #a13d35; background: #fff0ed; }
 .accept-btn, .grab-btn { color: #fff; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
-.public-tag { color: #1f7c4b; background: #eef8f1; }
 .grab-btn { width: 100%; margin-top: 16rpx; }
 .empty-card { padding: 50rpx 20rpx; color: #879083; text-align: center; box-shadow: none; }
 .footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
