@@ -4,7 +4,7 @@
       <view class="status-dot" :class="{ live: online }"></view>
       <view class="status-main">
         <text>{{ online ? '实时接单中' : '当前离线' }}</text>
-        <text>{{ online ? '指定邀请和公开订单每10秒自动刷新' : '上线后才会开始接收公开订单' }}</text>
+        <text>{{ online ? '每10秒自动刷新，新订单将声音和震动提醒' : '上线后才会开始接收公开订单' }}</text>
       </view>
       <button :disabled="onlineUpdating" @tap="toggleOnline">{{ onlineUpdating ? '同步中' : (online ? '下线' : '上线') }}</button>
     </view>
@@ -74,6 +74,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { onHide, onShow } from '@dcloudio/uni-app'
 import {
   acceptDesignation,
   declineDesignation,
@@ -90,6 +91,7 @@ import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { getClientProfile, isApprovedPlayer, normalizeAvatarUrl, setPlayerOnlineStatus, getPlayerOnlineStatus } from '@/utils/client'
 import { formatHours } from '@/utils/format'
+import { createOrderAlert } from '@/utils/orderAlert'
 
 const player = ref<any>(null)
 const orders = ref<any[]>([])
@@ -97,6 +99,10 @@ const invitations = ref<Array<DesignationInvitation & { responding?: boolean }>>
 const online = ref(getPlayerOnlineStatus())
 const onlineUpdating = ref(false)
 const now = ref(Date.now())
+const orderAlert = createOrderAlert()
+const seenOrderKeys = new Set<string>()
+let orderSnapshotReady = false
+let pageVisible = true
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let clockTimer: ReturnType<typeof setInterval> | null = null
 
@@ -118,12 +124,30 @@ function stopRefresh() {
   refreshTimer = null
 }
 
+function checkNewOrderAlert(inviteList: DesignationInvitation[], publicOrders: any[]) {
+  const inviteKeys = (inviteList || []).map(item => `invite:${item.designation_id}`)
+  const publicKeys = online.value
+    ? (publicOrders || []).map(item => `order:${item.order_no}`)
+    : []
+  const nextKeys = [...inviteKeys, ...publicKeys]
+  const hasNewInvitation = orderSnapshotReady && inviteKeys.some(key => !seenOrderKeys.has(key))
+  const hasNewPublicOrder = orderSnapshotReady && publicKeys.some(key => !seenOrderKeys.has(key))
+
+  nextKeys.forEach(key => seenOrderKeys.add(key))
+  orderSnapshotReady = true
+
+  if (!pageVisible || (!hasNewInvitation && !hasNewPublicOrder)) return
+  orderAlert.notify()
+  toast(hasNewInvitation ? '收到新的指定邀请' : '有新的公开订单')
+}
+
 async function refreshAll() {
   try {
     const [inviteList, publicOrders] = await Promise.all([
       getDesignationInvitations(),
       getAvailableOrders()
     ])
+    checkNewOrderAlert(inviteList || [], publicOrders || [])
     invitations.value = (inviteList || []).map(item => ({ ...item, responding: false }))
     orders.value = (publicOrders || []).map(item => ({ ...item, grabbing: false }))
   } catch (error) {
@@ -189,8 +213,10 @@ async function toggleOnline() {
     const result = await updatePlayerOnlineStatus(!online.value)
     online.value = Boolean(result.is_online)
     setPlayerOnlineStatus(online.value)
-    if (online.value) await startRefresh()
-    else {
+    if (online.value) {
+      void orderAlert.prepare()
+      await startRefresh()
+    } else {
       stopRefresh()
       await refreshAll()
     }
@@ -210,6 +236,15 @@ async function handleLogout() {
   removeStorage('player')
   replace('/pages/client/login/index')
 }
+
+onShow(() => {
+  pageVisible = true
+  void orderAlert.prepare()
+})
+
+onHide(() => {
+  pageVisible = false
+})
 
 onMounted(async () => {
   if (!(await isApprovedPlayer())) {
@@ -233,6 +268,7 @@ onMounted(async () => {
     replace('/pages/client/profile/index')
     return
   }
+  void orderAlert.prepare()
   await startRefresh()
   clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
 })
@@ -240,6 +276,7 @@ onMounted(async () => {
 onUnmounted(() => {
   stopRefresh()
   if (clockTimer) clearInterval(clockTimer)
+  orderAlert.destroy()
 })
 </script>
 
