@@ -1,0 +1,103 @@
+declare const wx: any
+
+const ORDER_ALERT_FILENAME = 'touchi-new-order-alert.wav'
+const ORDER_ALERT_WAV_BASE64 = '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'
+
+export interface OrderAlertController {
+  prepare: () => Promise<void>
+  notify: () => void
+  destroy: () => void
+}
+
+export function createOrderAlert(): OrderAlertController {
+  let audio: any = null
+  let preparing: Promise<void> | null = null
+  let lastPlayedAt = 0
+
+  async function prepare() {
+    if (audio) return
+    if (preparing) return preparing
+
+    preparing = new Promise<void>((resolve) => {
+      try {
+        const filePath = `${wx.env.USER_DATA_PATH}/${ORDER_ALERT_FILENAME}`
+        const fs = wx.getFileSystemManager()
+
+        const createAudio = () => {
+          try {
+            audio = wx.createInnerAudioContext()
+            audio.autoplay = false
+            audio.loop = false
+            audio.volume = 1
+            audio.src = filePath
+            audio.onError((error: unknown) => console.warn('新订单提示音播放失败', error))
+          } catch (error) {
+            console.warn('新订单提示音初始化失败', error)
+          }
+          resolve()
+        }
+
+        fs.access({
+          path: filePath,
+          success: createAudio,
+          fail: () => {
+            fs.writeFile({
+              filePath,
+              data: ORDER_ALERT_WAV_BASE64,
+              encoding: 'base64',
+              success: createAudio,
+              fail: (error: unknown) => {
+                console.warn('新订单提示音写入失败', error)
+                resolve()
+              }
+            })
+          }
+        })
+      } catch (error) {
+        console.warn('新订单提示音准备失败', error)
+        resolve()
+      }
+    })
+
+    await preparing
+  }
+
+  function vibrate() {
+    try {
+      wx.vibrateShort({
+        type: 'heavy',
+        fail: () => {
+          try { wx.vibrateShort({}) } catch {}
+        }
+      })
+    } catch {}
+  }
+
+  function notify() {
+    const current = Date.now()
+    if (current - lastPlayedAt < 1500) return
+    lastPlayedAt = current
+
+    vibrate()
+    void prepare().then(() => {
+      if (!audio) return
+      try {
+        audio.stop()
+        audio.seek(0)
+        audio.play()
+      } catch (error) {
+        console.warn('新订单提示音触发失败', error)
+      }
+    })
+  }
+
+  function destroy() {
+    try {
+      audio?.destroy()
+    } catch {}
+    audio = null
+    preparing = null
+  }
+
+  return { prepare, notify, destroy }
+}
