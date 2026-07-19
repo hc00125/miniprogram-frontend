@@ -10,6 +10,7 @@ export interface ShopCartItem {
   image_url?: string
   description?: string
   spec_id?: string | number | null
+  spec_id_snapshot?: string | number | null
   spec_name?: string
   spec_display_name?: string
   price: number
