@@ -18,6 +18,16 @@ export interface MiniPaymentRequest {
   prepay_id?: string
 }
 
+export interface VirtualPaymentReconcileResult {
+  found: boolean
+  payment_no?: string
+  order_no?: string
+  status?: string
+  order_status?: string
+  paid_at?: string | null
+  detail?: string
+}
+
 import api from '@/utils/request'
 
 export function createMiniProgramPayment(order_no: string, code?: string, openid?: string) {
@@ -26,6 +36,10 @@ export function createMiniProgramPayment(order_no: string, code?: string, openid
 
 export function queryVirtualPayment(payment_no: string) {
   return api.post<any>(`/pay/wechat/virtual/query/${payment_no}`)
+}
+
+export function queryVirtualPaymentByOrder(order_no: string) {
+  return api.post<VirtualPaymentReconcileResult>(`/pay/wechat/virtual/query-order/${order_no}`)
 }
 
 /**
