@@ -124,6 +124,7 @@ import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
 import { toast } from '@/utils/feedback'
+import { usePageShare } from '@/utils/pageShare'
 
 type HeroTarget = 'shop' | 'query' | 'players' | 'notice'
 
@@ -174,6 +175,12 @@ const fallbackPackages: BossPackage[] = [
   { id: 1001, name: '四套四弹', player_count: 4, base_price: 15, description: '默认四人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' },
   { id: 1002, name: '五套五弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
 ]
+
+usePageShare(() => ({
+  title: '偷吃电竞｜专业游戏陪练服务',
+  path: '/pages/boss/home/index',
+  imageUrl: homeHero
+}))
 
 const currentHeroIndex = ref(0)
 const packages = ref<BossPackage[]>([])
