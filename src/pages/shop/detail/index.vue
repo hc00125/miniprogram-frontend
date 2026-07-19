@@ -177,6 +177,7 @@ import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
+import { usePageShare } from '@/utils/pageShare'
 
 const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
@@ -215,6 +216,16 @@ const guaranteeRules = computed(() => {
   return [amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '规格价格以后端配置为准，提交后会自动记录所选规格']
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
+
+usePageShare(() => {
+  const id = packageId.value
+  return {
+    title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务',
+    path: id ? `/pages/shop/detail/index?packageId=${id}` : '/pages/shop/category/index',
+    timelineQuery: id ? `packageId=${id}` : '',
+    imageUrl: rawProductImage.value || undefined
+  }
+})
 
 function getRawProductImage(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || '' }
 function getDisplayPrice(item: BossPackage) { const itemSpecs = item.specs || []; if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0)); return getProductPrice(item) }
