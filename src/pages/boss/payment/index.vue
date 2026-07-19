@@ -86,6 +86,24 @@
       </scroll-view>
     </view>
 
+    <view v-if="paymentConfirming" class="card virtual-pay-card">
+      <view class="virtual-head">
+        <view class="wechat-icon">✓</view>
+        <view>
+          <text>微信付款已完成</text>
+          <text>订单状态正在同步，请勿重复支付</text>
+        </view>
+      </view>
+      <view class="virtual-notice">
+        <text></text>
+        <text>微信收银台已经返回成功。系统会持续向服务器核验支付状态，确认期间不会再次拉起支付。</text>
+      </view>
+      <button class="pay-button" :disabled="confirmationRefreshing" @tap="refreshPaymentStatus(false)">
+        {{ confirmationRefreshing ? '正在同步订单状态...' : '刷新订单状态' }}
+      </button>
+      <text class="pay-help">可以停留在本页等待，也可以稍后重新进入订单查看；请不要重复付款。</text>
+    </view>
+
     <view v-if="payError" class="pay-error-card">
       <view class="pay-error-head">
         <view class="error-icon">!</view>
@@ -165,12 +183,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
 import { createMiniProgramPayment } from '@/api/pay'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { relaunch, replace } from '@/utils/nav'
-import { requestWechatVirtualPayment } from '@/utils/virtual-payment'
+import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
 type PayErrorState = {
   title: string
@@ -179,6 +197,13 @@ type PayErrorState = {
   code: string
 }
 
+type PendingPaymentState = {
+  orderNo: string
+  paymentNo: string
+  createdAt: number
+}
+
+const PENDING_PAYMENT_STORAGE_KEY = 'virtual_payment_confirmation_pending'
 const orderNo = ref('')
 const orderInfo = ref<any>(null)
 const loading = ref(true)
@@ -186,15 +211,18 @@ const loadError = ref('')
 const paying = ref(false)
 const cancelling = ref(false)
 const payError = ref<PayErrorState | null>(null)
+const paymentConfirming = ref(false)
+const confirmationRefreshing = ref(false)
 const ratings = ref<Record<number, number>>({})
 const existingRatings = ref<Record<number, OrderRatingRecord>>({})
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
+let confirmationTimer: ReturnType<typeof setTimeout> | null = null
 
 const isPaid = computed(() => Boolean(orderInfo.value?.paid))
 const isRenewal = computed(() => orderInfo.value?.order_type === 'renewal')
 const isCompleted = computed(() => orderInfo.value?.status === '已完成')
-const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid))
+const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid && !paymentConfirming.value))
 const showProgressButton = computed(() => isRenewal.value ? isPaid.value : ['待开打', '进行中'].includes(orderInfo.value?.status))
 const serviceOrderNo = computed(() => isRenewal.value ? orderInfo.value?.parent_order_no : orderNo.value)
 const orderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
@@ -205,6 +233,7 @@ const showRenewalSummary = computed(() => !isRenewal.value && Number(orderInfo.v
 const cumulativePaidAmount = computed(() => money(Number(mainOrderAmount.value) + Number(renewalPaidAmount.value)))
 const amountCardValue = computed(() => isRenewal.value ? orderAmount.value : (isPaid.value ? cumulativePaidAmount.value : orderAmount.value))
 const amountCardLabel = computed(() => {
+  if (paymentConfirming.value) return '微信已付款，待确认'
   if (!isPaid.value) return '待支付金额'
   if (showRenewalSummary.value) return '累计已支付'
   return '已支付金额'
@@ -224,6 +253,7 @@ const payNotice = computed(() => isRenewal.value
   : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
 const payStatusText = computed(() => {
   if (!orderInfo.value) return '加载中'
+  if (paymentConfirming.value) return '确认中'
   if (isRenewal.value && orderInfo.value.status === '待支付') return '续单待支付'
   if (isRenewal.value && isPaid.value) return '续单成功'
   if (orderInfo.value.status === '待支付') return '待支付'
@@ -234,6 +264,7 @@ const payStatusText = computed(() => {
 })
 const stripText = computed(() => {
   if (!orderInfo.value) return '订单加载中'
+  if (paymentConfirming.value) return '微信已付款，订单确认中'
   if (isRenewal.value) return isPaid.value ? '续单支付完成' : '续单已创建，请完成付款'
   if (orderInfo.value.status === '待支付') return '队伍已就位，请付款或取消订单'
   if (orderInfo.value.status === '待开打') return '付款成功，等待陪玩开打'
@@ -319,23 +350,85 @@ function classifyPayError(error: any): PayErrorState {
   return { title: '虚拟支付未完成', detail, action: '请检查网络后重试；若微信已扣款，请不要重复支付，先刷新订单状态。', code }
 }
 
+function clearConfirmationTimer() {
+  if (!confirmationTimer) return
+  clearTimeout(confirmationTimer)
+  confirmationTimer = null
+}
+
+function clearPendingPaymentState() {
+  clearConfirmationTimer()
+  paymentConfirming.value = false
+  const stored = uni.getStorageSync(PENDING_PAYMENT_STORAGE_KEY) as PendingPaymentState | ''
+  if (!stored || stored.orderNo === orderNo.value) uni.removeStorageSync(PENDING_PAYMENT_STORAGE_KEY)
+}
+
+function scheduleConfirmationRefresh() {
+  clearConfirmationTimer()
+  if (!paymentConfirming.value) return
+  confirmationTimer = setTimeout(() => { void refreshPaymentStatus(true) }, 2500)
+}
+
+function enterConfirmationPending(paymentNo = '') {
+  paymentConfirming.value = true
+  payError.value = null
+  const pendingState: PendingPaymentState = {
+    orderNo: orderNo.value,
+    paymentNo,
+    createdAt: Date.now()
+  }
+  uni.setStorageSync(PENDING_PAYMENT_STORAGE_KEY, pendingState)
+  scheduleConfirmationRefresh()
+}
+
+function restorePendingPaymentState() {
+  const stored = uni.getStorageSync(PENDING_PAYMENT_STORAGE_KEY) as PendingPaymentState | ''
+  if (!stored || stored.orderNo !== orderNo.value) return
+  paymentConfirming.value = true
+}
+
 async function fetchOrder() {
-  if (!orderNo.value) return
+  if (!orderNo.value) return false
   loading.value = true
   loadError.value = ''
   try {
     orderInfo.value = await getOrder(orderNo.value)
-    if (isPaid.value) payError.value = null
+    if (isPaid.value) {
+      payError.value = null
+      clearPendingPaymentState()
+    } else if (paymentConfirming.value && orderInfo.value?.status !== '待支付') {
+      clearPendingPaymentState()
+    }
     await fetchRatingStatus()
+    return true
   } catch (error) {
     loadError.value = getErrorMessage(error, '订单加载失败')
+    return false
   } finally {
     loading.value = false
   }
 }
 
+async function refreshPaymentStatus(silent = false) {
+  if (!orderNo.value || confirmationRefreshing.value) return
+  confirmationRefreshing.value = true
+  try {
+    const loaded = await fetchOrder()
+    if (isPaid.value) {
+      if (!silent) success(isRenewal.value ? '续单支付状态已确认' : '支付状态已确认')
+      return
+    }
+    if (!silent) {
+      toast(loaded ? '微信付款已完成，服务器仍在确认中，请勿重复支付' : '订单状态暂时获取失败，系统会继续确认')
+    }
+  } finally {
+    confirmationRefreshing.value = false
+    if (paymentConfirming.value) scheduleConfirmationRefresh()
+  }
+}
+
 async function payByWechat() {
-  if (!orderNo.value || paying.value || cancelling.value) return
+  if (!orderNo.value || paying.value || cancelling.value || paymentConfirming.value) return
   payError.value = null
   paying.value = true
   try {
@@ -346,10 +439,23 @@ async function payByWechat() {
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
     await requestWechatVirtualPayment(payParams)
     await fetchOrder()
+    if (!isPaid.value) {
+      enterConfirmationPending(payParams.payment_no)
+      toast('微信付款已完成，订单正在确认，请勿重复支付')
+      return
+    }
     success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
   } catch (error: any) {
     const errCode = Number(error?.errCode)
-    if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
+    if (isVirtualPaymentConfirmationPending(error)) {
+      enterConfirmationPending(String(error?.paymentNo || ''))
+      await fetchOrder()
+      if (isPaid.value) {
+        success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
+      } else {
+        toast('微信付款已完成，订单正在确认，请勿重复支付')
+      }
+    } else if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
       toast('已取消支付')
     } else {
       payError.value = classifyPayError(error)
@@ -436,8 +542,15 @@ function goProgress() {
   replace('/pages/boss/in-progress/index', { orderNo: serviceOrderNo.value })
 }
 
-onLoad((query) => { orderNo.value = String(query?.orderNo || '') })
-onShow(fetchOrder)
+onLoad((query) => {
+  orderNo.value = String(query?.orderNo || '')
+  restorePendingPaymentState()
+})
+onShow(async () => {
+  await fetchOrder()
+  if (paymentConfirming.value) scheduleConfirmationRefresh()
+})
+onUnload(clearConfirmationTimer)
 </script>
 
 <style lang="scss" src="./index.scss" scoped></style>
