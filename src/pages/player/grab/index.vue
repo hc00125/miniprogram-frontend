@@ -39,7 +39,7 @@
           <view><text>预订时长</text><text>{{ formatHours(item.booked_hours || 1) }}</text></view>
           <view><text>指定服务费</text><text>¥0.00</text></view>
         </view>
-        <text v-if="item.boss_note" class="boss-note">老板备注：{{ item.boss_note }}</text>
+        <text v-if="bossNote(item.boss_note)" class="boss-note">老板备注：{{ bossNote(item.boss_note) }}</text>
         <view class="invite-actions">
           <button class="decline-btn" :disabled="item.responding" @tap="decline(item)">拒绝</button>
           <button class="accept-btn" :disabled="item.responding" @tap="accept(item)">{{ item.responding ? '处理中...' : '接受指定' }}</button>
@@ -58,7 +58,7 @@
           <view class="meta-grid meta-grid--single">
             <view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view>
           </view>
-          <text class="boss-note">老板备注：{{ order.boss_note || '无' }}</text>
+          <text class="boss-note">老板备注：{{ bossNote(order.boss_note) || '无' }}</text>
           <button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button>
         </view>
       </view>
@@ -112,6 +112,14 @@ const playerAvatarUrl = computed(() => {
 })
 
 function money(value: number | string | null | undefined) { return Number(value || 0).toFixed(2) }
+
+function bossNote(value: string | null | undefined) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('规格：') && !line.startsWith('指定陪玩：'))
+    .join('\n')
+}
 
 function countdownText(value: string) {
   const diff = Math.max(0, Math.floor((new Date(value).getTime() - now.value) / 1000))
@@ -322,7 +330,7 @@ onUnmounted(() => {
 .meta-grid text { display: block; }
 .meta-grid text:first-child { color: #879083; font-size: 19rpx; }
 .meta-grid text:last-child { margin-top: 5rpx; font-size: 24rpx; font-weight: 900; }
-.boss-note { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: #687665; font-size: 21rpx; line-height: 1.5; background: #f7f7f2; }
+.boss-note { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: #687665; font-size: 21rpx; line-height: 1.5; white-space: pre-wrap; background: #f7f7f2; }
 .invite-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 12rpx; margin-top: 16rpx; }
 .invite-actions button, .grab-btn { height: 72rpx; margin: 0; border-radius: 999rpx; font-size: 25rpx; font-weight: 900; }
 .decline-btn { color: #a13d35; background: #fff0ed; }
