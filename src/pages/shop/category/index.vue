@@ -66,6 +66,7 @@ import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import ProductCover from '@/components/ProductCover.vue'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
+import { usePageShare } from '@/utils/pageShare'
 
 const statusBarHeight = ref(20)
 const keyword = ref('')
@@ -94,6 +95,11 @@ const filteredProducts = computed(() => {
     return matchesGame && matchesCategory && matchesKeyword
   })
 })
+
+usePageShare(() => ({
+  title: `偷吃电竞｜${activeGameName.value} ${activeCategoryName.value}`,
+  path: '/pages/shop/category/index'
+}))
 
 function selectGame(game: GameService) {
   activeGameId.value = game.id
