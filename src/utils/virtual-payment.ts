@@ -2,21 +2,60 @@ import { queryVirtualPayment, type MiniPaymentRequest } from '@/api/pay'
 
 declare const wx: any
 
+const CONFIRMATION_PENDING_ERR_CODE = -15002
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+export class VirtualPaymentConfirmationPendingError extends Error {
+  readonly errCode = CONFIRMATION_PENDING_ERR_CODE
+  readonly paymentAccepted = true
+  readonly paymentNo: string
+  readonly latestStatus: any
+  readonly lastError: unknown
+
+  constructor(paymentNo: string, message: string, latestStatus: any = null, lastError: unknown = null) {
+    super(message)
+    this.name = 'VirtualPaymentConfirmationPendingError'
+    this.paymentNo = paymentNo
+    this.latestStatus = latestStatus
+    this.lastError = lastError
+  }
+}
+
+export function isVirtualPaymentConfirmationPending(error: any) {
+  return Boolean(error?.paymentAccepted) || Number(error?.errCode) === CONFIRMATION_PENDING_ERR_CODE
+}
+
 async function waitForServerConfirmation(paymentNo: string) {
   let latest: any = null
-  for (let index = 0; index < 12; index += 1) {
-    latest = await queryVirtualPayment(paymentNo)
-    if (latest?.status === 'paid' || latest?.order_status === '已完成') return latest
-    if (latest?.status === 'closed' || latest?.status === 'failed') {
-      throw new Error('微信虚拟支付订单未完成，请重新支付')
+  let lastError: unknown = null
+
+  for (let index = 0; index < 20; index += 1) {
+    try {
+      latest = await queryVirtualPayment(paymentNo)
+      if (latest?.status === 'paid' || latest?.order_status === '已完成') return latest
+      if (latest?.status === 'closed' || latest?.status === 'failed') {
+        throw new VirtualPaymentConfirmationPendingError(
+          paymentNo,
+          '微信已返回付款成功，但服务器支付状态暂未同步，请勿重复支付',
+          latest
+        )
+      }
+    } catch (error) {
+      if (isVirtualPaymentConfirmationPending(error)) throw error
+      lastError = error
     }
-    await sleep(800)
+    await sleep(index < 5 ? 800 : 1200)
   }
-  throw new Error('微信已返回支付结果，服务器仍在确认中，请稍后刷新订单')
+
+  throw new VirtualPaymentConfirmationPendingError(
+    paymentNo,
+    '微信付款已完成，服务器仍在确认订单状态，请勿重复支付',
+    latest,
+    lastError
+  )
 }
 
 function getNativeVirtualPaymentApi() {
