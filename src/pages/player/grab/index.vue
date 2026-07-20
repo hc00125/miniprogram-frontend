@@ -55,6 +55,10 @@
 
       <view v-if="orders.length" class="order-list">
         <view v-for="order in orders" :key="order.order_no" class="order-card">
+          <view class="order-time-row">
+            <text class="order-time-label">发布时间</text>
+            <text class="order-time-value">{{ formatPublishedAt(order.created_at) }}</text>
+          </view>
           <view class="meta-grid meta-grid--single">
             <view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view>
           </view>
@@ -119,6 +123,32 @@ function bossNote(value: string | null | undefined) {
     .map(line => line.trim())
     .filter(line => line && !line.startsWith('规格：') && !line.startsWith('指定陪玩：'))
     .join('\n')
+}
+
+function pad(value: number) { return String(value).padStart(2, '0') }
+
+function formatPublishedAt(value: string | null | undefined) {
+  if (!value) return '时间未知'
+  const publishedAt = new Date(value)
+  const timestamp = publishedAt.getTime()
+  if (Number.isNaN(timestamp)) return '时间未知'
+
+  const diffSeconds = Math.max(0, Math.floor((now.value - timestamp) / 1000))
+  if (diffSeconds < 60) return '刚刚发布'
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}分钟前`
+
+  const current = new Date(now.value)
+  const timeText = `${pad(publishedAt.getHours())}:${pad(publishedAt.getMinutes())}`
+  const todayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate()).getTime()
+  const publishedDayStart = new Date(publishedAt.getFullYear(), publishedAt.getMonth(), publishedAt.getDate()).getTime()
+  const dayDiff = Math.round((todayStart - publishedDayStart) / 86400000)
+
+  if (dayDiff === 0) return `今天 ${timeText}`
+  if (dayDiff === 1) return `昨天 ${timeText}`
+  if (publishedAt.getFullYear() === current.getFullYear()) {
+    return `${pad(publishedAt.getMonth() + 1)}-${pad(publishedAt.getDate())} ${timeText}`
+  }
+  return `${publishedAt.getFullYear()}-${pad(publishedAt.getMonth() + 1)}-${pad(publishedAt.getDate())} ${timeText}`
 }
 
 function countdownText(value: string) {
@@ -324,6 +354,9 @@ onUnmounted(() => {
 .order-no { margin-top: 6rpx; color: #9aa197; font-size: 19rpx; font-family: monospace; word-break: break-all; }
 .countdown { color: #a87520; font-size: 22rpx; font-weight: 900; }
 .order-title { display: block; margin-top: 16rpx; font-size: 29rpx; font-weight: 900; }
+.order-time-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 12rpx; padding: 0 2rpx; }
+.order-time-label { color: #879083; font-size: 20rpx; }
+.order-time-value { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
 .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10rpx; margin-top: 16rpx; }
 .meta-grid--single { grid-template-columns: 1fr; margin-top: 0; }
 .meta-grid view { padding: 14rpx; border-radius: 16rpx; background: #f7faf4; }
