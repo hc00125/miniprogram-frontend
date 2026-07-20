@@ -1,0 +1,41 @@
+name: Verify refresh feedback build
+
+on:
+  push:
+    branches:
+      - feat/product-order-management
+    paths:
+      - scripts/verify_refresh_feedback.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  verify-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/product-order-management
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build WeChat mini program
+        run: npm run build:mp-weixin
+      - name: Record successful verification
+        run: |
+          cat > docs/refresh-feedback-build-passed.md <<'EOF'
+          # 手动刷新反馈构建验证
+
+          `npm ci` 与 `npm run build:mp-weixin` 已在 GitHub Actions 中通过。
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/refresh-feedback-build-passed.md
+          git commit -m "test: verify refresh feedback mini-program build"
+          git push origin HEAD:feat/product-order-management
