@@ -14,15 +14,6 @@
             <swiper-item v-for="banner in heroBanners" :key="banner.id">
               <view class="hero-slide" @tap="handleHeroBannerTap(banner.target)">
                 <image class="hero-slide__image" :src="banner.image" mode="aspectFill" />
-                <view class="hero-slide__shade"></view>
-                <view class="hero-slide__body">
-                  <text class="hero-slide__badge">{{ banner.badge }}</text>
-                  <view class="hero-slide__copy">
-                    <text class="hero-slide__title">{{ banner.title }}</text>
-                    <text class="hero-slide__sub">{{ banner.subtitle }}</text>
-                  </view>
-                  <text class="hero-slide__link">{{ banner.cta }} <text>›</text></text>
-                </view>
               </view>
             </swiper-item>
           </swiper>
@@ -38,22 +29,22 @@
           </view>
         </view>
 
-        <view class="function-row">
-          <view class="function-item" @tap="goShopCategory">
-            <view class="function-icon function-icon--order">单</view>
-            <text>点单大厅</text>
+        <view class="action-card-row">
+          <view class="action-card" @tap="goShopCategory">
+            <view class="action-icon action-icon--order">单</view>
+            <view class="action-main">
+              <text>点单大厅</text>
+              <text>快速下单\n找到心仪陪玩</text>
+            </view>
+            <view class="action-arrow">›</view>
           </view>
-          <view class="function-item" @tap="goQuery">
-            <view class="function-icon function-icon--query">进</view>
-            <text>订单进度</text>
-          </view>
-          <view class="function-item" @tap="goPlayerList">
-            <view class="function-icon function-icon--player">驻</view>
-            <text>陪玩入驻</text>
-          </view>
-          <view class="function-item" @tap="goProfile">
-            <view class="function-icon function-icon--profile">我</view>
-            <text>个人中心</text>
+          <view class="action-card" @tap="goQuery">
+            <view class="action-icon action-icon--query">进</view>
+            <view class="action-main">
+              <text>订单进度</text>
+              <text>实时追踪\n订单状态</text>
+            </view>
+            <view class="action-arrow">›</view>
           </view>
         </view>
 
@@ -75,22 +66,21 @@
           <button @tap="goPlayerList">全部陪玩 ›</button>
         </view>
         <scroll-view v-if="featuredPlayers.length" scroll-x class="player-showcase" show-scrollbar="false">
-          <view v-for="player in featuredPlayers" :key="player.id" class="show-player">
-            <image v-if="player.avatar_url" class="show-photo" :src="player.avatar_url" mode="aspectFill" />
-            <view v-else class="show-photo show-photo--placeholder">{{ playerInitial(player) }}</view>
-            <view class="player-status" :class="{ off: !player.is_online }">
-              {{ player.is_online ? '在线' : '离线' }}
-            </view>
-            <view class="show-name">{{ player.name }}</view>
-            <view class="show-type">{{ player.type_name || '优质陪玩' }}</view>
-            <view class="show-meta">
-              <text>★ {{ player.avg_rating || '5.0' }}</text>
-              <text v-if="player.price_extra">+¥{{ player.price_extra }}/时</text>
-              <text v-else>可指定</text>
+          <view v-for="player in featuredPlayers" :key="player.id" class="player-mini-card">
+            <image class="player-mini-avatar" :src="player.avatar_url" mode="aspectFill" />
+            <view class="player-mini-main">
+              <view class="player-mini-name-row">
+                <text class="player-mini-name">{{ player.name }}</text>
+                <text class="player-mini-badge">TC</text>
+              </view>
+              <view class="player-mini-type">{{ player.type_name || '优质陪玩' }}</view>
+              <view class="player-mini-status" :class="{ off: !player.is_online }">
+                <text></text>{{ player.is_online ? '在线' : '离线' }}
+              </view>
             </view>
           </view>
         </scroll-view>
-        <view v-else class="player-showcase-empty">暂无已入驻陪玩</view>
+        <view v-else class="player-showcase-empty">暂无已上传头像的陪玩</view>
 
         <view class="section-head package-head">
           <view>
@@ -128,7 +118,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, getPlayerList, type BossPackage, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
@@ -148,7 +138,7 @@ type HeroBanner = {
 }
 
 const assetBase = '/images/home-redesign'
-const homeHero = `${assetBase}/hero-lounge.jpg`
+const homeHero = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const orderNoticeBannerUrl = 'https://api.huc125.cn/media/order-notice/order-guide-banner.jpg'
 const packageVisuals = [`${assetBase}/package-five.png`, `${assetBase}/package-six.png`]
 const heroBanners: HeroBanner[] = [
@@ -185,11 +175,27 @@ const fallbackPackages: BossPackage[] = [
   { id: 1002, name: '五套五弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
 ]
 
+onShareAppMessage(() => ({
+  title: '偷吃电竞｜专业游戏陪练服务',
+  path: '/pages/boss/home/index',
+  imageUrl: homeHero
+}))
+
+onShareTimeline(() => ({
+  title: '偷吃电竞｜专业游戏陪练服务',
+  query: '',
+  imageUrl: homeHero
+}))
+
 const currentHeroIndex = ref(0)
 const packages = ref<BossPackage[]>([])
 const players = ref<OnlinePlayer[]>([])
 const hotPackages = computed(() => packages.value.slice(0, 2))
-const featuredPlayers = computed(() => players.value.slice(0, 6))
+const featuredPlayers = computed(() => players.value.filter(hasUserAvatar).slice(0, 6))
+
+function hasUserAvatar(player: OnlinePlayer) {
+  return Boolean(String(player.avatar_url || '').trim())
+}
 
 function toSafeNumber(value: unknown, fallback: number) {
   const numberValue = Number(value)
@@ -202,7 +208,10 @@ function getPackagePlayerCount(pkg: BossPackage | null | undefined) {
 
 function getPackageBasePrice(pkg: BossPackage | null | undefined) {
   const item = pkg as (BossPackage & Record<string, unknown>) | null | undefined
-  return Math.max(0, toSafeNumber(item?.price ?? item?.base_price, 0))
+  const price = item ? item.price : undefined
+  const basePrice = item ? item.base_price : undefined
+  const effectivePrice = price !== undefined ? price : (basePrice !== undefined ? basePrice : 0)
+  return Math.max(0, toSafeNumber(effectivePrice, 0))
 }
 
 function formatMoney(value: number) {
@@ -226,10 +235,6 @@ function normalizePlayer(player: OnlinePlayer): OnlinePlayer {
     price_extra: player.player_type?.price_extra || player.price_extra || 0,
     status: isOnline ? '在线' : '离线'
   }
-}
-
-function playerInitial(player: OnlinePlayer) {
-  return (player.name || player.type_name || '陪').trim().slice(0, 1)
 }
 
 function goShopCategory() {
@@ -341,14 +346,15 @@ onShow(fetchHomeData)
 .hero-dots { display: flex; gap: 10rpx; }
 .hero-dots text { width: 22rpx; height: 6rpx; border-radius: 999rpx; background: rgba(47, 155, 99, 0.18); transition: all 0.2s ease; }
 .hero-dots text.active { width: 40rpx; background: #2f9b63; }
-.function-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6rpx; margin-top: 24rpx; padding: 22rpx 12rpx 18rpx; border-radius: 22rpx; background: rgba(255, 255, 255, 0.72); border: 1rpx solid rgba(61, 97, 74, 0.08); box-shadow: 0 12rpx 30rpx rgba(31, 55, 40, 0.05); box-sizing: border-box; }
-.function-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10rpx; min-width: 0; }
-.function-item text { color: #2e3b32; font-size: 23rpx; font-weight: 800; line-height: 1.2; }
-.function-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 900; box-shadow: 0 8rpx 18rpx rgba(31, 55, 40, 0.12); }
-.function-icon--order { background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
-.function-icon--query { background: linear-gradient(135deg, #d8a144, #a87520); }
-.function-icon--player { background: linear-gradient(135deg, #55a2d8, #2563a8); }
-.function-icon--profile { background: linear-gradient(135deg, #ef6b77, #b91c1c); }
+.action-card-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18rpx; margin-top: 24rpx; }
+.action-card { min-height: 138rpx; display: flex; align-items: center; gap: 18rpx; padding: 22rpx 20rpx; border-radius: 20rpx; background: rgba(255, 255, 255, 0.86); border: 1rpx solid rgba(61, 97, 74, 0.10); box-shadow: 0 12rpx 30rpx rgba(31, 55, 40, 0.06); box-sizing: border-box; }
+.action-icon { width: 74rpx; height: 74rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 31rpx; font-weight: 900; box-shadow: 0 8rpx 18rpx rgba(31, 55, 40, 0.14); }
+.action-icon--order { background: linear-gradient(135deg, #2f9b63, #1f7c4b); }
+.action-icon--query { background: linear-gradient(135deg, #d8a144, #a87520); }
+.action-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8rpx; }
+.action-main text:first-child { color: #222; font-size: 30rpx; font-weight: 900; line-height: 1.2; }
+.action-main text:last-child { color: #858575; font-size: 22rpx; line-height: 1.35; white-space: pre-line; }
+.action-arrow { width: 34rpx; height: 34rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #bba16c; font-size: 26rpx; background: #fffaf0; border: 1rpx solid rgba(187, 161, 108, 0.28); }
 .order-notice-banner { overflow: hidden; margin-top: 18rpx; border-radius: 26rpx; background: #fffaf0; box-shadow: 0 14rpx 30rpx rgba(35, 42, 30, 0.08); }
 .order-notice-image { width: 100%; display: block; }
 .notice-bar { display: flex; align-items: center; gap: 18rpx; min-height: 78rpx; padding: 0 24rpx; margin-top: 22rpx; border-radius: 18rpx; border: 1rpx solid rgba(173, 122, 53, 0.20); background: rgba(255, 255, 255, 0.72); box-sizing: border-box; }
@@ -362,15 +368,17 @@ onShow(fetchHomeData)
 .section-head button { padding: 0; margin: 0; color: #3d614a; font-size: 24rpx; background: transparent; }
 .section-head button::after { border: none; }
 .player-showcase { white-space: nowrap; }
-.show-player { position: relative; display: inline-flex; flex-direction: column; justify-content: flex-end; width: 190rpx; height: 250rpx; padding: 18rpx; margin-right: 16rpx; overflow: hidden; border-radius: 18rpx; color: #fff; background: linear-gradient(180deg, #dceee5, #165d38); box-sizing: border-box; }
-.show-photo { position: absolute; left: 50%; top: 48rpx; width: 90rpx; height: 90rpx; transform: translateX(-50%); border-radius: 50%; border: 4rpx solid rgba(255, 255, 255, 0.72); }
-.show-photo--placeholder { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 40rpx; font-weight: 900; background: #35a86c; }
-.player-status { position: absolute; right: 16rpx; top: 16rpx; color: #23683f; font-size: 21rpx; font-weight: 900; }
-.player-status.off { color: #6b7b70; }
-.show-name, .show-type, .show-meta { position: relative; z-index: 2; }
-.show-name { color: #fff; font-size: 28rpx; font-weight: 900; }
-.show-type { margin-top: 6rpx; color: rgba(255, 255, 255, 0.74); font-size: 22rpx; }
-.show-meta { display: flex; justify-content: space-between; margin-top: 16rpx; color: #fff8c9; font-size: 23rpx; font-weight: 900; }
+.player-mini-card { display: inline-flex; align-items: center; gap: 14rpx; width: 236rpx; min-height: 104rpx; padding: 16rpx; margin-right: 14rpx; border-radius: 18rpx; background: rgba(255, 255, 255, 0.90); border: 1rpx solid rgba(61, 97, 74, 0.10); box-shadow: 0 10rpx 24rpx rgba(31, 55, 40, 0.05); box-sizing: border-box; vertical-align: top; }
+.player-mini-avatar { width: 64rpx; height: 64rpx; flex-shrink: 0; border-radius: 50%; background: #eef3e9; }
+.player-mini-main { flex: 1; min-width: 0; }
+.player-mini-name-row { display: flex; align-items: center; gap: 8rpx; min-width: 0; }
+.player-mini-name { max-width: 106rpx; color: #242424; font-size: 25rpx; font-weight: 900; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.player-mini-badge { flex-shrink: 0; padding: 2rpx 7rpx; border-radius: 5rpx; color: #5d704d; font-size: 18rpx; font-weight: 900; background: #eef5e7; }
+.player-mini-type { margin-top: 6rpx; color: #555; font-size: 21rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.player-mini-status { display: flex; align-items: center; gap: 6rpx; margin-top: 6rpx; color: #2f9b63; font-size: 21rpx; font-weight: 800; }
+.player-mini-status text { width: 9rpx; height: 9rpx; border-radius: 50%; background: #2f9b63; }
+.player-mini-status.off { color: #999; }
+.player-mini-status.off text { background: #bbb; }
 .player-showcase-empty { padding: 50rpx 20rpx; border-radius: 18rpx; color: #888; font-size: 26rpx; text-align: center; background: rgba(255, 255, 255, 0.72); }
 .hot-packages { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18rpx; }
 .hot-package { position: relative; min-height: 150rpx; overflow: hidden; border-radius: 16rpx; background: #123b28; }

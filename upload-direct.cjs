@@ -148,7 +148,7 @@ async function main() {
       appid: APPID,
       type: 'miniProgram',
       version: '1.0.0',
-      desc: 'Server auto upload ' + new Date().toISOString().slice(0, 16).replace('T', ' '),
+      desc: '替换抢单提示音+购物车批量下单 2026-07-20 00:15',
       robot: '1',
       codeprotect: '0',
       'debugLaunchInfo': JSON.stringify({ scene: 1011 }),

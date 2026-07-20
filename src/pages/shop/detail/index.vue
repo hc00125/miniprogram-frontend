@@ -77,13 +77,21 @@
         <view class="card-head"><text class="card-title">暂无评价</text><text class="card-more">查看全部 ›</text></view>
       </view>
 
+      <view v-if="product?.rules_text" class="detail-card rules-card">
+        <view class="card-head">
+          <text class="card-title">规则与玩法</text>
+        </view>
+        <view class="rules-content">{{ product.rules_text }}</view>
+      </view>
+
       <view class="graphic-title"><text></text><text>图文详情</text><text></text></view>
       <view class="graphic-card">
+        <view v-if="product.detail_text" class="graphic-text">{{ product.detail_text }}</view>
         <template v-if="detailImages.length">
           <image v-for="url in detailImages" :key="url" class="graphic-image" :src="url" mode="widthFix" @tap="previewProductImage(url)" />
           <view class="graphic-preview-tip">点击图片可查看大图</view>
         </template>
-        <view v-else class="graphic-placeholder">
+        <view v-else-if="!product.detail_text" class="graphic-placeholder">
           <view class="hero-brand">偷吃俱乐部 <text>CLUB</text></view>
           <view class="hero-title">{{ heroTitle }}</view>
           <view class="hero-subtitle">{{ detailText }}</view>
@@ -164,13 +172,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
 
-const fallbackImage = '/static/images/home-redesign/hero-lounge.jpg'
+const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
 const loading = ref(false)
 const product = ref<BossPackage | null>(null)
@@ -207,6 +215,24 @@ const guaranteeRules = computed(() => {
   return [amount ? `当前选择：电视台保底 ${amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '规格价格以后端配置为准，提交后会自动记录所选规格']
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
+
+onShareAppMessage(() => {
+  const id = packageId.value
+  return {
+    title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务',
+    path: id ? `/pages/shop/detail/index?packageId=${id}` : '/pages/shop/category/index',
+    ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {})
+  }
+})
+
+onShareTimeline(() => {
+  const id = packageId.value
+  return {
+    title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务',
+    query: id ? `packageId=${id}` : '',
+    ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {})
+  }
+})
 
 function getRawProductImage(item: BossPackage) { const productItem = item as BossPackage & Record<string, any>; return productItem.cover_url || productItem.image_url || productItem.thumb_url || productItem.picture_url || '' }
 function getDisplayPrice(item: BossPackage) { const itemSpecs = item.specs || []; if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0)); return getProductPrice(item) }
@@ -286,6 +312,8 @@ onShow(refreshCartCount)
 .preview-chip { flex-shrink: 0; max-width: 180rpx; height: 56rpx; display: flex; align-items: center; justify-content: center; padding: 0 18rpx; border-radius: 10rpx; color: #888; font-size: 22rpx; background: #f6f6f6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; box-sizing: border-box; }
 .preview-chip--more { color: #999; background: #f9f9f9; }
 .guarantee-rule-card { background: linear-gradient(180deg, #fff, #fff8e7); }
+.rules-card { background: #fafafa; }
+.rules-content { margin-top: 16rpx; color: #555; font-size: 26rpx; line-height: 1.75; white-space: pre-wrap; }
 .rule-list { margin-top: 18rpx; }
 .rule-item { display: flex; gap: 12rpx; margin-top: 12rpx; color: #5c5c5c; font-size: 24rpx; line-height: 1.45; }
 .rule-item text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 12rpx; border-radius: 50%; background: #ef4f5f; }
@@ -298,6 +326,7 @@ onShow(refreshCartCount)
 .graphic-title text:first-child, .graphic-title text:last-child { width: 70rpx; height: 1rpx; background: #d7d7d7; }
 .graphic-card { position: relative; margin: 0 22rpx; overflow: hidden; border-radius: 8rpx; background: #2d2d22; }
 .graphic-image { width: 100%; display: block; }
+.graphic-text { padding: 32rpx 28rpx; color: #333; font-size: 26rpx; line-height: 1.7; white-space: pre-wrap; background: #fff; border-bottom: 1rpx solid #eee; }
 .graphic-preview-tip { position: absolute; right: 16rpx; bottom: 16rpx; z-index: 2; padding: 8rpx 14rpx; border-radius: 999rpx; color: #fff; font-size: 20rpx; background: rgba(0, 0, 0, 0.45); }
 .graphic-placeholder { min-height: 680rpx; }
 .recommend-section { padding: 0 22rpx; }

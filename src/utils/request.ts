@@ -55,7 +55,7 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
           resolve(res.data as T)
           return
         }
-        if (statusCode === 401) {
+        if (statusCode === 401 || statusCode === 403) {
           if (url.startsWith('/player/')) {
             uni.removeStorageSync('token')
             uni.removeStorageSync('player')
@@ -63,6 +63,11 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
           } else if (url.startsWith('/admin/')) {
             uni.removeStorageSync('admin_token')
             uni.removeStorageSync('admin')
+          } else if (url.startsWith('/boss/') || url.startsWith('/pay/')) {
+            uni.removeStorageSync('token')
+            uni.removeStorageSync('admin_token')
+            uni.removeStorageSync('boss')
+            uni.removeStorageSync('player')
           }
         }
         reject(normalizeErrorData(res.data, statusCode))

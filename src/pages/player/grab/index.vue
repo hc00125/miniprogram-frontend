@@ -1,223 +1,241 @@
 <template>
-  <view class="club-page grab-page">
-    <!-- 顶部状态条 -->
+  <view class="grab-page">
     <view class="status-strip">
-      <view class="strip-indicator">
-        <view class="indicator-pulse"></view>
-        <view class="indicator-dot" :class="`indicator-dot--${online ? 'live' : 'idle'}`"></view>
+      <view class="status-dot" :class="{ live: online }"></view>
+      <view class="status-main">
+        <text>{{ online ? '实时接单中' : '当前离线' }}</text>
+        <text>{{ online ? '每10秒自动刷新，新订单将声音和震动提醒' : '上线后才会开始接收公开订单' }}</text>
       </view>
-      <text class="strip-text">实时抢单中 · 优质订单优先派单给您</text>
-      <text class="strip-link" :class="`strip-link--${online ? 'live' : 'idle'}`">{{ online ? 'LIVE' : 'OFF' }}</text>
+      <button :disabled="onlineUpdating" @tap="toggleOnline">{{ onlineUpdating ? '同步中' : (online ? '下线' : '上线') }}</button>
     </view>
 
-    <!-- 玩家身份卡 -->
     <view class="player-card">
-      <view class="card-bg">
-        <view class="ambient-glow ambient-glow--left"></view>
-        <view class="ambient-glow ambient-glow--right"></view>
+      <image v-if="playerAvatarUrl" class="avatar" :src="playerAvatarUrl" mode="aspectFill" />
+      <view v-else class="avatar avatar--empty">{{ player?.name?.[0] || '陪' }}</view>
+      <view class="player-main">
+        <text class="player-name">{{ player?.name || '陪玩师' }}</text>
+        <text class="player-type">{{ player?.type_name || '陪玩' }} · ★ {{ player?.avg_rating || '5.0' }}</text>
       </view>
-      <view class="card-content">
-        <view class="card-top">
-          <view class="card-avatar">
-            <image v-if="playerAvatarUrl" class="card-avatar-img" :src="playerAvatarUrl" mode="aspectFill" />
-            <text v-else>{{ player?.name?.[0] || '陪' }}</text>
+      <button class="wallet-btn" @tap="go('/pages/player/earnings/index')">收益</button>
+    </view>
+
+    <view v-if="invitations.length" class="section invitation-section">
+      <view class="section-head">
+        <view><text>老板指定邀请</text><text>仅你本人可以接受，10分钟内有效</text></view>
+        <text class="count-chip">{{ invitations.length }}条</text>
+      </view>
+      <view v-for="item in invitations" :key="item.designation_id" class="invitation-card">
+        <view class="invite-top">
+          <view>
+            <text class="invite-label">专属指定</text>
+            <text class="order-no">{{ item.order_no }}</text>
           </view>
-          <view class="card-info">
-            <view class="card-eyebrow">PLAYER HUB · 抢单大厅</view>
-            <view class="card-name">{{ player?.name || '陪玩师' }}</view>
-            <view class="card-type">
-              <text class="type-tag">{{ player?.type_name || '陪玩' }}</text>
-              <text class="type-sep">·</text>
-              <text class="type-rating">★ {{ player?.avg_rating || '5.0' }}</text>
-            </view>
-          </view>
-          <button class="online-toggle" :class="`online-toggle--${online ? 'on' : 'off'}`" :disabled="onlineUpdating" @tap="toggleOnline">
-            <view class="toggle-dot"></view>
-            <text>{{ onlineUpdating ? '同步中' : (online ? '在线' : '离线') }}</text>
-          </button>
+          <text class="countdown">{{ countdownText(item.designation_expires_at) }}</text>
         </view>
-        <view class="stats-row">
-          <view class="stat-item">
-            <text class="stat-value">{{ availableCount }}</text>
-            <text class="stat-label">可抢订单</text>
-          </view>
-          <view class="stat-divider"></view>
-          <view class="stat-item">
-            <text class="stat-value">{{ todayCount }}</text>
-            <text class="stat-label">今日已抢</text>
-          </view>
-          <view class="stat-divider"></view>
-          <view class="stat-item">
-            <text class="stat-value">¥{{ todayIncome }}</text>
-            <text class="stat-label">本月预估</text>
-          </view>
+        <text class="order-title">{{ item.package_name || '陪玩订单' }}</text>
+        <view class="meta-grid">
+          <view><text>人数</text><text>{{ item.current_players || 0 }}/{{ item.required_players }}人</text></view>
+          <view><text>订单金额</text><text>¥{{ money(item.total_price_per_hour) }}</text></view>
+          <view><text>预订时长</text><text>{{ formatHours(item.booked_hours || 1) }}</text></view>
+          <view><text>指定服务费</text><text>¥0.00</text></view>
+        </view>
+        <text v-if="bossNote(item.boss_note)" class="boss-note">老板备注：{{ bossNote(item.boss_note) }}</text>
+        <view class="invite-actions">
+          <button class="decline-btn" :disabled="item.responding" @tap="decline(item)">拒绝</button>
+          <button class="accept-btn" :disabled="item.responding" @tap="accept(item)">{{ item.responding ? '处理中...' : '接受指定' }}</button>
         </view>
       </view>
     </view>
 
-    <!-- 卡片标题 + 刷新 -->
-    <view class="section-head">
-      <view>
-        <text class="section-eyebrow">可抢订单</text>
-        <text class="section-hint">每 10 秒自动刷新</text>
+    <view class="section">
+      <view class="section-head">
+        <view><text>公开抢单大厅</text><text>指定陪玩预留名额不会被其他人占用</text></view>
+        <button class="refresh-btn" @tap="refreshAll">刷新</button>
       </view>
-      <button class="refresh-link" @tap="fetchOrders">
-        <text class="refresh-icon">↻</text>
-        <text>刷新</text>
-      </button>
-    </view>
 
-    <!-- 订单列表 -->
-    <view v-if="orders.length" class="order-list">
-      <view
-        v-for="order in orders"
-        :key="order.order_no"
-        class="order-card"
-        :class="`order-card--${order.can_grab ? 'ready' : 'locked'}`"
-      >
-        <view class="order-top">
-          <view class="order-no-wrap">
-            <text class="order-no">{{ order.order_no }}</text>
-            <text class="order-time">{{ formatTime(order.created_at) }}</text>
+      <view v-if="orders.length" class="order-list">
+        <view v-for="order in orders" :key="order.order_no" class="order-card">
+          <view class="order-time-row">
+            <text class="order-time-label">发布时间</text>
+            <text class="order-time-value">{{ formatPublishedAt(order.created_at) }}</text>
           </view>
-          <view class="tag-row">
-            <text v-if="order.is_designated" class="tag tag--green">指定</text>
-            <text v-if="order.is_custom" class="tag tag--gold">自定义</text>
-            <text v-if="!order.can_grab" class="tag tag--gray">不可抢</text>
+          <view class="meta-grid meta-grid--single">
+            <view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view>
           </view>
-        </view>
-
-        <view class="order-title">{{ order.package_name || '套餐订单' }}</view>
-
-        <view class="order-meta">
-          <view class="meta-item">
-            <text class="meta-label">人数</text>
-            <text class="meta-value">{{ order.current_players || 0 }} / {{ order.required_players }} 人</text>
-          </view>
-          <view class="meta-item">
-            <text class="meta-label">价格</text>
-            <text class="meta-value meta-value--accent">{{ order.is_custom ? '待定' : `¥${order.total_price_per_hour}/时` }}</text>
-          </view>
-          <view v-if="order.boss_note" class="meta-item meta-item--full">
-            <text class="meta-label">老板备注</text>
-            <text class="meta-value meta-value--note">{{ order.boss_note }}</text>
-          </view>
-        </view>
-
-        <view class="order-action-row">
-          <view class="action-info">
-            <text class="action-info-text">距离发布</text>
-            <text class="action-info-time">{{ relativeTime(order.created_at) }}</text>
-          </view>
-          <button
-            class="club-btn grab-btn"
-            :class="`grab-btn--${order.can_grab ? 'ready' : 'locked'}`"
-            :disabled="!order.can_grab || order.grabbing"
-            @tap.stop="grab(order)"
-          >
-            {{ order.grabbing ? '抢单中...' : (order.can_grab ? '立即抢单' : '不可抢') }}
-          </button>
+          <text class="boss-note">老板备注：{{ bossNote(order.boss_note) || '无' }}</text>
+          <button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button>
         </view>
       </view>
+      <view v-else class="empty-card">暂无公开可抢订单，请保持在线。</view>
     </view>
 
-    <!-- 空状态 -->
-    <view v-else class="empty-state">
-      <view class="empty-orb">
-        <view class="empty-ring empty-ring--outer"></view>
-        <view class="empty-ring empty-ring--inner"></view>
-        <view class="empty-icon">单</view>
-      </view>
-      <text class="empty-title">暂无可抢订单</text>
-      <text class="empty-sub">请保持在线状态，新订单会第一时间推送给您</text>
-    </view>
-
-    <!-- 底部操作 -->
     <view class="footer-actions">
-      <button class="club-btn club-btn--ghost" @tap="go('/pages/player/my-orders/index')">
-        <text>我的订单</text>
-      </button>
-      <button class="club-btn club-btn--warn" @tap="handleLogout">
-        <text>退出登录</text>
-      </button>
+      <button @tap="go('/pages/player/my-orders/index')">我的订单</button>
+      <button @tap="handleLogout">退出登录</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { getAvailableOrders, getCurrentPlayer, grabOrder as apiGrabOrder, logoutPlayer, updatePlayerOnlineStatus } from '@/api/player'
+import { onHide, onShow } from '@dcloudio/uni-app'
+import {
+  acceptDesignation,
+  declineDesignation,
+  getAvailableOrders,
+  getCurrentPlayer,
+  getDesignationInvitations,
+  grabOrder as apiGrabOrder,
+  logoutPlayer,
+  updatePlayerOnlineStatus,
+  type DesignationInvitation
+} from '@/api/player'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { getClientProfile, isApprovedPlayer, normalizeAvatarUrl, setPlayerOnlineStatus, getPlayerOnlineStatus } from '@/utils/client'
+import { formatHours } from '@/utils/format'
+import { createOrderAlert } from '@/utils/orderAlert'
 
 const player = ref<any>(null)
 const orders = ref<any[]>([])
+const invitations = ref<Array<DesignationInvitation & { responding?: boolean }>>([])
 const online = ref(getPlayerOnlineStatus())
 const onlineUpdating = ref(false)
+const now = ref(Date.now())
+const orderAlert = createOrderAlert()
+const seenOrderKeys = new Set<string>()
+let orderSnapshotReady = false
+let pageVisible = true
 let refreshTimer: ReturnType<typeof setInterval> | null = null
-let prevOrderCount = 0
+let clockTimer: ReturnType<typeof setInterval> | null = null
 
-const availableCount = computed(() => orders.value.filter(o => o.can_grab).length)
 const playerAvatarUrl = computed(() => {
   const profile = getClientProfile()
   return normalizeAvatarUrl(player.value?.avatar_url || player.value?.avatarUrl || profile?.avatar_url || profile?.avatarUrl)
 })
-const todayCount = computed(() => Math.floor(Math.random() * 5) + 1) // 演示数据
-const todayIncome = computed(() => {
-  // 演示数据：基于陪玩师类型估算
-  const base = player.value?.price_extra || 0
-  return ((base * 8) + 240).toString()
-})
 
-function formatTime(input: string) {
-  if (!input) return '-'
-  const d = new Date(input)
-  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+function money(value: number | string | null | undefined) { return Number(value || 0).toFixed(2) }
+
+function bossNote(value: string | null | undefined) {
+  return String(value || '')
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line && !/^(规格：|基础规格：|指定陪玩：|指定陪玩等级计价：|指定后预计价格：|购买数量：|合并结算商品：)/.test(line))
+    .join('\n')
 }
 
-function relativeTime(input: string) {
-  if (!input) return '-'
-  const diff = Math.floor((Date.now() - new Date(input).getTime()) / 1000)
-  if (diff < 60) return `${diff} 秒前`
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
-  return `${Math.floor(diff / 86400)} 天前`
+function pad(value: number) { return String(value).padStart(2, '0') }
+
+function formatPublishedAt(value: string | null | undefined) {
+  if (!value) return '时间未知'
+  const publishedAt = new Date(value)
+  const timestamp = publishedAt.getTime()
+  if (Number.isNaN(timestamp)) return '时间未知'
+
+  const diffSeconds = Math.max(0, Math.floor((now.value - timestamp) / 1000))
+  if (diffSeconds < 60) return '刚刚发布'
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}分钟前`
+
+  const current = new Date(now.value)
+  const timeText = `${pad(publishedAt.getHours())}:${pad(publishedAt.getMinutes())}`
+  const todayStart = new Date(current.getFullYear(), current.getMonth(), current.getDate()).getTime()
+  const publishedDayStart = new Date(publishedAt.getFullYear(), publishedAt.getMonth(), publishedAt.getDate()).getTime()
+  const dayDiff = Math.round((todayStart - publishedDayStart) / 86400000)
+
+  if (dayDiff === 0) return `今天 ${timeText}`
+  if (dayDiff === 1) return `昨天 ${timeText}`
+  if (publishedAt.getFullYear() === current.getFullYear()) {
+    return `${pad(publishedAt.getMonth() + 1)}-${pad(publishedAt.getDate())} ${timeText}`
+  }
+  return `${publishedAt.getFullYear()}-${pad(publishedAt.getMonth() + 1)}-${pad(publishedAt.getDate())} ${timeText}`
 }
 
-function stopOrderRefresh() {
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-    refreshTimer = null
+function countdownText(value: string) {
+  const diff = Math.max(0, Math.floor((new Date(value).getTime() - now.value) / 1000))
+  if (!diff) return '即将超时'
+  return `${Math.floor(diff / 60)}:${String(diff % 60).padStart(2, '0')}后超时`
+}
+
+function stopRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer)
+  refreshTimer = null
+}
+
+function checkNewOrderAlert(inviteList: DesignationInvitation[], publicOrders: any[]) {
+  const inviteKeys = (inviteList || []).map(item => `invite:${item.designation_id}`)
+  const publicKeys = online.value
+    ? (publicOrders || []).map(item => `order:${item.order_no}`)
+    : []
+  const nextKeys = [...inviteKeys, ...publicKeys]
+  const hasNewInvitation = orderSnapshotReady && inviteKeys.some(key => !seenOrderKeys.has(key))
+  const hasNewPublicOrder = orderSnapshotReady && publicKeys.some(key => !seenOrderKeys.has(key))
+
+  nextKeys.forEach(key => seenOrderKeys.add(key))
+  orderSnapshotReady = true
+
+  if (!pageVisible || (!hasNewInvitation && !hasNewPublicOrder)) return
+  orderAlert.notify()
+  toast(hasNewInvitation ? '收到新的指定邀请' : '有新的公开订单')
+}
+
+async function refreshAll() {
+  try {
+    const [inviteList, publicOrders] = await Promise.all([
+      getDesignationInvitations(),
+      getAvailableOrders()
+    ])
+    checkNewOrderAlert(inviteList || [], publicOrders || [])
+    invitations.value = (inviteList || []).map(item => ({ ...item, responding: false }))
+    orders.value = (publicOrders || []).map(item => ({ ...item, grabbing: false }))
+  } catch (error) {
+    toast(getErrorMessage(error, '订单刷新失败'))
   }
 }
 
-async function startOrderRefresh() {
-  await fetchOrders()
-  stopOrderRefresh()
-  refreshTimer = setInterval(fetchOrders, 10000)
+async function startRefresh() {
+  await refreshAll()
+  stopRefresh()
+  refreshTimer = setInterval(refreshAll, 10000)
 }
 
-async function fetchOrders() {
+async function accept(item: DesignationInvitation & { responding?: boolean }) {
+  if (!(await confirm(`接受老板指定邀请吗？\n套餐：${item.package_name}\n指定本人不额外加价`, '接受指定'))) return
+  item.responding = true
   try {
-    const res = await getAvailableOrders()
-    if (prevOrderCount > 0 && res.length > prevOrderCount) toast('有新订单')
-    prevOrderCount = res.length
-    orders.value = (res || []).map(order => ({ ...order, grabbing: false }))
+    await acceptDesignation(item.order_no)
+    success('已接受指定邀请')
+    await refreshAll()
+    go('/pages/player/order-detail/index', { orderNo: item.order_no })
   } catch (error) {
-    toast(getErrorMessage(error, '获取订单失败'))
+    toast(getErrorMessage(error, '接受指定失败'))
+  } finally {
+    item.responding = false
+  }
+}
+
+async function decline(item: DesignationInvitation & { responding?: boolean }) {
+  if (!(await confirm('拒绝后该名额会立即转为公开抢单，确定拒绝吗？', '拒绝指定'))) return
+  item.responding = true
+  try {
+    await declineDesignation(item.order_no)
+    success('已拒绝，名额转为公开抢单')
+    await refreshAll()
+  } catch (error) {
+    toast(getErrorMessage(error, '拒绝指定失败'))
+  } finally {
+    item.responding = false
   }
 }
 
 async function grab(order: any) {
-  if (!order.can_grab) return
-  const ok = await confirm(`确定要抢这个订单吗？\n套餐：${order.package_name}`)
-  if (!ok) return
+  if (!order.can_grab || order.grabbing) return
+  if (!(await confirm('确定抢这个公开订单吗？'))) return
+  order.grabbing = true
   try {
-    order.grabbing = true
     await apiGrabOrder(order.order_no, player.value.id)
     success('抢单成功')
+    await refreshAll()
     go('/pages/player/order-detail/index', { orderNo: order.order_no })
   } catch (error) {
     toast(getErrorMessage(error, '抢单失败'))
@@ -228,20 +246,19 @@ async function grab(order: any) {
 
 async function toggleOnline() {
   if (onlineUpdating.value) return
-  const nextOnline = !online.value
   onlineUpdating.value = true
   try {
-    const res = await updatePlayerOnlineStatus(nextOnline)
-    online.value = Boolean(res.is_online)
+    const result = await updatePlayerOnlineStatus(!online.value)
+    online.value = Boolean(result.is_online)
     setPlayerOnlineStatus(online.value)
-    if (player.value) player.value = { ...player.value, is_online: online.value }
-    if (!online.value) {
-      stopOrderRefresh()
-      toast('已离线，停止接单')
+    if (online.value) {
+      void orderAlert.prepare()
+      await startRefresh()
     } else {
-      await startOrderRefresh()
-      toast('已上线，开始接单')
+      stopRefresh()
+      await refreshAll()
     }
+    toast(online.value ? '已上线，开始接单' : '已离线，指定邀请仍可查看')
   } catch (error) {
     toast(getErrorMessage(error, '在线状态更新失败'))
   } finally {
@@ -250,16 +267,22 @@ async function toggleOnline() {
 }
 
 async function handleLogout() {
-  const ok = await confirm('确定退出登录吗？')
-  if (!ok) return
-  try {
-    await logoutPlayer()
-  } catch {}
+  if (!(await confirm('确定退出登录吗？'))) return
+  try { await logoutPlayer() } catch {}
   setPlayerOnlineStatus(false)
   removeStorage('token')
   removeStorage('player')
   replace('/pages/client/login/index')
 }
+
+onShow(() => {
+  pageVisible = true
+  void orderAlert.prepare()
+})
+
+onHide(() => {
+  pageVisible = false
+})
 
 onMounted(async () => {
   if (!(await isApprovedPlayer())) {
@@ -267,688 +290,86 @@ onMounted(async () => {
     go('/pages/player/apply/index')
     return
   }
-  const token = getStorage<string>('token')
-  if (!token) {
+  if (!getStorage<string>('token')) {
     replace('/pages/client/login/index')
     return
   }
   try {
-    const currentPlayer = await getCurrentPlayer()
-    player.value = currentPlayer
-    online.value = Boolean(currentPlayer?.is_online)
+    player.value = await getCurrentPlayer()
+    online.value = Boolean(player.value?.is_online)
     setPlayerOnlineStatus(online.value)
-  } catch (error) {
-    const playerInfo = getStorage<any>('player')
-    if (!playerInfo) {
-      toast('陪玩师信息未同步，请刷新个人中心')
-      replace('/pages/client/profile/index')
-      return
-    }
-    player.value = playerInfo
-    online.value = getPlayerOnlineStatus()
+  } catch {
+    player.value = getStorage<any>('player')
   }
   if (!player.value) {
-    toast('陪玩师信息未同步，请刷新个人中心')
+    toast('陪玩师信息未同步')
     replace('/pages/client/profile/index')
     return
   }
-  if (!online.value) {
-    await fetchOrders()
-    return
-  }
-  await startOrderRefresh()
+  void orderAlert.prepare()
+  await startRefresh()
+  clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
 })
 
 onUnmounted(() => {
-  stopOrderRefresh()
+  stopRefresh()
+  if (clockTimer) clearInterval(clockTimer)
+  orderAlert.destroy()
 })
 </script>
 
 <style lang="scss" scoped>
-@import '@/styles/theme.scss';
-
-.grab-page {
-  min-height: 100vh;
-  padding: 20rpx 24rpx 200rpx;
-  box-sizing: border-box;
-  background:
-    radial-gradient(ellipse at 12% 0%, rgba(216, 161, 68, 0.10), transparent 36%),
-    radial-gradient(ellipse at 88% 16%, rgba(47, 155, 99, 0.10), transparent 32%),
-    linear-gradient(180deg, #fbf7ef 0%, #f7f3ea 48%, #fffaf2 100%);
-}
-
-/* ========== 顶部状态条 ========== */
-.status-strip {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  padding: 18rpx 24rpx;
-  border: 1px solid rgba(216, 161, 68, 0.18);
-  border-radius: 22rpx;
-  background: rgba(255, 252, 244, 0.92);
-  box-shadow: 0 8rpx 22rpx rgba(176, 134, 60, 0.06);
-}
-
-.strip-indicator {
-  position: relative;
-  width: 18rpx;
-  height: 18rpx;
-  flex-shrink: 0;
-}
-
-.indicator-dot {
-  position: absolute;
-  inset: 5rpx;
-  border-radius: 50%;
-  z-index: 1;
-}
-
-.indicator-dot--live {
-  background: linear-gradient(135deg, #ef5b5b, #c43232);
-  box-shadow: 0 0 0 4rpx rgba(239, 91, 91, 0.20);
-}
-
-.indicator-dot--idle {
-  background: #aab1a5;
-  box-shadow: none;
-}
-
-.indicator-pulse {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: rgba(239, 91, 91, 0.40);
-  animation: pulse 1.6s ease-out infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.6); opacity: 0.8; }
-  100% { transform: scale(2.4); opacity: 0; }
-}
-
-.strip-text {
-  flex: 1;
-  color: #4a4f48;
-  font-size: 25rpx;
-  line-height: 1.36;
-  font-weight: 600;
-}
-
-.strip-link {
-  padding: 6rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  font-weight: 800;
-  letter-spacing: 1rpx;
-}
-
-.strip-link--live {
-  color: #c43232;
-  background: rgba(239, 91, 91, 0.10);
-  border: 1px solid rgba(239, 91, 91, 0.18);
-}
-
-.strip-link--idle {
-  color: #5a6b5b;
-  background: rgba(42, 63, 48, 0.08);
-  border: 1px solid rgba(42, 63, 48, 0.16);
-}
-
-/* ========== 玩家身份卡 ========== */
-.player-card {
-  position: relative;
-  margin-top: 22rpx;
-  padding: 28rpx 30rpx 26rpx;
-  border: 1px solid rgba(47, 155, 99, 0.12);
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #173426 0%, #1f7c4b 60%, #2f9b63 100%);
-  box-shadow: 0 20rpx 44rpx rgba(23, 52, 38, 0.20);
-  overflow: hidden;
-}
-
-.card-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.ambient-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(40rpx);
-  opacity: 0.5;
-}
-
-.ambient-glow--left {
-  top: -60rpx;
-  left: -40rpx;
-  width: 220rpx;
-  height: 220rpx;
-  background: radial-gradient(circle, rgba(216, 161, 68, 0.40), transparent 70%);
-}
-
-.ambient-glow--right {
-  bottom: -80rpx;
-  right: -60rpx;
-  width: 280rpx;
-  height: 280rpx;
-  background: radial-gradient(circle, rgba(95, 183, 138, 0.50), transparent 70%);
-}
-
-.card-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 22rpx;
-}
-
-.card-top {
-  display: flex;
-  align-items: center;
-  gap: 18rpx;
-}
-
-.card-avatar {
-  width: 100rpx;
-  height: 100rpx;
-  flex-shrink: 0;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #f3d79b, #d8a144);
-  color: #173426;
-  font-size: 40rpx;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 10rpx 24rpx rgba(0, 0, 0, 0.18);
-  overflow: hidden;
-}
-
-.card-avatar-img {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.card-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.card-eyebrow {
-  color: rgba(243, 215, 155, 0.88);
-  font-size: 19rpx;
-  font-weight: 900;
-  letter-spacing: 1.5rpx;
-}
-
-.card-name {
-  color: #fffaf0;
-  font-size: 36rpx;
-  font-weight: 900;
-  line-height: 1.16;
-  text-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.20);
-}
-
-.card-type {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  margin-top: 4rpx;
-  color: rgba(255, 255, 255, 0.84);
-  font-size: 22rpx;
-  font-weight: 700;
-}
-
-.type-tag {
-  padding: 3rpx 12rpx;
-  border-radius: 999rpx;
-  background: rgba(243, 215, 155, 0.22);
-  color: #f3d79b;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.type-sep {
-  color: rgba(255, 255, 255, 0.40);
-}
-
-.type-rating {
-  color: #f3d79b;
-  font-weight: 800;
-}
-
-.online-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  padding: 6rpx 14rpx;
-  border-radius: 999rpx;
-  font-size: 21rpx;
-  font-weight: 800;
-  flex-shrink: 0;
-  border: 1px solid transparent;
-}
-
-.online-toggle--on {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.online-toggle--off {
-  background: rgba(0, 0, 0, 0.30);
-  color: rgba(255, 255, 255, 0.62);
-  border-color: rgba(255, 255, 255, 0.16);
-}
-
-.toggle-dot {
-  width: 10rpx;
-  height: 10rpx;
-  border-radius: 50%;
-  background: #5fb78a;
-  box-shadow: 0 0 0 3rpx rgba(95, 183, 138, 0.30);
-}
-
-.online-toggle--off .toggle-dot {
-  background: #aab1a5;
-  box-shadow: none;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr 1px 1fr;
-  align-items: center;
-  padding: 18rpx 14rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4rpx;
-}
-
-.stat-value {
-  color: #fff;
-  font-size: 32rpx;
-  font-weight: 900;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-label {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 21rpx;
-  font-weight: 600;
-}
-
-.stat-divider {
-  width: 1px;
-  height: 40rpx;
-  background: rgba(255, 255, 255, 0.16);
-}
-
-/* ========== 区块标题 ========== */
-.section-head {
-  margin: 28rpx 0 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18rpx;
-}
-
-.section-eyebrow {
-  color: #14291f;
-  font-size: 30rpx;
-  font-weight: 900;
-  display: block;
-}
-
-.section-hint {
-  display: block;
-  margin-top: 2rpx;
-  color: #5a6b5b;
-  font-size: 21rpx;
-  font-weight: 600;
-}
-
-.refresh-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6rpx;
-  height: 56rpx;
-  padding: 0 20rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.96);
-  color: #1f7c4b;
-  font-size: 24rpx;
-  font-weight: 800;
-  flex-shrink: 0;
-  border: 1px solid rgba(47, 155, 99, 0.12);
-}
-
-.refresh-icon {
-  font-size: 26rpx;
-  line-height: 1;
-}
-
-/* ========== 订单列表 ========== */
-.order-list {
-  display: flex;
-  flex-direction: column;
-  gap: 18rpx;
-}
-
-.order-card {
-  padding: 22rpx 24rpx 20rpx;
-  border: 1px solid rgba(42, 63, 48, 0.06);
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12rpx 28rpx rgba(38, 69, 54, 0.06);
-}
-
-.order-card--locked {
-  background: rgba(245, 243, 235, 0.96);
-}
-
-.order-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14rpx;
-}
-
-.order-no-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-  min-width: 0;
-}
-
-.order-no {
-  color: #8b9788;
-  font-size: 21rpx;
-  font-weight: 600;
-  font-family: 'SF Mono', 'DIN Alternate', -apple-system, monospace;
-}
-
-.order-time {
-  color: #aab1a5;
-  font-size: 19rpx;
-  font-weight: 600;
-}
-
-.tag-row {
-  display: flex;
-  gap: 8rpx;
-  flex-shrink: 0;
-}
-
-.tag {
-  padding: 4rpx 12rpx;
-  border-radius: 999rpx;
-  font-size: 20rpx;
-  font-weight: 800;
-}
-
-.tag--green {
-  background: rgba(47, 155, 99, 0.12);
-  color: #1f7c4b;
-}
-
-.tag--gold {
-  background: rgba(216, 161, 68, 0.14);
-  color: #a87520;
-}
-
-.tag--gray {
-  background: rgba(42, 63, 48, 0.08);
-  color: #5a6b5b;
-}
-
-.order-title {
-  margin-top: 12rpx;
-  color: #14291f;
-  font-size: 32rpx;
-  font-weight: 900;
-  letter-spacing: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.order-card--locked .order-title {
-  color: #5a6b5b;
-}
-
-.order-meta {
-  margin-top: 16rpx;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14rpx 22rpx;
-  padding: 16rpx 18rpx;
-  border-radius: 18rpx;
-  background: linear-gradient(180deg, #f7faf4 0%, #ffffff 100%);
-  border: 1px solid rgba(47, 155, 99, 0.06);
-}
-
-.order-card--locked .order-meta {
-  background: rgba(232, 232, 226, 0.60);
-  border-color: rgba(42, 63, 48, 0.06);
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.meta-item--full {
-  flex: 1 0 100%;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4rpx;
-  margin-top: 2rpx;
-  padding-top: 12rpx;
-  border-top: 1px dashed rgba(42, 63, 48, 0.08);
-}
-
-.meta-label {
-  color: #828a7e;
-  font-size: 22rpx;
-  font-weight: 600;
-}
-
-.meta-value {
-  color: #14291f;
-  font-size: 26rpx;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.meta-value--accent {
-  color: #1f7c4b;
-  font-size: 30rpx;
-}
-
-.meta-value--note {
-  color: #5a6b5b;
-  font-size: 24rpx;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.order-action-row {
-  margin-top: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14rpx;
-}
-
-.action-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2rpx;
-  min-width: 0;
-}
-
-.action-info-text {
-  color: #828a7e;
-  font-size: 21rpx;
-  font-weight: 600;
-}
-
-.action-info-time {
-  color: #1f7c4b;
-  font-size: 24rpx;
-  font-weight: 800;
-}
-
-.order-card--locked .action-info-time {
-  color: #5a6b5b;
-}
-
-.grab-btn {
-  min-width: 200rpx;
-  min-height: 78rpx;
-  border-radius: 22rpx;
-  font-size: 28rpx;
-  font-weight: 900;
-}
-
-.grab-btn--ready {
-  color: #fff;
-  background: linear-gradient(135deg, #ff8a4c, #ef5b5b);
-  box-shadow: 0 12rpx 24rpx rgba(239, 91, 91, 0.30);
-}
-
-.grab-btn--locked {
-  color: #5a6b5b;
-  background: #e8e8e2;
-  box-shadow: none;
-}
-
-/* ========== 空状态 ========== */
-.empty-state {
-  margin-top: 22rpx;
-  padding: 80rpx 32rpx 60rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14rpx;
-  border: 1px solid rgba(42, 63, 48, 0.06);
-  border-radius: 28rpx;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 14rpx 36rpx rgba(38, 69, 54, 0.06);
-}
-
-.empty-orb {
-  position: relative;
-  width: 168rpx;
-  height: 168rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8rpx;
-}
-
-.empty-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2rpx solid rgba(216, 161, 68, 0.20);
-}
-
-.empty-ring--outer {
-  animation: empty-breathe 2.6s ease-in-out infinite;
-}
-
-.empty-ring--inner {
-  inset: 26rpx;
-  border-color: rgba(216, 161, 68, 0.32);
-  animation: empty-breathe 2.6s ease-in-out infinite 0.6s;
-}
-
-@keyframes empty-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.06); opacity: 0.8; }
-}
-
-.empty-icon {
-  position: relative;
-  z-index: 1;
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #f3d79b, #d8a144);
-  color: #173426;
-  font-size: 44rpx;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 12rpx 24rpx rgba(216, 161, 68, 0.20);
-}
-
-.empty-title {
-  color: #14291f;
-  font-size: 32rpx;
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.empty-sub {
-  color: #5a6b5b;
-  font-size: 24rpx;
-  font-weight: 600;
-  line-height: 1.4;
-  text-align: center;
-}
-
-/* ========== 底部操作 ========== */
-.footer-actions {
-  position: fixed;
-  left: 24rpx;
-  right: 24rpx;
-  bottom: calc(20rpx + env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14rpx;
-  z-index: 10;
-}
-
-.footer-actions .club-btn {
-  min-height: 82rpx;
-  font-size: 28rpx;
-  font-weight: 800;
-  border-radius: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-}
-
-.footer-actions .club-btn--warn {
-  background: linear-gradient(135deg, #ffb380, #ef5b5b);
-  color: #fff;
-  box-shadow: 0 10rpx 22rpx rgba(239, 91, 91, 0.22);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .indicator-pulse,
-  .empty-ring--outer,
-  .empty-ring--inner {
-    animation: none;
-  }
-}
+.grab-page { min-height: 100vh; padding: 22rpx 24rpx 180rpx; box-sizing: border-box; color: #172116; background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.12), transparent 30%), radial-gradient(circle at 90% 12%, rgba(47,155,99,.12), transparent 30%), #f7f3ea; }
+.status-strip, .player-card, .section, .order-card, .invitation-card, .empty-card { border-radius: 28rpx; background: rgba(255,255,255,.97); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 12rpx 30rpx rgba(39,61,42,.06); }
+.status-strip { display: flex; align-items: center; gap: 14rpx; padding: 20rpx 22rpx; }
+.status-dot { width: 16rpx; height: 16rpx; flex-shrink: 0; border-radius: 50%; background: #aab1a5; }
+.status-dot.live { background: #2f9b63; box-shadow: 0 0 0 8rpx rgba(47,155,99,.12); }
+.status-main { flex: 1; min-width: 0; }
+.status-main text { display: block; }
+.status-main text:first-child { font-size: 25rpx; font-weight: 900; }
+.status-main text:last-child { margin-top: 4rpx; color: #879083; font-size: 20rpx; }
+.status-strip button, .wallet-btn, .refresh-btn { min-width: 104rpx; height: 58rpx; margin: 0; padding: 0 16rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 22rpx; font-weight: 900; background: #eef8f1; }
+.status-strip button::after, .wallet-btn::after, .refresh-btn::after, .footer-actions button::after, .invite-actions button::after, .grab-btn::after { border: none; }
+.player-card { margin-top: 20rpx; padding: 24rpx; display: flex; align-items: center; gap: 16rpx; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
+.avatar { width: 88rpx; height: 88rpx; flex-shrink: 0; border-radius: 26rpx; }
+.avatar--empty { display: flex; align-items: center; justify-content: center; color: #173426; font-size: 36rpx; font-weight: 900; background: #f3d79b; }
+.player-main { flex: 1; min-width: 0; }
+.player-main text { display: block; }
+.player-name { font-size: 32rpx; font-weight: 900; }
+.player-type { margin-top: 6rpx; color: rgba(255,255,255,.76); font-size: 22rpx; }
+.wallet-btn { color: #fff; background: rgba(255,255,255,.14); }
+.section { margin-top: 22rpx; padding: 24rpx; }
+.invitation-section { border-color: rgba(216,161,68,.24); background: linear-gradient(180deg, #fffaf0, #fff); }
+.section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; margin-bottom: 18rpx; }
+.section-head > view { flex: 1; min-width: 0; }
+.section-head text { display: block; }
+.section-head text:first-child { font-size: 30rpx; font-weight: 900; }
+.section-head text:last-child { margin-top: 5rpx; color: #879083; font-size: 21rpx; }
+.count-chip, .invite-label { padding: 7rpx 12rpx; border-radius: 999rpx; color: #a87520; font-size: 20rpx; font-weight: 900; background: #fff3d4; }
+.invitation-card, .order-card { margin-top: 14rpx; padding: 20rpx; box-shadow: none; }
+.invitation-card { border-color: rgba(216,161,68,.20); }
+.invite-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
+.invite-top > view { flex: 1; min-width: 0; }
+.invite-label, .order-no { display: block; }
+.order-no { margin-top: 6rpx; color: #9aa197; font-size: 19rpx; font-family: monospace; word-break: break-all; }
+.countdown { color: #a87520; font-size: 22rpx; font-weight: 900; }
+.order-title { display: block; margin-top: 16rpx; font-size: 29rpx; font-weight: 900; }
+.order-time-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 12rpx; padding: 0 2rpx; }
+.order-time-label { color: #879083; font-size: 20rpx; }
+.order-time-value { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
+.meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10rpx; margin-top: 16rpx; }
+.meta-grid--single { grid-template-columns: 1fr; margin-top: 0; }
+.meta-grid view { padding: 14rpx; border-radius: 16rpx; background: #f7faf4; }
+.meta-grid text { display: block; }
+.meta-grid text:first-child { color: #879083; font-size: 19rpx; }
+.meta-grid text:last-child { margin-top: 5rpx; font-size: 24rpx; font-weight: 900; }
+.boss-note { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: #687665; font-size: 21rpx; line-height: 1.5; white-space: pre-wrap; background: #f7f7f2; }
+.invite-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 12rpx; margin-top: 16rpx; }
+.invite-actions button, .grab-btn { height: 72rpx; margin: 0; border-radius: 999rpx; font-size: 25rpx; font-weight: 900; }
+.decline-btn { color: #a13d35; background: #fff0ed; }
+.accept-btn, .grab-btn { color: #fff; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
+.grab-btn { width: 100%; margin-top: 16rpx; }
+.empty-card { padding: 50rpx 20rpx; color: #879083; text-align: center; box-shadow: none; }
+.footer-actions { position: fixed; left: 24rpx; right: 24rpx; bottom: calc(24rpx + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
+.footer-actions button { height: 76rpx; border-radius: 999rpx; color: #172116; font-size: 25rpx; font-weight: 900; background: rgba(255,255,255,.98); box-shadow: 0 10rpx 26rpx rgba(39,61,42,.10); }
 </style>

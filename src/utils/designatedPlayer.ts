@@ -1,0 +1,92 @@
+import { getStorage, removeStorage, setStorage } from '@/utils/storage'
+
+export const DESIGNATED_PLAYER_STORAGE_KEY = 'designated_player_selection'
+export const MAX_DESIGNATED_PLAYERS = 3
+
+export interface DesignatedPlayerSelection {
+  id: number
+  name: string
+  type_id?: number
+  type_name: string
+  type_priority?: number
+  designated_billing_type_id?: number
+  designated_billing_type_name?: string
+  designated_billing_type_priority?: number
+  avatar_url?: string
+  is_online?: boolean
+}
+
+function normalizePlayer(player: DesignatedPlayerSelection | null | undefined) {
+  if (!player || !Number(player.id)) return null
+  const typeId = Number(player.type_id || 0) || undefined
+  const typePriority = Number(player.type_priority || 0)
+  return {
+    ...player,
+    id: Number(player.id),
+    type_id: typeId,
+    type_priority: typePriority,
+    designated_billing_type_id: Number(player.designated_billing_type_id || typeId || 0) || undefined,
+    designated_billing_type_name: player.designated_billing_type_name || player.type_name,
+    designated_billing_type_priority: Number(player.designated_billing_type_priority ?? typePriority)
+  }
+}
+
+function normalizePlayers(raw: unknown): DesignatedPlayerSelection[] {
+  const source = Array.isArray(raw) ? raw : raw ? [raw] : []
+  const seen = new Set<number>()
+  const result: DesignatedPlayerSelection[] = []
+  for (const item of source) {
+    const player = normalizePlayer(item as DesignatedPlayerSelection)
+    if (!player || seen.has(player.id)) continue
+    seen.add(player.id)
+    result.push(player)
+  }
+  return result.slice(0, MAX_DESIGNATED_PLAYERS)
+}
+
+export function saveDesignatedPlayers(players: DesignatedPlayerSelection[]) {
+  const normalized = normalizePlayers(players)
+  if (!normalized.length) {
+    removeStorage(DESIGNATED_PLAYER_STORAGE_KEY)
+    return []
+  }
+  setStorage(DESIGNATED_PLAYER_STORAGE_KEY, normalized)
+  return normalized
+}
+
+export function getDesignatedPlayers() {
+  return normalizePlayers(getStorage<DesignatedPlayerSelection[] | DesignatedPlayerSelection>(DESIGNATED_PLAYER_STORAGE_KEY))
+}
+
+export function addDesignatedPlayer(player: DesignatedPlayerSelection) {
+  const current = getDesignatedPlayers()
+  const normalized = normalizePlayer(player)
+  if (!normalized) return { ok: false, players: current, message: '陪玩信息不完整' }
+  if (current.some(item => item.id === normalized.id)) return { ok: true, players: current, message: '该陪玩已在指定阵容中' }
+  if (current.length >= MAX_DESIGNATED_PLAYERS) {
+    return { ok: false, players: current, message: `最多指定${MAX_DESIGNATED_PLAYERS}名陪玩` }
+  }
+  const players = saveDesignatedPlayers([...current, normalized])
+  return { ok: true, players, message: `已加入指定阵容（${players.length}人，分别按各自最低指定价计费）` }
+}
+
+export function removeDesignatedPlayer(playerId: number) {
+  return saveDesignatedPlayers(getDesignatedPlayers().filter(item => item.id !== Number(playerId)))
+}
+
+export function clearDesignatedPlayers() {
+  removeStorage(DESIGNATED_PLAYER_STORAGE_KEY)
+}
+
+// 兼容旧页面调用；新功能统一使用数组接口。
+export function saveDesignatedPlayer(player: DesignatedPlayerSelection) {
+  return saveDesignatedPlayers([player])
+}
+
+export function getDesignatedPlayer() {
+  return getDesignatedPlayers()[0] || null
+}
+
+export function clearDesignatedPlayer() {
+  clearDesignatedPlayers()
+}

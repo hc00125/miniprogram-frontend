@@ -1,4 +1,13 @@
+const navigationMessages: Record<string, string> = {
+  '服务条款页面建设中': '/pages/legal/privacy/index'
+}
+
 export function toast(title: string, icon: UniApp.ShowToastOptions['icon'] = 'none') {
+  const target = navigationMessages[title]
+  if (target) {
+    uni.navigateTo({ url: target })
+    return
+  }
   uni.showToast({ title, icon, duration: 1800 })
 }
 
@@ -12,6 +21,7 @@ export function getErrorMessage(error: any, fallback: string) {
   if (typeof error.detail === 'string') return error.detail
   if (error.data && typeof error.data.detail === 'string') return error.data.detail
   if (typeof error.errMsg === 'string') return error.errMsg
+  if (typeof error.message === 'string') return error.message
   return fallback
 }
 
