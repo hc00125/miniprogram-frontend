@@ -172,12 +172,11 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
-import { usePageShare } from '@/utils/pageShare'
 
 const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
@@ -217,13 +216,21 @@ const guaranteeRules = computed(() => {
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 
-usePageShare(() => {
+onShareAppMessage(() => {
   const id = packageId.value
   return {
     title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务',
     path: id ? `/pages/shop/detail/index?packageId=${id}` : '/pages/shop/category/index',
-    timelineQuery: id ? `packageId=${id}` : '',
-    imageUrl: rawProductImage.value || undefined
+    ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {})
+  }
+})
+
+onShareTimeline(() => {
+  const id = packageId.value
+  return {
+    title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务',
+    query: id ? `packageId=${id}` : '',
+    ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {})
   }
 })
 
