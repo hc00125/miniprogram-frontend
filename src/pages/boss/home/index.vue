@@ -118,13 +118,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, getPlayerList, type BossPackage, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
 import { toast } from '@/utils/feedback'
-import { usePageShare } from '@/utils/pageShare'
 
 type HeroTarget = 'shop' | 'query' | 'players' | 'notice'
 
@@ -176,9 +175,15 @@ const fallbackPackages: BossPackage[] = [
   { id: 1002, name: '五套五弹', player_count: 5, base_price: 20, description: '默认五人套餐', is_custom: false, group_id: 1, group_name: '默认推荐' }
 ]
 
-usePageShare(() => ({
+onShareAppMessage(() => ({
   title: '偷吃电竞｜专业游戏陪练服务',
   path: '/pages/boss/home/index',
+  imageUrl: homeHero
+}))
+
+onShareTimeline(() => ({
+  title: '偷吃电竞｜专业游戏陪练服务',
+  query: '',
   imageUrl: homeHero
 }))
 
