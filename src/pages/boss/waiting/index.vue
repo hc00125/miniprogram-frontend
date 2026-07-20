@@ -19,7 +19,7 @@
     <view v-if="designations.length" class="card designation-card">
       <view class="card-head">
         <view><text class="card-title">指定陪玩邀请</text><text class="card-sub">待接受邀请10分钟后自动转为公开抢单</text></view>
-        <button class="mini-btn" @tap="checkOrder">刷新</button>
+        <button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
       <view class="designation-list">
         <view v-for="item in designations" :key="item.id" class="designation-item">
@@ -78,7 +78,7 @@
 
     <view class="footer-actions">
       <button class="ghost-btn" @tap="goMain('home')">返回首页</button>
-      <button class="primary-btn" @tap="checkOrder">刷新状态</button>
+      <button class="primary-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button>
       <button v-if="orderInfo?.status === '待接单'" class="danger-btn" @tap="handleCancel">取消订单</button>
       <button v-if="orderInfo?.status === '待支付'" class="primary-btn" @tap="goPayment">去付款</button>
     </view>
@@ -98,6 +98,7 @@ const orderInfo = ref<any>(null)
 const designations = ref<Array<OrderDesignationItem & { releasing?: boolean }>>([])
 const waitTime = ref('')
 const now = ref(Date.now())
+const refreshing = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
 let waitTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
@@ -142,7 +143,7 @@ function updateWaitTime() {
 }
 
 async function checkOrder() {
-  if (!orderNo.value) return
+  if (!orderNo.value) return false
   try {
     const [res, designationResult] = await Promise.all([
       getOrder(orderNo.value),
@@ -158,7 +159,21 @@ async function checkOrder() {
     else if (res.status === '待开打' || res.status === '进行中') { stopTimers(); replace('/pages/boss/in-progress/index', { orderNo: orderNo.value }) }
     else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
     else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') }
-  } catch (error) { toast(getErrorMessage(error, '订单加载失败')) }
+    return true
+  } catch (error) {
+    toast(getErrorMessage(error, '订单刷新失败'))
+    return false
+  }
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await checkOrder()) success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
 }
 
 async function releaseDesignation(item: OrderDesignationItem & { releasing?: boolean }) {

@@ -3,7 +3,7 @@
     <view class="topbar">
       <button @tap="goMain('home')">‹</button>
       <view><text>已入驻陪玩</text><text>最多选择3名，可混选不同类型</text></view>
-      <button @tap="fetchPlayers">刷新</button>
+      <button :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
     </view>
 
     <view class="brand-poster list-hero">
@@ -90,7 +90,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { relaunch, navigateToTab, type MainTab, go, goMain as switchMain } from '@/utils/nav'
-import { toast } from '@/utils/feedback'
+import { success, toast } from '@/utils/feedback'
 import {
   MAX_DESIGNATED_PLAYERS,
   addDesignatedPlayer,
@@ -114,6 +114,7 @@ const players = ref<BillingPlayer[]>([])
 const selectedPlayers = ref<DesignatedPlayerSelection[]>([])
 const searchKeyword = ref('')
 const searchFocused = ref(false)
+const refreshing = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 let fetchSequence = 0
 
@@ -191,12 +192,24 @@ async function fetchPlayers() {
         status: p.status || (normalizeOnlineValue(p.is_online) ? '在线' : '离线')
       }
     })
+    return true
   } catch {
-    if (sequence !== fetchSequence) return
+    if (sequence !== fetchSequence) return false
     players.value = []
-    toast('陪玩列表加载失败，请稍后重试')
+    toast('陪玩列表刷新失败，请稍后重试')
+    return false
   } finally {
     if (sequence === fetchSequence) loaded.value = true
+  }
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await fetchPlayers()) success('刷新成功')
+  } finally {
+    refreshing.value = false
   }
 }
 

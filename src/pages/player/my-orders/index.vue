@@ -6,7 +6,7 @@
         <view class="title">我的接单与评价</view>
         <view class="sub">查看服务记录，以及老板对你的真实评分。</view>
       </view>
-      <button class="club-btn club-btn--ghost" @tap="refreshAll">刷新</button>
+      <button class="club-btn club-btn--ghost" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
     </view>
 
     <view class="wallet-entry" @tap="go('/pages/player/earnings/index')">
@@ -88,13 +88,14 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getMyOrders, getMyPlayerRatings, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
-import { getErrorMessage, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain, replace, backToRoute } from '@/utils/nav'
 import { isApprovedPlayer } from '@/utils/client'
 
 const player = ref<any>(null)
 const orders = ref<any[]>([])
 const ratingData = ref<PlayerRatingsResult | null>(null)
+const refreshing = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const ratings = computed(() => ratingData.value?.results || [])
@@ -134,22 +135,37 @@ function starText(value: number) {
 async function fetchOrders() {
   try {
     orders.value = await getMyOrders()
+    return true
   } catch (error) {
-    toast(getErrorMessage(error, '获取订单失败'))
+    toast(getErrorMessage(error, '订单刷新失败'))
+    return false
   }
 }
 
 async function fetchRatings() {
   try {
     ratingData.value = await getMyPlayerRatings()
+    return true
   } catch (error) {
     ratingData.value = null
-    toast(getErrorMessage(error, '获取评价失败'))
+    toast(getErrorMessage(error, '评价刷新失败'))
+    return false
   }
 }
 
 async function refreshAll() {
-  await Promise.all([fetchOrders(), fetchRatings()])
+  const [ordersOk, ratingsOk] = await Promise.all([fetchOrders(), fetchRatings()])
+  return ordersOk && ratingsOk
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await refreshAll()) success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
 }
 
 async function handleLogout() {

@@ -62,7 +62,7 @@
     <view v-if="orderInfo" class="card">
       <view class="card-head">
         <view><text class="card-title">服务阵容与入房状态</text><text class="card-sub">陪玩接单后需在10分钟内进入老板房间并确认</text></view>
-        <button class="mini-btn" @tap="checkOrder">刷新</button>
+        <button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
       <scroll-view scroll-x class="player-track" show-scrollbar="false">
         <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
@@ -105,7 +105,7 @@
 
     <view class="footer-actions">
       <button class="ghost-btn" @tap="goMain('home')">返回首页</button>
-      <button class="primary-btn" @tap="checkOrder">刷新状态</button>
+      <button class="primary-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button>
       <button v-if="orderInfo?.status === '待支付'" class="primary-btn wide" @tap="goPayment">去付款 ¥{{ paidAmount }}</button>
     </view>
   </view>
@@ -124,6 +124,7 @@ const orderInfo = ref<any>(null)
 const duration = ref('00:00:00')
 const renewalUnits = ref(1)
 const renewing = ref(false)
+const refreshing = ref(false)
 const now = ref(Date.now())
 const renewalOptions = [1, 2, 3]
 let orderTimer: ReturnType<typeof setInterval> | null = null
@@ -170,13 +171,26 @@ function targetRank(step: string) { return ({ '接单': 2, '付款': 3, '开打'
 function stepClass(step: string) { const current = stepRank(orderInfo.value?.status); const target = targetRank(step); if (current > target || (step === '完成' && current === 5)) return 'done'; if (current === target || (step === '接单' && current === 1)) return 'active'; return '' }
 function stepIcon(step: string, fallback: string) { return stepClass(step) === 'done' ? '✓' : fallback }
 async function checkOrder() {
-  if (!orderNo.value) return
+  if (!orderNo.value) return false
   try {
     const res = await getOrder(orderNo.value); orderInfo.value = res; updateDuration()
     if (res.status === '待支付') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
     else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
     else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') }
-  } catch (error) { toast(getErrorMessage(error, '订单加载失败')) }
+    return true
+  } catch (error) {
+    toast(getErrorMessage(error, '订单刷新失败'))
+    return false
+  }
+}
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await checkOrder()) success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
 }
 async function handleRenewal() {
   if (!orderInfo.value?.can_renew || renewing.value) return

@@ -50,7 +50,7 @@
     <view class="section">
       <view class="section-head">
         <view><text>公开抢单大厅</text><text>指定陪玩预留名额不会被其他人占用</text></view>
-        <button class="refresh-btn" @tap="refreshAll">刷新</button>
+        <button class="refresh-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
 
       <view v-if="orders.length" class="order-list">
@@ -102,6 +102,7 @@ const orders = ref<any[]>([])
 const invitations = ref<Array<DesignationInvitation & { responding?: boolean }>>([])
 const online = ref(getPlayerOnlineStatus())
 const onlineUpdating = ref(false)
+const refreshing = ref(false)
 const now = ref(Date.now())
 const orderAlert = createOrderAlert()
 const seenOrderKeys = new Set<string>()
@@ -188,8 +189,20 @@ async function refreshAll() {
     checkNewOrderAlert(inviteList || [], publicOrders || [])
     invitations.value = (inviteList || []).map(item => ({ ...item, responding: false }))
     orders.value = (publicOrders || []).map(item => ({ ...item, grabbing: false }))
+    return true
   } catch (error) {
     toast(getErrorMessage(error, '订单刷新失败'))
+    return false
+  }
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await refreshAll()) success('刷新成功')
+  } finally {
+    refreshing.value = false
   }
 }
 

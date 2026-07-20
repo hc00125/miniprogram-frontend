@@ -10,9 +10,9 @@
         <view class="hero-title">订单中心</view>
         <view class="hero-sub">查看派单、接单、付款和开打进度</view>
       </view>
-      <button class="refresh-btn" @tap="refreshCenter">
-        <text class="refresh-icon">↻</text>
-        <text>刷新</text>
+      <button class="refresh-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">
+        <text v-if="!refreshing" class="refresh-icon">↻</text>
+        <text>{{ refreshing ? '刷新中' : '刷新' }}</text>
       </button>
     </view>
 
@@ -139,7 +139,7 @@ import { computed, ref } from 'vue'
 import { getMyBossOrders, type BossOrderListItem } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
-import { toast, getErrorMessage } from '@/utils/feedback'
+import { success, toast, getErrorMessage } from '@/utils/feedback'
 import { go, relaunch, navigateToTab, type MainTab } from '@/utils/nav'
 import { getStorage } from '@/utils/storage'
 import { getShopCartCount } from '@/utils/shopCart'
@@ -149,6 +149,7 @@ const cartCount = ref(0)
 const isLoggedIn = ref(false)
 const orders = ref<BossOrderListItem[]>([])
 const loaded = ref(false)
+const refreshing = ref(false)
 
 const waitingCount = computed(() => orders.value.filter(o => o.status === '待接单').length)
 const payCount = computed(() => orders.value.filter(o => o.status === '待支付').length)
@@ -264,11 +265,13 @@ async function fetchOrders() {
     loaded.value = false
     if (!token) {
       resetOrderCenter()
-      return
+      return true
     }
     orders.value = await getMyBossOrders()
+    return true
   } catch (error) {
-    toast(getErrorMessage(error, '加载订单失败'))
+    toast(getErrorMessage(error, '订单刷新失败'))
+    return false
   } finally {
     loaded.value = true
   }
@@ -278,22 +281,35 @@ async function fetchCartCount() {
   const token = syncLoginState()
   if (!token) {
     cartCount.value = 0
-    return
+    return true
   }
   try {
     cartCount.value = await getShopCartCount()
-  } catch {
+    return true
+  } catch (error) {
     cartCount.value = 0
+    toast(getErrorMessage(error, '购物车刷新失败'))
+    return false
   }
 }
 
-function refreshCenter() {
+async function refreshCenter() {
   syncLoginState()
-  fetchOrders()
-  fetchCartCount()
+  const [ordersOk, cartOk] = await Promise.all([fetchOrders(), fetchCartCount()])
+  return ordersOk && cartOk
 }
 
-onShow(refreshCenter)
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await refreshCenter()) success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
+}
+
+onShow(() => { void refreshCenter() })
 
 function handleMainTabSelect(tab: MainTab) {
   if (tab === 'home' || tab === 'order') {

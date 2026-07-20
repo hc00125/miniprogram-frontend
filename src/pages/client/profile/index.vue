@@ -71,7 +71,7 @@
     <view v-if="isLoggedIn && !profile?.player" class="player-card">
       <view class="card-head">
         <text class="card-title">陪玩师信息</text>
-        <button v-if="profile?.player_status === 'pending'" class="refresh-link" @tap.stop="loadProfile">刷新状态</button>
+        <button v-if="profile?.player_status === 'pending'" class="refresh-link" :loading="refreshing" :disabled="refreshing" @tap.stop="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button>
       </view>
       <view class="player-empty">
         <view class="empty-icon">陪</view>
@@ -97,13 +97,14 @@ import { computed, ref } from 'vue'
 import { updatePlayerOnlineStatus } from '@/api/player'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import { getClientProfile, normalizeAvatarUrl, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
-import { getErrorMessage, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain as switchMainTab, type MainTab } from '@/utils/nav'
 import { getStorage } from '@/utils/storage'
 
 const profile = ref<ClientProfile | null>(null)
 const isLoggedIn = ref(false)
 const onlineUpdating = ref(false)
+const refreshing = ref(false)
 
 const displayAvatarUrl = computed(() => isLoggedIn.value ? normalizeAvatarUrl(profile.value?.avatarUrl || profile.value?.avatar_url) : '')
 const displayName = computed(() => {
@@ -177,6 +178,7 @@ async function loadProfile() {
 
   try {
     profile.value = await syncClientProfile()
+    return true
   } catch (error) {
     const cached = getClientProfile()
     const currentToken = getStorage<string>('token')
@@ -185,10 +187,21 @@ async function loadProfile() {
       isLoggedIn.value = false
       profile.value = null
       toast('登录状态已失效，可继续游客浏览或重新登录')
-      return
+      return false
     }
     profile.value = cached
     toast(getErrorMessage(error, '个人信息刷新失败'))
+    return false
+  }
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await loadProfile()) success('刷新成功')
+  } finally {
+    refreshing.value = false
   }
 }
 

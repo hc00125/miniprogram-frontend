@@ -14,7 +14,7 @@
     <view v-if="orderInfo" class="club-card">
       <view class="club-card__hd">
         <text class="club-card__title">服务信息</text>
-        <button class="tiny-link" @tap="fetchOrder">刷新</button>
+        <button class="tiny-link" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
       <view class="club-card__bd">
         <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name }}</text></view>
@@ -162,6 +162,7 @@ const orderNo = ref('')
 const orderInfo = ref<any>(null)
 const player = ref<any>(null)
 const loading = ref(true)
+const refreshing = ref(false)
 const starting = ref(false)
 const completing = ref(false)
 const confirmingRoom = ref(false)
@@ -251,10 +252,22 @@ async function fetchOrder() {
     orderInfo.value = res
     if (!roomFocused.value) roomInput.value = res.kook_room_number || ''
     updateDuration()
+    return true
   } catch (error) {
-    toast(getErrorMessage(error, '订单加载失败'))
+    toast(getErrorMessage(error, '订单刷新失败'))
+    return false
   } finally {
     loading.value = false
+  }
+}
+
+async function handleManualRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    if (await fetchOrder()) success('刷新成功')
+  } finally {
+    refreshing.value = false
   }
 }
 
