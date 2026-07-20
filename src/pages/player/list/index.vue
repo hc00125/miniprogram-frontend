@@ -2,14 +2,14 @@
   <view class="club-page player-list-page bottom-safe">
     <view class="topbar">
       <button @tap="goMain('home')">‹</button>
-      <view><text>已入驻陪玩</text><text>最多选择3名，可混选不同等级</text></view>
+      <view><text>已入驻陪玩</text><text>最多选择3名，可混选不同类型</text></view>
       <button @tap="fetchPlayers">刷新</button>
     </view>
 
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">组合你的指定阵容</view>
-      <view class="club-sub">可只指定部分成员，也可混选不同等级；剩余名额继续公开抢单，整单按已选最高等级计价。</view>
+      <view class="club-sub">每位指定陪玩按后台配置的最低指定价单独计费；未指定名额仍按老板选择的商品规格计费。</view>
     </view>
 
     <view class="search-panel">
@@ -37,8 +37,8 @@
     </scroll-view>
 
     <view v-if="selectedPlayers.length" class="selection-tip">
-      <text>已选 {{ selectedPlayers.length }} 人 · 最高{{ highestSelectedPlayer?.type_name || '等级待定' }}</text>
-      <text>可切换分类继续选择，结算按最高等级计价</text>
+      <text>已选 {{ selectedPlayers.length }} 人</text>
+      <text>可混选不同类型，每人按自己的最低指定价计费</text>
     </view>
 
     <view class="players">
@@ -100,10 +100,17 @@ import {
   type DesignatedPlayerSelection
 } from '@/utils/designatedPlayer'
 
+type BillingPlayer = OnlinePlayer & {
+  designated_billing_type_id?: number | null
+  designated_billing_type_name?: string | null
+  designated_billing_type_priority?: number | null
+  designated_billing_type?: { id: number; name: string; priority?: number } | null
+}
+
 const filters = ['全部', '女陪', '技术陪', '金牌陪', '明星陪', '在线']
 const activeFilter = ref('全部')
 const loaded = ref(false)
-const players = ref<OnlinePlayer[]>([])
+const players = ref<BillingPlayer[]>([])
 const selectedPlayers = ref<DesignatedPlayerSelection[]>([])
 const searchKeyword = ref('')
 const searchFocused = ref(false)
@@ -113,6 +120,9 @@ let fetchSequence = 0
 function hasUserAvatar(player: OnlinePlayer) { return Boolean(String(player.avatar_url || '').trim()) }
 function canDesignate(player: OnlinePlayer) { return (player as OnlinePlayer & { can_be_designated?: boolean }).can_be_designated !== false }
 function playerTypeId(player: OnlinePlayer) { return Number(player.type_id || player.player_type?.id || 0) }
+function billingTypeId(player: BillingPlayer) { return Number(player.designated_billing_type_id || player.designated_billing_type?.id || playerTypeId(player) || 0) }
+function billingTypeName(player: BillingPlayer) { return player.designated_billing_type_name || player.designated_billing_type?.name || player.type_name || player.player_type?.name || '陪玩' }
+function billingTypePriority(player: BillingPlayer) { return Number(player.designated_billing_type_priority ?? player.designated_billing_type?.priority ?? player.type_priority ?? player.player_type?.priority ?? 0) }
 function isSelected(player: OnlinePlayer) { return selectedPlayers.value.some(item => item.id === Number(player.id)) }
 function canToggle(player: OnlinePlayer) {
   if (isSelected(player)) return true
@@ -124,15 +134,15 @@ function selectionButtonText(player: OnlinePlayer) {
   if (selectedPlayers.value.length >= MAX_DESIGNATED_PLAYERS) return '人数已满'
   return '加入阵容'
 }
-function selectionStateText(player: OnlinePlayer) {
+function selectionStateText(player: BillingPlayer) {
   if (isSelected(player)) return '已加入指定阵容'
   if (!canDesignate(player)) return '当前不接受指定'
-  return '指定本人不加价'
+  return `最低按${billingTypeName(player)}价`
 }
 function selectionHint(player: OnlinePlayer) {
   if (isSelected(player)) return '再次点击可移出阵容'
   if (!canDesignate(player)) return '该权限由管理员后台控制'
-  return player.is_online ? '在线，可与其他等级混合指定' : '离线，仍可与其他等级混合指定'
+  return player.is_online ? '在线，可与其他类型混合指定' : '离线，仍可发出指定邀请'
 }
 const visiblePlayers = computed(() => players.value.filter(hasUserAvatar))
 const filteredPlayers = computed(() => {
@@ -153,7 +163,6 @@ const emptyText = computed(() => {
   return visiblePlayers.value.length === 0 ? '暂无已上传头像的陪玩师' : '暂无符合条件的陪玩'
 })
 const selectedNames = computed(() => selectedPlayers.value.map(item => item.name).join('、'))
-const highestSelectedPlayer = computed(() => [...selectedPlayers.value].sort((a, b) => Number(b.type_priority || 0) - Number(a.type_priority || 0))[0] || null)
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 function syncSelection() { selectedPlayers.value = getDesignatedPlayers() }
 
@@ -164,15 +173,24 @@ async function fetchPlayers() {
     const keyword = normalizedSearchKeyword.value
     const list = await getPlayerList(keyword ? { search: keyword } : {})
     if (sequence !== fetchSequence) return
-    players.value = (list || []).map(p => ({
-      ...p,
-      type_id: Number(p.type_id || p.player_type?.id || 0),
-      type_name: p.player_type?.name || p.type_name || '优质陪玩',
-      type_priority: Number(p.type_priority ?? p.player_type?.priority ?? 0),
-      is_online: normalizeOnlineValue(p.is_online),
-      price_extra: p.player_type?.price_extra || p.price_extra || 0,
-      status: p.status || (normalizeOnlineValue(p.is_online) ? '在线' : '离线')
-    }))
+    players.value = (list || []).map(raw => {
+      const p = raw as BillingPlayer
+      const typeId = Number(p.type_id || p.player_type?.id || 0)
+      const typeName = p.player_type?.name || p.type_name || '优质陪玩'
+      const typePriority = Number(p.type_priority ?? p.player_type?.priority ?? 0)
+      return {
+        ...p,
+        type_id: typeId,
+        type_name: typeName,
+        type_priority: typePriority,
+        designated_billing_type_id: Number(p.designated_billing_type_id || p.designated_billing_type?.id || typeId || 0),
+        designated_billing_type_name: p.designated_billing_type_name || p.designated_billing_type?.name || typeName,
+        designated_billing_type_priority: Number(p.designated_billing_type_priority ?? p.designated_billing_type?.priority ?? typePriority),
+        is_online: normalizeOnlineValue(p.is_online),
+        price_extra: p.player_type?.price_extra || p.price_extra || 0,
+        status: p.status || (normalizeOnlineValue(p.is_online) ? '在线' : '离线')
+      }
+    })
   } catch {
     if (sequence !== fetchSequence) return
     players.value = []
@@ -193,18 +211,21 @@ onMounted(fetchPlayers)
 onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer) })
 onShow(syncSelection)
 function openPlayerDetail(player: OnlinePlayer) { go('/pages/player/detail/index', { playerId: player.id }) }
-function toSelection(player: OnlinePlayer): DesignatedPlayerSelection {
+function toSelection(player: BillingPlayer): DesignatedPlayerSelection {
   return {
     id: Number(player.id),
     name: player.name,
     type_id: playerTypeId(player),
     type_name: player.type_name || player.player_type?.name || '陪玩',
     type_priority: Number(player.type_priority ?? player.player_type?.priority ?? 0),
+    designated_billing_type_id: billingTypeId(player),
+    designated_billing_type_name: billingTypeName(player),
+    designated_billing_type_priority: billingTypePriority(player),
     avatar_url: player.avatar_url,
     is_online: Boolean(player.is_online)
   }
 }
-function togglePlayer(player: OnlinePlayer) {
+function togglePlayer(player: BillingPlayer) {
   if (isSelected(player)) {
     selectedPlayers.value = removeDesignatedPlayer(Number(player.id))
     toast(`已移出 ${player.name}`)
@@ -212,7 +233,7 @@ function togglePlayer(player: OnlinePlayer) {
   }
   if (!canDesignate(player)) return toast('该陪玩当前不接受指定')
   const typeId = playerTypeId(player)
-  if (!typeId) return toast('该陪玩的类型信息不完整，请刷新后重试')
+  if (!typeId || !billingTypeId(player)) return toast('该陪玩的类型或指定计费信息不完整，请刷新后重试')
   const result = addDesignatedPlayer(toSelection(player))
   selectedPlayers.value = result.players
   toast(result.message)
@@ -220,7 +241,7 @@ function togglePlayer(player: OnlinePlayer) {
 function clearSelection() { clearDesignatedPlayers(); selectedPlayers.value = []; toast('已清空指定阵容') }
 function chooseProduct() {
   if (!selectedPlayers.value.length) return toast('请先选择陪玩')
-  toast(`已选择${selectedPlayers.value.length}名陪玩，结算按最高${highestSelectedPlayer.value?.type_name || '等级'}计价`)
+  toast(`已选择${selectedPlayers.value.length}名陪玩，请选择商品基础规格`)
   switchMain('order')
 }
 function handleMainTabSelect(tab: MainTab) {
@@ -237,7 +258,7 @@ function goMain(tab: MainTab = 'home') { handleMainTabSelect(tab) }
 .list-hero { min-height:250rpx; }
 .search-panel { margin-top:24rpx; }.search-box { height:82rpx;display:flex;align-items:center;gap:14rpx;padding:0 22rpx;border-radius:26rpx;background:#fff;border:2rpx solid rgba(36,55,39,.08);box-shadow:0 10rpx 24rpx rgba(39,61,42,.06);transition:border-color .2s,box-shadow .2s; }.search-box.focused { border-color:rgba(47,155,99,.52);box-shadow:0 12rpx 28rpx rgba(47,155,99,.12); }.search-icon { color:#1f7c4b;font-size:38rpx;font-weight:900;line-height:1;transform:rotate(-18deg); }.search-input { flex:1;height:82rpx;color:#172116;font-size:26rpx; }.search-placeholder { color:#a3aca0; }.search-clear { width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#7d877a;background:#eef3e9;font-size:34rpx;line-height:48rpx;text-align:center; }.search-meta { display:block;margin:12rpx 6rpx 0;color:#7d877a;font-size:21rpx; }
 .filters { margin:18rpx 0 24rpx;white-space:nowrap; }.filter { display:inline-flex;align-items:center;justify-content:center;min-width:112rpx;height:58rpx;padding:0 22rpx;margin-right:12rpx;border-radius:999rpx;background:#fff;color:#687665;font-size:25rpx;font-weight:800;border:1px solid rgba(36,55,39,.09); }.filter.active { background:#172116;color:#fff; }
-.selection-tip { display:flex;align-items:center;justify-content:space-between;gap:16rpx;margin-bottom:18rpx;padding:18rpx 20rpx;border-radius:20rpx;color:#1f7c4b;background:#eef8f1; }.selection-tip text:first-child { font-size:24rpx;font-weight:900; }.selection-tip text:last-child { color:#687665;font-size:20rpx; }
+.selection-tip { display:flex;align-items:center;justify-content:space-between;gap:16rpx;margin-bottom:18rpx;padding:18rpx 20rpx;border-radius:20rpx;color:#1f7c4b;background:#eef8f1; }.selection-tip text:first-child { font-size:24rpx;font-weight:900; }.selection-tip text:last-child { color:#687665;font-size:20rpx;text-align:right; }
 .players { display:flex;flex-direction:column;gap:18rpx; }.player-card { padding:22rpx;display:flex;gap:18rpx;border-radius:32rpx;background:#fff;border:1px solid rgba(36,55,39,.09);box-shadow:0 10rpx 24rpx rgba(39,61,42,.06); }.player-card.selected { border-color:rgba(47,155,99,.48);background:linear-gradient(135deg,#f3fbf5,#fff); }.portrait { width:108rpx;height:108rpx;border-radius:32rpx;background:#eef3e9;flex-shrink:0;overflow:hidden; }.portrait-img { width:100%;height:100%; }.pill-offline { background:rgba(42,63,48,.06)!important;color:#aab1a5!important; }.player-main { flex:1;min-width:0; }.name-row,.tags,.card-actions { display:flex;align-items:center;justify-content:space-between;gap:12rpx; }.name-row>text:first-child { font-size:30rpx;font-weight:900; }.tags { margin-top:10rpx;flex-wrap:wrap;justify-content:flex-start; }.tags text { padding:5rpx 10rpx;border-radius:999rpx;color:#687665;font-size:20rpx;background:#f4f7f1; }.rating-tag { color:#a87520!important;background:#fff6df!important; }.bio { margin-top:12rpx;color:#687665;font-size:23rpx;line-height:1.5; }.card-actions { margin-top:16rpx;align-items:flex-end; }.card-actions>view { flex:1;min-width:0; }.card-actions text { display:block; }.designate-price { color:#1f7c4b;font-size:22rpx;font-weight:900; }.designate-state { margin-top:4rpx;color:#8a9286;font-size:19rpx; }.card-actions button { min-width:140rpx;height:64rpx;margin:0;font-size:22rpx; }.card-actions button.selected { color:#1f7c4b;background:#e5f6e9; }.card-actions button[disabled] { opacity:.5; }
 .selection-bar { position:fixed;left:20rpx;right:20rpx;bottom:calc(116rpx + env(safe-area-inset-bottom));z-index:30;display:flex;align-items:center;gap:12rpx;padding:14rpx 16rpx;border-radius:26rpx;background:rgba(255,255,255,.98);box-shadow:0 14rpx 36rpx rgba(39,61,42,.18); }.selected-summary { flex:1;min-width:0;display:flex;align-items:center;gap:12rpx; }.avatar-stack { display:flex;padding-left:10rpx; }.selected-avatar { width:54rpx;height:54rpx;margin-left:-10rpx;border:4rpx solid #fff;border-radius:50%;background:#eef3e9; }.selected-summary>view:last-child { min-width:0; }.selected-summary text { display:block; }.selected-summary text:first-child { font-size:23rpx;font-weight:900; }.selected-summary text:last-child { margin-top:3rpx;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#7d877a;font-size:19rpx; }.selection-bar button { height:62rpx;margin:0;padding:0 18rpx;border-radius:999rpx;font-size:21rpx;font-weight:900; }.selection-bar button::after { border:none; }.clear-btn { color:#8f4d35;background:#fff0ed; }.next-btn { color:#fff;background:#1f7c4b; }
 </style>
