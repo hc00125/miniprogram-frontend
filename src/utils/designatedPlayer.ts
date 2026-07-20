@@ -55,16 +55,11 @@ export function addDesignatedPlayer(player: DesignatedPlayerSelection) {
   const normalized = normalizePlayer(player)
   if (!normalized) return { ok: false, players: current, message: '陪玩信息不完整' }
   if (current.some(item => item.id === normalized.id)) return { ok: true, players: current, message: '该陪玩已在指定阵容中' }
-  const currentTypeId = Number(current[0]?.type_id || 0)
-  const nextTypeId = Number(normalized.type_id || 0)
-  if (current.length && (!currentTypeId || !nextTypeId || currentTypeId !== nextTypeId)) {
-    return { ok: false, players: current, message: `当前阵容仅支持继续选择“${current[0].type_name}”` }
-  }
   if (current.length >= MAX_DESIGNATED_PLAYERS) {
     return { ok: false, players: current, message: `最多指定${MAX_DESIGNATED_PLAYERS}名陪玩` }
   }
   const players = saveDesignatedPlayers([...current, normalized])
-  return { ok: true, players, message: `已加入指定阵容（${players.length}人）` }
+  return { ok: true, players, message: `已加入指定阵容（${players.length}人，按最高等级计价）` }
 }
 
 export function removeDesignatedPlayer(playerId: number) {
