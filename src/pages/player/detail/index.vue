@@ -16,7 +16,7 @@
         <view class="stats-row">
           <view><text>{{ player.total_orders || 0 }}</text><text>接单数</text></view>
           <view><text>{{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text><text>{{ ratingSummary.rating_count }}条评价</text></view>
-          <view><text>¥0</text><text>指定加价</text></view>
+          <view><text>{{ billingTypeName }}</text><text>最低指定价</text></view>
         </view>
       </view>
 
@@ -30,7 +30,7 @@
 
       <view v-if="selectedPlayers.length" class="detail-card selected-card">
         <view class="card-title-row">
-          <view><text class="card-title">当前指定阵容</text><text class="card-subtitle">已选 {{ selectedPlayers.length }} 名{{ selectedPlayers[0].type_name }}，最多3名</text></view>
+          <view><text class="card-title">当前指定阵容</text><text class="card-subtitle">已选 {{ selectedPlayers.length }} 名陪玩，可混选不同类型，最多3名</text></view>
           <text class="rating-pill">{{ selectedPlayers.length }}/3</text>
         </view>
         <view class="selected-list">
@@ -38,6 +38,7 @@
             <image v-if="item.avatar_url" :src="item.avatar_url" mode="aspectFill" />
             <view v-else>{{ item.name?.[0] || '陪' }}</view>
             <text>{{ item.name }}</text>
+            <text>按{{ item.designated_billing_type_name || item.type_name }}价</text>
           </view>
         </view>
       </view>
@@ -98,8 +99,15 @@ import {
   type DesignatedPlayerSelection
 } from '@/utils/designatedPlayer'
 
+type BillingPlayer = OnlinePlayer & {
+  designated_billing_type_id?: number | null
+  designated_billing_type_name?: string | null
+  designated_billing_type_priority?: number | null
+  designated_billing_type?: { id: number; name: string; priority?: number } | null
+}
+
 const playerId = ref<number | null>(null)
-const player = ref<OnlinePlayer | null>(null)
+const player = ref<BillingPlayer | null>(null)
 const ratingData = ref<PlayerRatingsResult | null>(null)
 const selectedPlayers = ref<DesignatedPlayerSelection[]>([])
 const loaded = ref(false)
@@ -109,15 +117,11 @@ let audioContext: UniApp.InnerAudioContext | null = null
 const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
 const canDesignate = computed(() => player.value?.can_be_designated !== false)
 const isSelected = computed(() => selectedPlayers.value.some(item => item.id === Number(player.value?.id || 0)))
-const sameType = computed(() => {
-  if (!player.value || !selectedPlayers.value.length) return true
-  return Number(selectedPlayers.value[0].type_id || 0) === Number(player.value.type_id || player.value.player_type?.id || 0)
-})
-const canToggle = computed(() => isSelected.value || (canDesignate.value && sameType.value && selectedPlayers.value.length < MAX_DESIGNATED_PLAYERS))
+const canToggle = computed(() => isSelected.value || (canDesignate.value && selectedPlayers.value.length < MAX_DESIGNATED_PLAYERS))
+const billingTypeName = computed(() => player.value?.designated_billing_type_name || player.value?.designated_billing_type?.name || player.value?.type_name || '基础规格')
 const actionText = computed(() => {
   if (isSelected.value) return '移出阵容'
   if (!canDesignate.value) return '暂不接受指定'
-  if (!sameType.value) return '类型不一致'
   if (selectedPlayers.value.length >= MAX_DESIGNATED_PLAYERS) return '人数已满'
   return '加入指定阵容'
 })
@@ -128,14 +132,12 @@ const designateCardTitle = computed(() => {
 })
 const designateCardSubtitle = computed(() => {
   if (!canDesignate.value) return '该陪玩师的被指定权限已由管理员暂停，仍可查看公开资料。'
-  if (!sameType.value) return `当前阵容已选择“${selectedPlayers.value[0]?.type_name}”，方案二只能继续选择同类型陪玩。`
-  return '最多选择3名同类型陪玩；可只指定部分成员，剩余名额公开抢单，邀请10分钟内有效。'
+  return `老板选择的商品规格作为基础价；指定这位陪玩时，该名额最低按“${billingTypeName.value}”价格计算。可与其他类型陪玩混合指定。`
 })
 const designateStateText = computed(() => {
-  if (isSelected.value) return '已选择，指定费 ¥0'
+  if (isSelected.value) return `已选择，最低按${billingTypeName.value}价`
   if (!canDesignate.value) return '暂不可指定'
-  if (!sameType.value) return '请先清空原阵容'
-  return player.value?.is_online ? '在线，可立即邀请' : '当前离线，仍可发出邀请'
+  return player.value?.is_online ? `在线 · 最低按${billingTypeName.value}价` : `离线 · 最低按${billingTypeName.value}价`
 })
 const ratingSummary = computed(() => ratingData.value?.summary || {
   average_rating: Number(player.value?.avg_rating || 0),
@@ -144,12 +146,19 @@ const ratingSummary = computed(() => ratingData.value?.summary || {
 })
 
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
-function normalizePlayer(p: OnlinePlayer): OnlinePlayer {
+function normalizePlayer(raw: OnlinePlayer): BillingPlayer {
+  const p = raw as BillingPlayer
+  const typeId = Number(p.type_id || p.player_type?.id || 0)
+  const typeName = p.player_type?.name || p.type_name || '优质陪玩'
+  const typePriority = Number(p.type_priority ?? p.player_type?.priority ?? 0)
   return {
     ...p,
-    type_id: Number(p.type_id || p.player_type?.id || 0),
-    type_name: p.player_type?.name || p.type_name || '优质陪玩',
-    type_priority: Number(p.type_priority ?? p.player_type?.priority ?? 0),
+    type_id: typeId,
+    type_name: typeName,
+    type_priority: typePriority,
+    designated_billing_type_id: Number(p.designated_billing_type_id || p.designated_billing_type?.id || typeId || 0),
+    designated_billing_type_name: p.designated_billing_type_name || p.designated_billing_type?.name || typeName,
+    designated_billing_type_priority: Number(p.designated_billing_type_priority ?? p.designated_billing_type?.priority ?? typePriority),
     is_online: normalizeOnlineValue(p.is_online),
     status: normalizeOnlineValue(p.is_online) ? '在线' : '离线'
   }
@@ -188,13 +197,16 @@ function getAudioContext() {
   return audioContext
 }
 function toggleAudio() { const context = getAudioContext(); if (!context) return toast('暂无音频介绍'); if (isPlaying.value) context.pause(); else context.play() }
-function toSelection(current: OnlinePlayer): DesignatedPlayerSelection {
+function toSelection(current: BillingPlayer): DesignatedPlayerSelection {
   return {
     id: Number(current.id),
     name: current.name,
     type_id: Number(current.type_id || current.player_type?.id || 0),
     type_name: current.type_name || current.player_type?.name || '陪玩',
     type_priority: Number(current.type_priority ?? current.player_type?.priority ?? 0),
+    designated_billing_type_id: Number(current.designated_billing_type_id || current.designated_billing_type?.id || current.type_id || 0),
+    designated_billing_type_name: current.designated_billing_type_name || current.designated_billing_type?.name || current.type_name,
+    designated_billing_type_priority: Number(current.designated_billing_type_priority ?? current.designated_billing_type?.priority ?? current.type_priority ?? 0),
     avatar_url: current.avatar_url,
     is_online: Boolean(current.is_online)
   }
@@ -207,13 +219,14 @@ function toggleDesignation() {
     return
   }
   if (!canDesignate.value) return toast('该陪玩当前不接受指定')
+  if (!Number(player.value.designated_billing_type_id || player.value.designated_billing_type?.id || player.value.type_id || 0)) return toast('该陪玩的指定计费信息不完整')
   const result = addDesignatedPlayer(toSelection(player.value))
   selectedPlayers.value = result.players
   toast(result.message)
 }
 function chooseProduct() {
   if (!selectedPlayers.value.length) return toast('请先选择陪玩')
-  toast(`已选择${selectedPlayers.value.length}名${selectedPlayers.value[0].type_name}，请选择支持对应人数的商品`)
+  toast(`已选择${selectedPlayers.value.length}名陪玩，请选择商品基础规格`)
   goMain('order')
 }
 function goBack() { uni.navigateBack({ delta: 1 }) }
@@ -224,9 +237,9 @@ onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.de
 
 <style lang="scss" scoped>
 .player-detail-page { min-height:100vh;color:#172116;background:#f7f3ea; }.detail-scroll { height:100vh; }.profile-hero,.detail-card { margin:24rpx;padding:28rpx;border-radius:30rpx;background:#fff;box-shadow:0 14rpx 30rpx rgba(39,61,42,.07); }.profile-hero { background:linear-gradient(135deg,#fff,#eef8e7); }.profile-head { display:flex;align-items:center;gap:22rpx; }.avatar { width:132rpx;height:132rpx;flex-shrink:0;border-radius:34rpx;background:#2f9b63; }.avatar--placeholder { display:flex;align-items:center;justify-content:center;color:#fff;font-size:52rpx;font-weight:900; }.profile-main { flex:1;min-width:0; }.name-row { display:flex;align-items:center;gap:14rpx; }.player-name { flex:1;font-size:40rpx;font-weight:900; }.status-pill { padding:8rpx 16rpx;border-radius:999rpx;color:#1f7c4b;font-size:22rpx;font-weight:900;background:#ecf8ef; }.status-pill.off { color:#99a198;background:#f0f2ef; }.player-type { display:inline-block;margin-top:12rpx;padding:7rpx 14rpx;border-radius:999rpx;color:#687665;font-size:23rpx;background:#f2f5ef; }
-.stats-row { display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:24rpx; }.stats-row view { padding:16rpx 8rpx;border-radius:18rpx;text-align:center;background:rgba(255,255,255,.75); }.stats-row text { display:block; }.stats-row text:first-child { font-size:30rpx;font-weight:900; }.stats-row text:last-child { margin-top:5rpx;color:#879083;font-size:20rpx; }
+.stats-row { display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:24rpx; }.stats-row view { padding:16rpx 8rpx;border-radius:18rpx;text-align:center;background:rgba(255,255,255,.75); }.stats-row text { display:block; }.stats-row text:first-child { font-size:26rpx;font-weight:900; }.stats-row text:last-child { margin-top:5rpx;color:#879083;font-size:20rpx; }
 .designate-card { border:1rpx solid rgba(47,155,99,.16);background:linear-gradient(135deg,#f1faf3,#fffaf0); }.designate-card.blocked { border-color:rgba(161,61,53,.16);background:#f5f4f1; }.card-title,.card-subtitle { display:block; }.card-title { font-size:30rpx;font-weight:900; }.card-subtitle { margin-top:7rpx;color:#7d877a;font-size:22rpx;line-height:1.5; }.designate-state { display:inline-block;margin-top:16rpx;padding:8rpx 14rpx;border-radius:999rpx;color:#1f7c4b;font-size:21rpx;font-weight:900;background:#e5f6e9; }.blocked .designate-state { color:#8f4d35;background:#fff0ed; }
-.selected-card { border:1rpx solid rgba(216,161,68,.22);background:#fffaf0; }.selected-list { display:flex;gap:18rpx;margin-top:20rpx; }.selected-item { min-width:100rpx;display:flex;flex-direction:column;align-items:center;gap:8rpx; }.selected-item image,.selected-item>view { width:72rpx;height:72rpx;border-radius:22rpx;background:#2f9b63; }.selected-item>view { display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900; }.selected-item text { max-width:120rpx;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:21rpx;font-weight:800; }
+.selected-card { border:1rpx solid rgba(216,161,68,.22);background:#fffaf0; }.selected-list { display:flex;gap:18rpx;margin-top:20rpx; }.selected-item { min-width:100rpx;display:flex;flex-direction:column;align-items:center;gap:6rpx; }.selected-item image,.selected-item>view { width:72rpx;height:72rpx;border-radius:22rpx;background:#2f9b63; }.selected-item>view { display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900; }.selected-item text { max-width:140rpx;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:21rpx;font-weight:800; }.selected-item text:last-child { color:#a87520;font-size:18rpx; }
 .audio-player { display:flex;align-items:center;gap:16rpx;margin-top:18rpx;padding:18rpx;border-radius:18rpx;background:#f7faf4; }.audio-player button { width:100rpx;height:60rpx;margin:0;border-radius:999rpx;color:#fff;font-size:23rpx;background:#1f7c4b; }.audio-player view { flex:1; }.audio-player text { display:block; }.audio-player text:first-child { font-weight:900; }.audio-player text:last-child { margin-top:5rpx;color:#879083;font-size:21rpx; }.bio-text { display:block;margin-top:16rpx;color:#4f5d50;font-size:25rpx;line-height:1.7; }.card-title-row { display:flex;justify-content:space-between;align-items:flex-start;gap:16rpx; }.rating-pill { padding:8rpx 12rpx;border-radius:999rpx;color:#a87520;font-size:20rpx;font-weight:900;background:#fff6df; }.review-list { margin-top:18rpx;display:flex;flex-direction:column;gap:14rpx; }.review-item { padding:18rpx;border-radius:18rpx;background:#f7faf4; }.review-item>view { display:flex;justify-content:space-between;color:#9aa197;font-size:20rpx; }.review-item>text { display:block;margin-top:8rpx;font-size:24rpx; }.review-item>text:last-child { color:#879083;font-size:20rpx; }.stars { color:#e1ac3f; }.empty-box,.empty-state { margin-top:18rpx;padding:30rpx;border-radius:18rpx;color:#879083;text-align:center;background:#f7faf4; }.bottom-space { height:170rpx; }
 .bottom-bar { position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 2fr;gap:12rpx;padding:18rpx 20rpx calc(18rpx + env(safe-area-inset-bottom));background:rgba(255,255,255,.98);box-shadow:0 -10rpx 30rpx rgba(39,61,42,.08); }.bottom-bar.three { grid-template-columns:1fr 1.2fr 1.5fr; }.bottom-bar button { height:82rpx;margin:0;padding:0 12rpx;border-radius:999rpx;font-size:24rpx;font-weight:900; }.back-btn { color:#687665;background:#f1f3ef; }.order-btn,.next-btn { color:#fff;background:linear-gradient(135deg,#5fc68a,#1f7c4b); }.order-btn.remove { color:#8f4d35;background:#fff0ed; }.next-btn { background:linear-gradient(135deg,#d8a144,#a87520); }.order-btn[disabled] { opacity:.5; }.bottom-bar button::after,.audio-player button::after { border:none; }
 </style>
