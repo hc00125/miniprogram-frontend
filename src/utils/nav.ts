@@ -1,7 +1,14 @@
+function encodeQueryValue(value: string | number) {
+  // 微信小程序页面参数在部分运行环境中不会自动还原 %2C。
+  // 购物车批量结算使用逗号分隔多个 cartItemId，因此保留逗号本身，
+  // 避免结算页把“1%2C2”误认为一个购物车项 ID。
+  return encodeURIComponent(String(value)).replace(/%2C/gi, ',')
+}
+
 function toQueryString(params: Record<string, string | number | undefined | null>) {
   const parts = Object.entries(params)
     .filter(([, value]) => value !== undefined && value !== null && value !== '')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeQueryValue(value as string | number)}`)
   return parts.length ? `?${parts.join('&')}` : ''
 }
 
