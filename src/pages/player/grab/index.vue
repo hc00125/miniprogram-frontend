@@ -121,7 +121,7 @@ function bossNote(value: string | null | undefined) {
   return String(value || '')
     .split(/\r?\n/)
     .map(line => line.trim())
-    .filter(line => line && !line.startsWith('规格：') && !line.startsWith('指定陪玩：'))
+    .filter(line => line && !/^(规格：|基础规格：|指定陪玩：|指定陪玩等级计价：|指定后预计价格：|购买数量：|合并结算商品：)/.test(line))
     .join('\n')
 }
 
