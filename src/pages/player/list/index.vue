@@ -2,14 +2,14 @@
   <view class="club-page player-list-page bottom-safe">
     <view class="topbar">
       <button @tap="goMain('home')">‹</button>
-      <view><text>已入驻陪玩</text><text>最多选择3名同类型陪玩</text></view>
+      <view><text>已入驻陪玩</text><text>最多选择3名，可混选不同等级</text></view>
       <button @tap="fetchPlayers">刷新</button>
     </view>
 
     <view class="brand-poster list-hero">
       <view class="club-eyebrow">PLAYER LINEUP</view>
       <view class="club-title">组合你的指定阵容</view>
-      <view class="club-sub">可只指定部分成员，剩余名额继续公开抢单；指定本人不额外加价。</view>
+      <view class="club-sub">可只指定部分成员，也可混选不同等级；剩余名额继续公开抢单，整单按已选最高等级计价。</view>
     </view>
 
     <view class="search-panel">
@@ -37,8 +37,8 @@
     </scroll-view>
 
     <view v-if="selectedPlayers.length" class="selection-tip">
-      <text>已选 {{ selectedPlayers.length }} 人 · {{ selectedPlayers[0].type_name }}</text>
-      <text>只能继续选择同类型陪玩</text>
+      <text>已选 {{ selectedPlayers.length }} 人 · 最高{{ highestSelectedPlayer?.type_name || '等级待定' }}</text>
+      <text>可切换分类继续选择，结算按最高等级计价</text>
     </view>
 
     <view class="players">
@@ -114,32 +114,25 @@ function hasUserAvatar(player: OnlinePlayer) { return Boolean(String(player.avat
 function canDesignate(player: OnlinePlayer) { return (player as OnlinePlayer & { can_be_designated?: boolean }).can_be_designated !== false }
 function playerTypeId(player: OnlinePlayer) { return Number(player.type_id || player.player_type?.id || 0) }
 function isSelected(player: OnlinePlayer) { return selectedPlayers.value.some(item => item.id === Number(player.id)) }
-function isSameType(player: OnlinePlayer) {
-  if (!selectedPlayers.value.length) return true
-  return Number(selectedPlayers.value[0].type_id || 0) === playerTypeId(player)
-}
 function canToggle(player: OnlinePlayer) {
   if (isSelected(player)) return true
-  return canDesignate(player) && isSameType(player) && selectedPlayers.value.length < MAX_DESIGNATED_PLAYERS
+  return canDesignate(player) && selectedPlayers.value.length < MAX_DESIGNATED_PLAYERS
 }
 function selectionButtonText(player: OnlinePlayer) {
   if (isSelected(player)) return '已选择'
   if (!canDesignate(player)) return '暂不可指定'
-  if (!isSameType(player)) return '类型不一致'
   if (selectedPlayers.value.length >= MAX_DESIGNATED_PLAYERS) return '人数已满'
   return '加入阵容'
 }
 function selectionStateText(player: OnlinePlayer) {
   if (isSelected(player)) return '已加入指定阵容'
   if (!canDesignate(player)) return '当前不接受指定'
-  if (!isSameType(player)) return `当前已选${selectedPlayers.value[0]?.type_name || '其他类型'}`
   return '指定本人不加价'
 }
 function selectionHint(player: OnlinePlayer) {
   if (isSelected(player)) return '再次点击可移出阵容'
   if (!canDesignate(player)) return '该权限由管理员后台控制'
-  if (!isSameType(player)) return '方案二仅支持同类型阵容'
-  return player.is_online ? '在线，可发出10分钟邀请' : '离线，仍可发出邀请'
+  return player.is_online ? '在线，可与其他等级混合指定' : '离线，仍可与其他等级混合指定'
 }
 const visiblePlayers = computed(() => players.value.filter(hasUserAvatar))
 const filteredPlayers = computed(() => {
@@ -160,6 +153,7 @@ const emptyText = computed(() => {
   return visiblePlayers.value.length === 0 ? '暂无已上传头像的陪玩师' : '暂无符合条件的陪玩'
 })
 const selectedNames = computed(() => selectedPlayers.value.map(item => item.name).join('、'))
+const highestSelectedPlayer = computed(() => [...selectedPlayers.value].sort((a, b) => Number(b.type_priority || 0) - Number(a.type_priority || 0))[0] || null)
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 function syncSelection() { selectedPlayers.value = getDesignatedPlayers() }
 
@@ -226,7 +220,7 @@ function togglePlayer(player: OnlinePlayer) {
 function clearSelection() { clearDesignatedPlayers(); selectedPlayers.value = []; toast('已清空指定阵容') }
 function chooseProduct() {
   if (!selectedPlayers.value.length) return toast('请先选择陪玩')
-  toast(`已选择${selectedPlayers.value.length}名${selectedPlayers.value[0].type_name}，请选择支持对应人数的商品`)
+  toast(`已选择${selectedPlayers.value.length}名陪玩，结算按最高${highestSelectedPlayer.value?.type_name || '等级'}计价`)
   switchMain('order')
 }
 function handleMainTabSelect(tab: MainTab) {
