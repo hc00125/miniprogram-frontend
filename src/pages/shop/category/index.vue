@@ -59,14 +59,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, type BossPackage } from '@/api/boss'
 import { getCatalogNavigation, type GameService } from '@/api/catalog'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import ProductCover from '@/components/ProductCover.vue'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
-import { usePageShare } from '@/utils/pageShare'
 
 const statusBarHeight = ref(20)
 const keyword = ref('')
@@ -96,9 +95,14 @@ const filteredProducts = computed(() => {
   })
 })
 
-usePageShare(() => ({
+onShareAppMessage(() => ({
   title: `偷吃电竞｜${activeGameName.value} ${activeCategoryName.value}`,
   path: '/pages/shop/category/index'
+}))
+
+onShareTimeline(() => ({
+  title: `偷吃电竞｜${activeGameName.value} ${activeCategoryName.value}`,
+  query: ''
 }))
 
 function selectGame(game: GameService) {
