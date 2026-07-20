@@ -9,17 +9,25 @@ export interface DesignatedPlayerSelection {
   type_id?: number
   type_name: string
   type_priority?: number
+  designated_billing_type_id?: number
+  designated_billing_type_name?: string
+  designated_billing_type_priority?: number
   avatar_url?: string
   is_online?: boolean
 }
 
 function normalizePlayer(player: DesignatedPlayerSelection | null | undefined) {
   if (!player || !Number(player.id)) return null
+  const typeId = Number(player.type_id || 0) || undefined
+  const typePriority = Number(player.type_priority || 0)
   return {
     ...player,
     id: Number(player.id),
-    type_id: Number(player.type_id || 0) || undefined,
-    type_priority: Number(player.type_priority || 0)
+    type_id: typeId,
+    type_priority: typePriority,
+    designated_billing_type_id: Number(player.designated_billing_type_id || typeId || 0) || undefined,
+    designated_billing_type_name: player.designated_billing_type_name || player.type_name,
+    designated_billing_type_priority: Number(player.designated_billing_type_priority ?? typePriority)
   }
 }
 
@@ -59,7 +67,7 @@ export function addDesignatedPlayer(player: DesignatedPlayerSelection) {
     return { ok: false, players: current, message: `最多指定${MAX_DESIGNATED_PLAYERS}名陪玩` }
   }
   const players = saveDesignatedPlayers([...current, normalized])
-  return { ok: true, players, message: `已加入指定阵容（${players.length}人，按最高等级计价）` }
+  return { ok: true, players, message: `已加入指定阵容（${players.length}人，分别按各自最低指定价计费）` }
 }
 
 export function removeDesignatedPlayer(playerId: number) {
