@@ -11,6 +11,21 @@ const DIST_PATH = path.join(PROJECT_ROOT, 'dist/build/mp-weixin');
 const PRIVATE_KEY_PATH = '/root/.openclaw/workspace/wechat-keys/private.wxfae874d4b11b3045_1782565425149_f0e8e0.key';
 const CI_VERSION = '2.1.31';
 const DOMAIN = 'https://servicewechat.com';
+const VERSION_FILE = path.join(PROJECT_ROOT, '.version');
+
+// Read current version, increment patch, return new version string
+function bumpVersion() {
+  let version = '1.0.0';
+  try {
+    version = fs.readFileSync(VERSION_FILE, 'utf8').trim();
+  } catch {}
+  const parts = version.split('.').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) parts[0] = 1, parts[1] = 0, parts[2] = 0;
+  parts[2] += 1; // bump patch
+  const next = parts.join('.');
+  fs.writeFileSync(VERSION_FILE, next, 'utf8');
+  return next;
+}
 
 function httpPost(url, body, contentType) {
   return new Promise((resolve, reject) => {
@@ -126,11 +141,15 @@ async function main() {
     console.log(`       packed: ${(packed.length / 1024).toFixed(1)} KB`);
     console.log(`       gzipped: ${(gzipped.length / 1024).toFixed(1)} KB`);
 
+    const version = bumpVersion();
+    const desc = process.argv[2] || '常规更新';
+    console.log(`       upload version: ${version}, desc: ${desc}`);
+
     const params = new URLSearchParams({
       appid: APPID,
       type: 'miniProgram',
-      version: '1.0.0',
-      desc: '替换抢单提示音+购物车批量下单 2026-07-20 00:15',
+      version: version,
+      desc: desc,
       robot: '1',
       codeprotect: '0',
       'debugLaunchInfo': JSON.stringify({ scene: 1011 }),
