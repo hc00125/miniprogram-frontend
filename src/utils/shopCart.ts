@@ -1,5 +1,6 @@
 import api from '@/utils/request'
 import type { BossPackage, BossPackageSpec } from '@/api/boss'
+import { isHourlyService, normalizeServiceHours } from '@/utils/serviceBilling'
 
 export interface ShopCartItem {
   id: number | string
@@ -40,30 +41,26 @@ export interface AddShopCartRequest {
   description?: string
 }
 
-function normalizeQuantity(value: number) {
-  if (!Number.isFinite(value)) return 1
-  return Math.max(1, Math.min(99, Math.floor(value)))
-}
-
 export async function getShopCart(): Promise<ShopCartItem[]> {
   return api.get<ShopCartItem[]>('/boss/cart')
 }
 
 export async function getShopCartCount() {
   const items = await getShopCart()
-  return items.reduce((sum, item) => sum + normalizeQuantity(Number(item.quantity || 1)), 0)
+  return items.length
 }
 
 export async function addShopCartItem(payload: AddShopCartPayload) {
   const product = payload.product
   const spec = payload.spec || null
+  const quantity = isHourlyService(product) ? normalizeServiceHours(payload.quantity || 1) : 1
   const body: AddShopCartRequest = {
     package_id: product.id,
     spec_id: spec ? spec.id : null,
     spec_name: spec ? spec.name : undefined,
     spec_display_name: payload.spec_display_name || (spec ? spec.name : undefined),
     price: Number(payload.price || product.base_price || 0),
-    quantity: normalizeQuantity(payload.quantity || 1),
+    quantity,
     image_url: payload.image_url,
     description: payload.description || product.description
   }
@@ -71,7 +68,7 @@ export async function addShopCartItem(payload: AddShopCartPayload) {
 }
 
 export async function updateShopCartItemQuantity(id: string | number, quantity: number) {
-  await api.put<ShopCartItem>(`/boss/cart/${id}`, { quantity: normalizeQuantity(quantity) })
+  await api.put<ShopCartItem>(`/boss/cart/${id}`, { quantity: normalizeServiceHours(quantity) })
   return getShopCart()
 }
 
