@@ -2,11 +2,11 @@
   <view class="checkout-page">
     <view class="checkout-scroll">
       <view v-if="isCartCheckout" class="card">
-        <view class="head"><text class="title">购物车批量下单</text><text class="pill">{{ cartOrderCount }}单</text></view>
+        <view class="head"><text class="title">购物车结算</text><text class="pill">{{ cartOrderCount }}单</text></view>
         <view v-for="item in cartItems" :key="item.id" class="row player">
           <view class="grow">
             <text>{{ item.package_name }} · {{ item.spec_display_name || item.spec_name || '默认规格' }}</text>
-            <text class="muted">数量 {{ quantity(item.quantity) }}，将发布 {{ quantity(item.quantity) }} 个独立订单</text>
+            <text class="muted">{{ isHourlyItem(item) ? `服务时长 ${itemHours(item)}小时，生成1个订单` : '按单购买，生成1个订单' }}</text>
           </view>
           <text class="price">¥{{ money(itemAmount(item)) }}</text>
         </view>
@@ -17,7 +17,7 @@
         <view class="grow">
           <view class="head"><text class="title">{{ product.name }}</text><text class="pill">需{{ requiredPlayers }}人</text></view>
           <text class="sub">{{ selectedSpec?.name || product.description || '精选陪玩服务' }}</text>
-          <text class="price">基础规格 ¥{{ money(basePrice) }}/单</text>
+          <text class="price">基础规格 ¥{{ money(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text>
         </view>
       </view>
 
@@ -33,11 +33,8 @@
           <view v-for="item in designatedPlayers" :key="item.id" class="player">
             <image v-if="item.avatar_url" class="avatar" :src="item.avatar_url" mode="aspectFill" />
             <view v-else class="avatar avatar-empty">{{ item.name?.[0] || '陪' }}</view>
-            <view class="grow">
-              <text>{{ item.name }}</text>
-              <text class="muted">实际类型：{{ item.type_name }} · 最低按{{ item.designated_billing_type_name || item.type_name }}价</text>
-            </view>
-            <text v-if="pricingLine(item.id)" class="pill">¥{{ money(pricingLine(item.id)?.unit_price || 0) }}</text>
+            <view class="grow"><text>{{ item.name }}</text><text class="muted">实际类型：{{ item.type_name }} · 最低按{{ item.designated_billing_type_name || item.type_name }}价</text></view>
+            <text v-if="pricingLine(item.id)" class="pill">¥{{ money(pricingLine(item.id)?.unit_price || 0) }}/时</text>
             <button size="mini" @tap="removeDesignation(item.id)">移除</button>
           </view>
         </view>
@@ -52,8 +49,17 @@
           <view v-for="spec in visibleSpecs" :key="spec.id" class="spec" :class="{ active: selectedSpec?.id === spec.id }" @tap="chooseSpec(spec)">
             <text>{{ spec.name }}</text>
             <text class="muted">{{ spec.required_player_type_name ? `${spec.required_player_type_name}及以上` : '不限等级' }}</text>
-            <text class="spec-price">¥{{ money(Number(spec.price)) }}</text>
+            <text class="spec-price">¥{{ money(Number(spec.price)) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
           </view>
+        </view>
+      </view>
+
+      <view v-if="!isCartCheckout && hourlyCurrent" class="card duration-card">
+        <view class="head"><view><text class="title">预订时长</text><text class="sub">时长不改变陪玩人数，只决定服务时间和总金额</text></view><text class="pill">{{ effectiveHours }}小时</text></view>
+        <view class="duration-stepper">
+          <button :disabled="effectiveHours <= 1" @tap="adjustHours(-1)">−</button>
+          <text>{{ effectiveHours }}小时</text>
+          <button :disabled="effectiveHours >= MAX_SERVICE_HOURS" @tap="adjustHours(1)">＋</button>
         </view>
       </view>
 
@@ -63,58 +69,18 @@
 
       <view v-if="hasData" class="card fields">
         <text class="title">下单信息</text>
-        <view>
-          <text class="field-label">联系昵称</text>
-          <input
-            v-model="form.contact"
-            class="input"
-            placeholder="请输入联系昵称"
-            always-embed
-            :cursor-spacing="24"
-            confirm-type="next"
-            @focus="handleFieldFocus"
-            @blur="handleFieldBlur"
-          />
-        </view>
-        <view>
-          <text class="field-label">游戏ID / 队伍码</text>
-          <input
-            v-model="form.gameId"
-            class="input"
-            placeholder="请输入游戏ID或队伍码"
-            always-embed
-            :cursor-spacing="24"
-            confirm-type="done"
-            @focus="handleFieldFocus"
-            @blur="handleFieldBlur"
-          />
-        </view>
-        <view>
-          <text class="field-label">订单备注</text>
-          <textarea
-            v-model="form.note"
-            class="textarea"
-            maxlength="80"
-            placeholder="其他需求（选填，将同步到本批订单）"
-            :cursor-spacing="100"
-            @focus="handleFieldFocus"
-            @blur="handleFieldBlur"
-          />
-        </view>
+        <view><text class="field-label">联系昵称</text><input v-model="form.contact" class="input" placeholder="请输入联系昵称" always-embed :cursor-spacing="24" confirm-type="next" @focus="handleFieldFocus" @blur="handleFieldBlur" /></view>
+        <view><text class="field-label">游戏ID / 队伍码</text><input v-model="form.gameId" class="input" placeholder="请输入游戏ID或队伍码" always-embed :cursor-spacing="24" confirm-type="done" @focus="handleFieldFocus" @blur="handleFieldBlur" /></view>
+        <view><text class="field-label">订单备注</text><textarea v-model="form.note" class="textarea" maxlength="80" placeholder="其他需求（选填）" :cursor-spacing="100" @focus="handleFieldFocus" @blur="handleFieldBlur" /></view>
       </view>
 
       <view v-if="hasData" class="card amounts">
         <text class="title">费用明细</text>
         <view v-if="selectedSpec && !isCartCheckout" class="row amount"><text>基础规格</text><text>{{ selectedSpec.name }}</text></view>
-        <view v-for="line in designatedPricing?.lines || []" :key="line.player_id" class="row amount">
-          <text>{{ line.player_name }} · 按{{ line.effective_billing_type_name }}价</text>
-          <text>¥{{ money(line.unit_price) }}</text>
-        </view>
-        <view v-if="designatedPricing?.public_slots" class="row amount">
-          <text>公开名额 · {{ selectedSpec?.required_player_type_name || '基础规格' }} × {{ designatedPricing.public_slots }}</text>
-          <text>¥{{ money(designatedPricing.base_unit_price * designatedPricing.public_slots) }}</text>
-        </view>
-        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个独立订单合计</text><text>¥{{ money(totalAmount) }}</text></view>
+        <view v-for="line in designatedPricing?.lines || []" :key="line.player_id" class="row amount"><text>{{ line.player_name }} · 按{{ line.effective_billing_type_name }}价</text><text>¥{{ money(line.unit_price) }}/小时</text></view>
+        <view v-if="designatedPricing?.public_slots" class="row amount"><text>公开名额 · {{ selectedSpec?.required_player_type_name || '基础规格' }} × {{ designatedPricing.public_slots }}</text><text>¥{{ money(designatedPricing.base_unit_price * designatedPricing.public_slots) }}/小时</text></view>
+        <view v-if="!isCartCheckout && hourlyCurrent" class="row amount"><text>单小时费用 × {{ effectiveHours }}小时</text><text>¥{{ money(unitAmount) }} × {{ effectiveHours }}</text></view>
+        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个订单合计</text><text>¥{{ money(totalAmount) }}</text></view>
         <view v-if="designatedPlayers.length" class="row amount"><text>指定服务费</text><text>¥0.00</text></view>
         <view class="row total"><text>预计总额</text><text>¥{{ money(totalAmount) }}</text></view>
       </view>
@@ -124,7 +90,7 @@
     </view>
 
     <view v-if="hasData && !fieldEditing" class="bottom">
-      <view class="grow"><text class="muted">{{ isCartCheckout ? `批量发布${cartOrderCount}个订单` : designatedPlayers.length ? '指定名额分别计价' : '预计总额' }}</text><text class="price">¥{{ money(totalAmount) }}</text></view>
+      <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : hourlyCurrent ? `${effectiveHours}小时服务` : designatedPlayers.length ? '指定名额分别计价' : '预计总额' }}</text><text class="price">¥{{ money(totalAmount) }}</text></view>
       <button class="submit" :disabled="submitting || Boolean(blockReason)" @tap="submit">{{ submitting ? '提交中...' : isCartCheckout ? `发布${cartOrderCount}个订单` : '立即下单' }}</button>
     </view>
   </view>
@@ -138,6 +104,7 @@ import { createCartOrderBatch } from '@/api/orderBatch'
 import { getClientProfile, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain, replace } from '@/utils/nav'
+import { isHourlyService, MAX_SERVICE_HOURS, normalizeServiceHours } from '@/utils/serviceBilling'
 import { getStorage, setStorage } from '@/utils/storage'
 import { getShopCart, type ShopCartItem } from '@/utils/shopCart'
 import { clearDesignatedPlayers, getDesignatedPlayers, removeDesignatedPlayer, type DesignatedPlayerSelection } from '@/utils/designatedPlayer'
@@ -148,6 +115,7 @@ const unfinished = ['待接单', '进行中', '待支付', '待开打']
 const packageId = ref<number | null>(null)
 const initialSpecId = ref('')
 const cartItemIds = ref<string[]>([])
+const requestedHours = ref(1)
 const loading = ref(false)
 const submitting = ref(false)
 const fieldEditing = ref(false)
@@ -167,17 +135,19 @@ const basePrice = computed(() => Number(selectedSpec.value?.price ?? product.val
 const designatedPricing = computed(() => calculateDesignatedPricing(allSpecs.value, designatedPlayers.value, selectedSpec.value, requiredPlayers.value))
 const remainingSlots = computed(() => designatedPricing.value?.public_slots ?? Math.max(0, requiredPlayers.value - designatedPlayers.value.length))
 const productImage = computed(() => product.value?.cover_url || product.value?.image_url || product.value?.thumb_url || product.value?.picture_url || fallbackImage)
-const cartOrderCount = computed(() => cartItems.value.reduce((sum, item) => sum + quantity(item.quantity), 0))
+const hourlyCurrent = computed(() => isHourlyService(product.value))
+const effectiveHours = computed(() => hourlyCurrent.value ? normalizeServiceHours(requestedHours.value) : 1)
+const cartOrderCount = computed(() => cartItems.value.length)
+const unitAmount = computed(() => designatedPlayers.value.length && designatedPricing.value ? designatedPricing.value.total : basePrice.value)
 const totalAmount = computed(() => {
   if (isCartCheckout.value) return cartItems.value.reduce((sum, item) => sum + itemAmount(item), 0)
-  if (designatedPlayers.value.length && designatedPricing.value) return designatedPricing.value.total
-  return basePrice.value
+  return unitAmount.value * effectiveHours.value
 })
 const blockReason = computed(() => {
   if (!hasData.value) return ''
   if (designatedPlayers.value.length && isCartCheckout.value) return '指定具体陪玩暂不支持购物车批量下单。'
   if (isCartCheckout.value && cartItems.value.length !== cartItemIds.value.length) return '部分购物车商品已变化，请返回购物车重新选择。'
-  if (isCartCheckout.value && cartOrderCount.value > 20) return '单次最多发布20个订单，请减少商品数量。'
+  if (isCartCheckout.value && cartOrderCount.value > 20) return '单次最多结算20项商品。'
   if (designatedPlayers.value.length > requiredPlayers.value) return `当前商品只需要${requiredPlayers.value}名陪玩。`
   if (!isCartCheckout.value && allSpecs.value.length && !selectedSpec.value) return '请选择规格。'
   if (designatedPlayers.value.length && !selectedSpec.value?.required_player_type_id) return '当前规格没有配置陪玩类型，暂时无法计算指定名额价格。'
@@ -187,50 +157,37 @@ const blockReason = computed(() => {
   return ''
 })
 const readyText = computed(() => {
-  if (isCartCheckout.value) return `将把${cartItems.value.length}项商品拆分为${cartOrderCount.value}个独立订单，各自进入抢单大厅；接满后分别完成支付。`
-  if (designatedPlayers.value.length && designatedPricing.value) {
-    return `基础规格为“${selectedSpec.value?.name || ''}”；${designatedPlayers.value.length}个指定名额分别计价，剩余${remainingSlots.value}个名额按基础规格公开抢单，合计¥${money(totalAmount.value)}。`
-  }
-  return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，整单¥${money(basePrice.value)}。` : '可使用微信官方虚拟支付。'
+  if (isCartCheckout.value) return `共${cartItems.value.length}项商品，每项生成1个订单；陪玩商品数量代表服务时长。`
+  if (designatedPlayers.value.length && designatedPricing.value) return `基础规格为“${selectedSpec.value?.name || ''}”；${designatedPlayers.value.length}个指定名额分别计价，剩余${remainingSlots.value}个名额公开抢单，${effectiveHours.value}小时合计¥${money(totalAmount.value)}。`
+  return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，${hourlyCurrent.value ? `${effectiveHours.value}小时` : '按单'}合计¥${money(totalAmount.value)}。` : '可使用微信官方虚拟支付。'
 })
 
-function quantity(value: unknown) { const n = Math.floor(Number(value || 1)); return Number.isFinite(n) ? Math.max(1, Math.min(99, n)) : 1 }
-function itemAmount(item: ShopCartItem) { return Number(item.price || 0) * quantity(item.quantity) }
+function quantity(value: unknown) { return normalizeServiceHours(value) }
+function isHourlyItem(item: ShopCartItem) { return isHourlyService(item) }
+function itemHours(item: ShopCartItem) { return isHourlyItem(item) ? quantity(item.quantity) : 1 }
+function itemAmount(item: ShopCartItem) { return Number(item.price || 0) * itemHours(item) }
 function money(value: number) { return Number.isInteger(Number(value)) ? `${Number(value)}` : Number(value || 0).toFixed(2) }
 function pricingLine(playerId: number) { return designatedPricing.value?.lines.find(line => line.player_id === Number(playerId)) || null }
 function bossOpenid(profile: ClientProfile | null = getClientProfile()) { return profile?.openid || profile?.open_id || profile?.wechat_openid || '' }
 async function ensureOpenid() { const local = bossOpenid(); if (local) return local; try { return bossOpenid(await syncClientProfile()) } catch { return '' } }
 function syncPlayers() { designatedPlayers.value = getDesignatedPlayers() }
-function handleFieldFocus() {
-  if (fieldBlurTimer) clearTimeout(fieldBlurTimer)
-  fieldBlurTimer = null
-  fieldEditing.value = true
-}
-function handleFieldBlur() {
-  if (fieldBlurTimer) clearTimeout(fieldBlurTimer)
-  fieldBlurTimer = setTimeout(() => { fieldEditing.value = false }, 120)
-}
-function syncSpec() {
-  selectedSpec.value = allSpecs.value.find(item => String(item.id) === initialSpecId.value)
-    || allSpecs.value.find(item => Number(item.id) === Number(selectedSpec.value?.id || 0))
-    || allSpecs.value[0]
-    || null
-}
+function handleFieldFocus() { if (fieldBlurTimer) clearTimeout(fieldBlurTimer); fieldBlurTimer = null; fieldEditing.value = true }
+function handleFieldBlur() { if (fieldBlurTimer) clearTimeout(fieldBlurTimer); fieldBlurTimer = setTimeout(() => { fieldEditing.value = false }, 120) }
+function adjustHours(delta: number) { const next = effectiveHours.value + delta; if (next < 1 || next > MAX_SERVICE_HOURS) return; requestedHours.value = next }
+function syncSpec() { selectedSpec.value = allSpecs.value.find(item => String(item.id) === initialSpecId.value) || allSpecs.value.find(item => Number(item.id) === Number(selectedSpec.value?.id || 0)) || allSpecs.value[0] || null }
 function chooseSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
 function removeDesignation(id: number) { designatedPlayers.value = removeDesignatedPlayer(id) }
 function clearAllDesignations() { clearDesignatedPlayers(); designatedPlayers.value = [] }
-async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { product.value = (await getPackages()).find(item => item.id === packageId.value) || null; syncSpec() } catch (e) { toast(getErrorMessage(e, '商品加载失败')) } finally { loading.value = false } }
+async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { product.value = (await getPackages()).find(item => item.id === packageId.value) || null; if (!isHourlyService(product.value)) requestedHours.value = 1; syncSpec() } catch (e) { toast(getErrorMessage(e, '商品加载失败')) } finally { loading.value = false } }
 async function fetchCart() { loading.value = true; try { const ids = new Set(cartItemIds.value); cartItems.value = (await getShopCart()).filter(item => ids.has(String(item.id))) } catch (e) { toast(getErrorMessage(e, '购物车加载失败')) } finally { loading.value = false } }
 function note() {
   const lines: string[] = []
+  if (hourlyCurrent.value) lines.push(`预订时长：${effectiveHours.value}小时`)
   if (designatedPlayers.value.length) {
-    const details = designatedPlayers.value.map(item => {
-      const line = pricingLine(item.id)
-      return `${item.name}（按${line?.effective_billing_type_name || item.designated_billing_type_name || item.type_name}价）`
-    })
+    const details = designatedPlayers.value.map(item => { const line = pricingLine(item.id); return `${item.name}（按${line?.effective_billing_type_name || item.designated_billing_type_name || item.type_name}价）` })
     lines.push(`指定陪玩：${details.join('、')}，指定服务费¥0`)
   }
-  if (selectedSpec.value) lines.push(`基础规格：${selectedSpec.value.name}，指定后预计价格：¥${money(totalAmount.value)}`)
+  if (selectedSpec.value) lines.push(`基础规格：${selectedSpec.value.name}，预计总价：¥${money(totalAmount.value)}`)
   if (form.note.trim()) lines.push(form.note.trim())
   return lines.join('\n') || null
 }
@@ -246,30 +203,18 @@ async function submit() {
     const active = (await getMyBossOrders()).filter(item => unfinished.includes(item.status)); if (active.length) return showUnfinished(active)
     setStorage('boss_wechat', form.contact.trim())
     if (isCartCheckout.value) {
-      const result = await createCartOrderBatch({
-        boss_wechat: openid,
-        game_id: form.gameId.trim(),
-        cart_item_ids: cartItems.value.map(item => Number(item.id)),
-        boss_note: form.note.trim() || null,
-        booked_hours: 1
-      })
-      clearDesignatedPlayers()
-      success(`已发布${result.order_count}个订单`)
-      if (result.order_count === 1 && result.order_nos[0]) {
-        replace('/pages/boss/waiting/index', { orderNo: result.order_nos[0] })
-      } else {
-        goMain('query')
-      }
+      const result = await createCartOrderBatch({ boss_wechat: openid, game_id: form.gameId.trim(), cart_item_ids: cartItems.value.map(item => Number(item.id)), boss_note: form.note.trim() || null })
+      clearDesignatedPlayers(); success(`已发布${result.order_count}个订单`)
+      if (result.order_count === 1 && result.order_nos[0]) replace('/pages/boss/waiting/index', { orderNo: result.order_nos[0] }); else goMain('query')
       return
     }
-    const res = await createOrder({ boss_wechat: openid, game_id: form.gameId.trim(), package_id: product.value?.id, spec_id: Number(selectedSpec.value?.id || 0) || null, quantity: 1, required_players: requiredPlayers.value, addon_details: null, designated_players: designatedPlayers.value.length ? designatedPlayers.value.map(item => Number(item.id)) : null, boss_note: note(), booked_hours: 1 })
-    clearDesignatedPlayers()
-    success('下单成功')
-    replace('/pages/boss/waiting/index', { orderNo: res.order_no })
+    const hours = effectiveHours.value
+    const res = await createOrder({ boss_wechat: openid, game_id: form.gameId.trim(), package_id: product.value?.id, spec_id: Number(selectedSpec.value?.id || 0) || null, quantity: hours, required_players: requiredPlayers.value, addon_details: null, designated_players: designatedPlayers.value.length ? designatedPlayers.value.map(item => Number(item.id)) : null, boss_note: note(), booked_hours: hours })
+    clearDesignatedPlayers(); success('下单成功'); replace('/pages/boss/waiting/index', { orderNo: res.order_no })
   } catch (e) { toast(getErrorMessage(e, '创建订单失败')) } finally { submitting.value = false }
 }
 
-onLoad(query => { cartItemIds.value = query?.cartItemIds ? Array.from(new Set(String(query.cartItemIds).split(',').filter(Boolean))) : []; packageId.value = Number(query?.packageId) || null; initialSpecId.value = query?.specId ? String(query.specId) : ''; form.contact = getStorage<string>('boss_wechat') || getClientProfile()?.nickname || ''; syncPlayers(); cartItemIds.value.length ? fetchCart() : fetchProduct() })
+onLoad(query => { cartItemIds.value = query?.cartItemIds ? Array.from(new Set(String(query.cartItemIds).split(',').filter(Boolean))) : []; packageId.value = Number(query?.packageId) || null; initialSpecId.value = query?.specId ? String(query.specId) : ''; requestedHours.value = normalizeServiceHours(query?.quantity || 1); form.contact = getStorage<string>('boss_wechat') || getClientProfile()?.nickname || ''; syncPlayers(); cartItemIds.value.length ? void fetchCart() : void fetchProduct() })
 onShow(() => { syncPlayers(); syncSpec() })
 </script>
 
