@@ -86,10 +86,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
-import { relaunch, navigateToTab, type MainTab, go, goMain as switchMain } from '@/utils/nav'
+import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
 import { success, toast } from '@/utils/feedback'
 import {
   MAX_DESIGNATED_PLAYERS,
@@ -115,6 +115,7 @@ const selectedPlayers = ref<DesignatedPlayerSelection[]>([])
 const searchKeyword = ref('')
 const searchFocused = ref(false)
 const refreshing = ref(false)
+const designatedDraftMode = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 let fetchSequence = 0
 
@@ -222,8 +223,9 @@ watch(searchKeyword, () => {
 
 onMounted(fetchPlayers)
 onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer) })
+onLoad((query) => { designatedDraftMode.value = String(query?.designated || '') === '1' })
 onShow(syncSelection)
-function openPlayerDetail(player: OnlinePlayer) { go('/pages/player/detail/index', { playerId: player.id }) }
+function openPlayerDetail(player: OnlinePlayer) { go('/pages/player/detail/index', { playerId: player.id, designated: designatedDraftMode.value ? 1 : undefined }) }
 function toSelection(player: BillingPlayer): DesignatedPlayerSelection {
   return {
     id: Number(player.id),
@@ -254,8 +256,7 @@ function togglePlayer(player: BillingPlayer) {
 function clearSelection() { clearDesignatedPlayers(); selectedPlayers.value = []; toast('已清空指定阵容') }
 function chooseProduct() {
   if (!selectedPlayers.value.length) return toast('请先选择陪玩')
-  toast(`已选择${selectedPlayers.value.length}名陪玩，请选择商品基础规格`)
-  switchMain('order')
+  go('/pages/designated/group/index', { playerIds: selectedPlayers.value.map(item => item.id).join(','), fromSelection: 1 })
 }
 function handleMainTabSelect(tab: MainTab) {
   if (tab === 'home' || tab === 'order') { relaunch('/pages/boss/home/index', { tab }); return }

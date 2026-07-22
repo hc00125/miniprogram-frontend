@@ -8,6 +8,7 @@ type StorageKey =
   | 'player_online_status'
   | 'boss_wechat'
   | 'designated_player_selection'
+  | 'designated_group_draft'
 
 const playerAuthKeys: StorageKey[] = [
   'token',
@@ -16,7 +17,8 @@ const playerAuthKeys: StorageKey[] = [
   'player_application',
   'player_online_status',
   'boss_wechat',
-  'designated_player_selection'
+  'designated_player_selection',
+  'designated_group_draft'
 ]
 
 function removeStorageRaw(key: StorageKey) {

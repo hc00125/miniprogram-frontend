@@ -28,6 +28,9 @@ export interface BossPackage {
   is_custom: boolean
   group_id: number | null
   group_name: string | null
+  package_family_id?: number | null
+  package_family_code?: string | null
+  package_family_name?: string | null
   cover_url?: string
   image_url?: string
   thumb_url?: string

@@ -89,15 +89,9 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult } from '@/api/player'
-import { goMain } from '@/utils/nav'
+import { go } from '@/utils/nav'
 import { toast } from '@/utils/feedback'
-import {
-  MAX_DESIGNATED_PLAYERS,
-  addDesignatedPlayer,
-  getDesignatedPlayers,
-  removeDesignatedPlayer,
-  type DesignatedPlayerSelection
-} from '@/utils/designatedPlayer'
+import { getDesignatedPlayers, type DesignatedPlayerSelection } from '@/utils/designatedPlayer'
 
 type BillingPlayer = OnlinePlayer & {
   designated_billing_type_id?: number | null
@@ -112,18 +106,18 @@ const ratingData = ref<PlayerRatingsResult | null>(null)
 const selectedPlayers = ref<DesignatedPlayerSelection[]>([])
 const loaded = ref(false)
 const isPlaying = ref(false)
+const designatedDraftMode = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
 
 const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
 const canDesignate = computed(() => player.value?.can_be_designated !== false)
 const isSelected = computed(() => selectedPlayers.value.some(item => item.id === Number(player.value?.id || 0)))
-const canToggle = computed(() => isSelected.value || (canDesignate.value && selectedPlayers.value.length < MAX_DESIGNATED_PLAYERS))
+const canToggle = computed(() => canDesignate.value)
 const billingTypeName = computed(() => player.value?.designated_billing_type_name || player.value?.designated_billing_type?.name || player.value?.type_name || '基础规格')
 const actionText = computed(() => {
-  if (isSelected.value) return '移出阵容'
+  if (designatedDraftMode.value) return '选择TA的商品'
   if (!canDesignate.value) return '暂不接受指定'
-  if (selectedPlayers.value.length >= MAX_DESIGNATED_PLAYERS) return '人数已满'
-  return '加入指定阵容'
+  return '指定TA开组'
 })
 const designateCardTitle = computed(() => {
   if (isSelected.value) return '已加入指定阵容'
@@ -197,40 +191,20 @@ function getAudioContext() {
   return audioContext
 }
 function toggleAudio() { const context = getAudioContext(); if (!context) return toast('暂无音频介绍'); if (isPlaying.value) context.pause(); else context.play() }
-function toSelection(current: BillingPlayer): DesignatedPlayerSelection {
-  return {
-    id: Number(current.id),
-    name: current.name,
-    type_id: Number(current.type_id || current.player_type?.id || 0),
-    type_name: current.type_name || current.player_type?.name || '陪玩',
-    type_priority: Number(current.type_priority ?? current.player_type?.priority ?? 0),
-    designated_billing_type_id: Number(current.designated_billing_type_id || current.designated_billing_type?.id || current.type_id || 0),
-    designated_billing_type_name: current.designated_billing_type_name || current.designated_billing_type?.name || current.type_name,
-    designated_billing_type_priority: Number(current.designated_billing_type_priority ?? current.designated_billing_type?.priority ?? current.type_priority ?? 0),
-    avatar_url: current.avatar_url,
-    is_online: Boolean(current.is_online)
-  }
-}
 function toggleDesignation() {
   if (!player.value) return
-  if (isSelected.value) {
-    selectedPlayers.value = removeDesignatedPlayer(Number(player.value.id))
-    toast(`已移出 ${player.value.name}`)
-    return
-  }
   if (!canDesignate.value) return toast('该陪玩当前不接受指定')
-  if (!Number(player.value.designated_billing_type_id || player.value.designated_billing_type?.id || player.value.type_id || 0)) return toast('该陪玩的指定计费信息不完整')
-  const result = addDesignatedPlayer(toSelection(player.value))
-  selectedPlayers.value = result.players
-  toast(result.message)
+  if (designatedDraftMode.value) { choosePlayerOffer(); return }
+  startGroupWithPlayer()
 }
+function choosePlayerOffer() { if (!player.value) return; go('/pages/designated/offers/index', { playerId: player.value.id }) }
+function startGroupWithPlayer() { if (!player.value) return; go('/pages/designated/group/index', { playerId: player.value.id }) }
 function chooseProduct() {
   if (!selectedPlayers.value.length) return toast('请先选择陪玩')
-  toast(`已选择${selectedPlayers.value.length}名陪玩，请选择商品基础规格`)
-  goMain('order')
+  go('/pages/designated/group/index', { playerIds: selectedPlayers.value.map(item => item.id).join(','), fromSelection: 1 })
 }
 function goBack() { uni.navigateBack({ delta: 1 }) }
-onLoad(query => { const id = Number(query?.playerId); playerId.value = Number.isFinite(id) ? id : null; syncSelection(); fetchPlayer() })
+onLoad(query => { const id = Number(query?.playerId); playerId.value = Number.isFinite(id) ? id : null; designatedDraftMode.value = String(query?.designated || '') === '1'; syncSelection(); fetchPlayer() })
 onShow(syncSelection)
 onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.destroy(); audioContext = null } })
 </script>
