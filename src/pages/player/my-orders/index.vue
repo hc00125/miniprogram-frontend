@@ -9,6 +9,12 @@
       <button class="club-btn club-btn--ghost" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
     </view>
 
+    <view class="notice-entry">
+      <view class="notice-icon">铃</view>
+      <view class="notice-main"><text>指定订单微信提醒</text><text>{{ orderNoticeAvailable ? `已获得 ${orderNoticeAvailable} 次提醒授权` : '开启后，老板支付指定订单会第一时间通知你' }}</text></view>
+      <button class="club-btn club-btn--ghost" :loading="subscribing" :disabled="subscribing" @tap="enableOrderNotice">{{ orderNoticeAvailable ? '再次开启' : '开启提醒' }}</button>
+    </view>
+
     <view class="wallet-entry" @tap="go('/pages/player/earnings/index')">
       <view class="wallet-icon">鱼</view>
       <view class="wallet-main">
@@ -85,7 +91,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { getMyOrders, getMyPlayerRatings, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
+import { confirmPlayerOrderNoticeSubscription, getMyOrders, getMyPlayerRatings, getPlayerOrderNoticeConfig, logoutPlayer, type PlayerRatingsResult } from '@/api/player'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
@@ -96,6 +102,8 @@ const player = ref<any>(null)
 const orders = ref<any[]>([])
 const ratingData = ref<PlayerRatingsResult | null>(null)
 const refreshing = ref(false)
+const subscribing = ref(false)
+const orderNoticeAvailable = ref(0)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const ratings = computed(() => ratingData.value?.results || [])
@@ -168,6 +176,40 @@ async function handleManualRefresh() {
   }
 }
 
+async function loadOrderNoticeConfig() {
+  try {
+    const config = await getPlayerOrderNoticeConfig()
+    orderNoticeAvailable.value = Number(config.available_count || 0)
+    return config
+  } catch {
+    return null
+  }
+}
+
+async function enableOrderNotice() {
+  if (subscribing.value) return
+  subscribing.value = true
+  try {
+    const config = await loadOrderNoticeConfig()
+    if (!config?.enabled || !config.template_id) return toast('通知模板尚未由后台配置')
+    const accepted = await new Promise<boolean>(resolve => {
+      uni.requestSubscribeMessage({
+        tmplIds: [config.template_id],
+        success: result => resolve(result[config.template_id] === 'accept'),
+        fail: () => resolve(false)
+      })
+    })
+    const result = await confirmPlayerOrderNoticeSubscription(config.template_id, accepted)
+    orderNoticeAvailable.value = Number(result.available_count || 0)
+    if (accepted) success('已开启指定订单提醒')
+    else toast('你没有同意通知授权，可稍后再次开启')
+  } catch (error) {
+    toast(getErrorMessage(error, '开启提醒失败'))
+  } finally {
+    subscribing.value = false
+  }
+}
+
 async function handleLogout() {
   try { await logoutPlayer() } catch {}
   removeStorage('token')
@@ -192,7 +234,7 @@ onMounted(async () => {
     return
   }
   player.value = playerInfo
-  await refreshAll()
+  await Promise.all([refreshAll(), loadOrderNoticeConfig()])
   refreshTimer = setInterval(refreshAll, 10000)
 })
 
@@ -208,6 +250,7 @@ onUnmounted(() => {
 .eyebrow { color: #a87520; font-size: 22rpx; font-weight: 900; }
 .title { margin-top: 12rpx; color: #172116; font-size: 42rpx; font-weight: 900; }
 .sub { margin-top: 8rpx; color: #687665; font-size: 24rpx; }
+.notice-entry { margin-top:20rpx;padding:20rpx 22rpx;display:flex;align-items:center;gap:14rpx;border-radius:24rpx;background:#fff7df; }.notice-icon{width:60rpx;height:60rpx;display:flex;align-items:center;justify-content:center;border-radius:18rpx;color:#8b641d;background:#ffe8a8;font-size:24rpx;font-weight:900;}.notice-main{flex:1;min-width:0;}.notice-main text{display:block;}.notice-main text:first-child{color:#5d4314;font-size:27rpx;font-weight:900;}.notice-main text:last-child{margin-top:4rpx;color:#8b7750;font-size:20rpx;}.notice-entry button{margin:0;padding:0 18rpx;font-size:21rpx;}
 .wallet-entry { margin-top: 20rpx; padding: 22rpx 24rpx; display: flex; align-items: center; gap: 16rpx; border-radius: 26rpx; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); box-shadow: 0 14rpx 30rpx rgba(31,124,75,.16); }
 .wallet-icon { width: 70rpx; height: 70rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 28rpx; font-weight: 900; background: rgba(255,255,255,.14); }
 .wallet-main { flex: 1; min-width: 0; }

@@ -37,10 +37,13 @@ export interface DesignationInvitation {
   required_players: number
   current_players: number
   total_price_per_hour: number
+  total_amount?: number
   booked_hours: number
   boss_note?: string | null
   created_at: string
   is_designated: true
+  fulfillment_mode?: 'public' | 'targeted' | string
+  target_player_name_snapshot?: string
   designation_id: number
   designation_status: 'pending'
   designation_status_text: string
@@ -134,10 +137,19 @@ export interface RoomEntryConfirmResult {
   was_late?: boolean
 }
 
+export interface PlayerOrderNoticeConfig {
+  enabled: boolean
+  template_id: string
+  page: string
+  available_count?: number
+}
+
 export function loginPlayer(name: string, type_id: number) { return api.post<PlayerLoginResult>('/player/login', { name, type_id }) }
 export function getCurrentPlayer() { return api.get<any>('/player/me') }
 export function getPublicPlayerRatings(playerId: number) { return api.get<PlayerRatingsResult>(`/player/${playerId}/ratings`) }
 export function getMyPlayerRatings() { return api.get<PlayerRatingsResult>('/player/ratings/me') }
+export function getPlayerOrderNoticeConfig() { return api.get<PlayerOrderNoticeConfig>('/player/order-notice-config') }
+export function confirmPlayerOrderNoticeSubscription(templateId: string, accepted: boolean) { return api.post<PlayerOrderNoticeConfig>('/player/order-notice-subscription', { template_id: templateId, accepted }) }
 export function updatePlayerOnlineStatus(is_online: boolean) { return api.post<{ id: number; name: string; is_online: boolean; status: string }>('/player/online-status', { is_online }) }
 export function logoutPlayer() { return api.post('/player/logout') }
 export function getPlayerProfileSettings() { return api.get<PlayerProfileSettingsResult>('/player/profile-settings') }

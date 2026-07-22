@@ -27,17 +27,17 @@
       <view v-for="item in invitations" :key="item.designation_id" class="invitation-card">
         <view class="invite-top">
           <view>
-            <text class="invite-label">专属指定</text>
+            <text class="invite-label">{{ item.fulfillment_mode === 'targeted' ? '专属服务订单' : '指定邀请' }}</text>
             <text class="order-no">{{ item.order_no }}</text>
           </view>
           <text class="countdown">{{ countdownText(item.designation_expires_at) }}</text>
         </view>
         <text class="order-title">{{ item.package_name || '陪玩订单' }}</text>
         <view class="meta-grid">
-          <view><text>人数</text><text>{{ item.current_players || 0 }}/{{ item.required_players }}人</text></view>
-          <view><text>订单金额</text><text>¥{{ money(item.total_price_per_hour) }}</text></view>
+          <view><text>{{ item.fulfillment_mode === 'targeted' ? '服务对象' : '人数' }}</text><text>{{ item.fulfillment_mode === 'targeted' ? '仅本人' : `${item.current_players || 0}/${item.required_players}人` }}</text></view>
+          <view><text>订单金额</text><text>¥{{ money(item.total_amount || item.total_price_per_hour) }}</text></view>
           <view><text>预订时长</text><text>{{ formatHours(item.booked_hours || 1) }}</text></view>
-          <view><text>指定服务费</text><text>¥0.00</text></view>
+          <view><text>订单类型</text><text>{{ item.fulfillment_mode === 'targeted' ? '专属服务' : '公开组局' }}</text></view>
         </view>
         <text v-if="bossNote(item.boss_note)" class="boss-note">老板备注：{{ bossNote(item.boss_note) }}</text>
         <view class="invite-actions">
@@ -213,7 +213,8 @@ async function startRefresh() {
 }
 
 async function accept(item: DesignationInvitation & { responding?: boolean }) {
-  if (!(await confirm(`接受老板指定邀请吗？\n套餐：${item.package_name}\n指定本人不额外加价`, '接受指定'))) return
+  const direct = item.fulfillment_mode === 'targeted'
+  if (!(await confirm(direct ? `接受专属服务订单吗？\n套餐：${item.package_name}\n订单已支付，确认后即可开始服务。` : `接受老板指定邀请吗？\n套餐：${item.package_name}`, '接受指定'))) return
   item.responding = true
   try {
     await acceptDesignation(item.order_no)
@@ -228,11 +229,12 @@ async function accept(item: DesignationInvitation & { responding?: boolean }) {
 }
 
 async function decline(item: DesignationInvitation & { responding?: boolean }) {
-  if (!(await confirm('拒绝后该名额会立即转为公开抢单，确定拒绝吗？', '拒绝指定'))) return
+  const direct = item.fulfillment_mode === 'targeted'
+  if (!(await confirm(direct ? '拒绝后该专属订单会取消并进入退款流程，确定拒绝吗？' : '拒绝后该名额会立即转为公开抢单，确定拒绝吗？', '拒绝指定'))) return
   item.responding = true
   try {
     await declineDesignation(item.order_no)
-    success('已拒绝，名额转为公开抢单')
+    success(direct ? '已拒绝，订单将进入退款流程' : '已拒绝，名额转为公开抢单')
     await refreshAll()
   } catch (error) {
     toast(getErrorMessage(error, '拒绝指定失败'))

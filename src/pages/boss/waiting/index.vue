@@ -8,8 +8,8 @@
 
     <view class="hero-card">
       <text class="hero-eyebrow">ORDER MATCHING</text>
-      <text class="hero-title">正在为你组建队伍</text>
-      <text class="hero-sub">指定邀请与公开抢单同时进行，人数到齐后进入付款</text>
+      <text class="hero-title">{{ isTargetedOrder ? '正在等待陪玩师确认' : '正在为你组建队伍' }}</text>
+      <text class="hero-sub">{{ isTargetedOrder ? '支付已完成，系统已向指定陪玩师发出服务邀请' : '指定邀请与公开抢单同时进行，人数到齐后进入付款' }}</text>
       <view class="hero-meta">
         <view><text>订单号</text><text>{{ orderNo || '加载中' }}</text></view>
         <view><text>已等待</text><text>{{ waitTime || '00:00' }}</text></view>
@@ -18,7 +18,7 @@
 
     <view v-if="designations.length" class="card designation-card">
       <view class="card-head">
-        <view><text class="card-title">指定陪玩邀请</text><text class="card-sub">待接受邀请10分钟后自动转为公开抢单</text></view>
+        <view><text class="card-title">{{ isTargetedOrder ? '指定服务邀请' : '指定陪玩邀请' }}</text><text class="card-sub">{{ isTargetedOrder ? '待接受邀请10分钟后将自动取消并进入退款流程' : '待接受邀请10分钟后自动转为公开抢单' }}</text></view>
         <button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
       <view class="designation-list">
@@ -32,7 +32,7 @@
           </view>
           <view class="designation-side">
             <text class="designation-status" :class="`status-${item.status}`">{{ item.status_text }}</text>
-            <button v-if="item.can_release" :disabled="item.releasing" @tap="releaseDesignation(item)">{{ item.releasing ? '处理中' : '取消指定' }}</button>
+            <button v-if="item.can_release && !isTargetedOrder" :disabled="item.releasing" @tap="releaseDesignation(item)">{{ item.releasing ? '处理中' : '取消指定' }}</button>
           </view>
         </view>
       </view>
@@ -40,8 +40,8 @@
 
     <view v-if="orderInfo" class="card progress-card">
       <view class="card-head">
-        <view><text class="card-title">接单与入房进度</text><text class="card-sub">{{ readyCount }}/{{ requiredCount }} 位陪玩已就位，接单后需在10分钟内进入房间</text></view>
-        <text class="open-slot">剩余{{ Math.max(0, requiredCount - readyCount) }}位</text>
+        <view><text class="card-title">{{ isTargetedOrder ? '服务确认进度' : '接单与入房进度' }}</text><text class="card-sub">{{ isTargetedOrder ? `${readyCount}/1 位指定陪玩已确认服务` : `${readyCount}/${requiredCount} 位陪玩已就位，接单后需在10分钟内进入房间` }}</text></view>
+        <text class="open-slot">{{ isTargetedOrder ? (readyCount ? '已确认' : '待确认') : `剩余${Math.max(0, requiredCount - readyCount)}位` }}</text>
       </view>
       <view class="progress-track"><view class="progress-fill" :style="{ width: progressPercent }"></view></view>
       <scroll-view scroll-x class="player-track" show-scrollbar="false">
@@ -54,8 +54,8 @@
         </view>
         <view v-for="item in waitingSlots" :key="item" class="player-item waiting">
           <view class="player-avatar waiting-avatar"><text></text><text></text><text></text></view>
-          <text class="player-name">匹配中</text>
-          <text class="player-type">等待接单</text>
+          <text class="player-name">{{ isTargetedOrder ? '指定陪玩师' : '匹配中' }}</text>
+          <text class="player-type">{{ isTargetedOrder ? '等待确认服务' : '等待接单' }}</text>
         </view>
       </scroll-view>
       <view v-if="overduePlayers.length" class="entry-alert">
@@ -65,10 +65,10 @@
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
-      <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">派单、接单、付款、开打依次进行</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
+      <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">{{ isTargetedOrder ? '付款后由指定陪玩师确认，再进入开打' : '派单、接单、付款、开打依次进行' }}</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
       <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view>
       <view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view>
-      <view class="info-row"><text>需要陪玩</text><text>{{ requiredCount }}人</text></view>
+      <view class="info-row"><text>{{ isTargetedOrder ? '指定对象' : '需要陪玩' }}</text><text>{{ isTargetedOrder ? (orderInfo.target_player_name_snapshot || activeDesignationNames || '等待确认') : `${requiredCount}人` }}</text></view>
       <view v-if="activeDesignationNames" class="info-row"><text>指定陪玩</text><text>{{ activeDesignationNames }}</text></view>
       <view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view>
       <view class="info-row"><text>预订时长</text><text>{{ bookedHoursText }}</text></view>
@@ -107,18 +107,19 @@ const players = computed(() => orderInfo.value?.players || [])
 const overduePlayers = computed(() => players.value.filter((item: any) => ['overdue', 'late_confirmed'].includes(item.room_join_status)))
 const readyCount = computed(() => players.value.length)
 const requiredCount = computed(() => orderInfo.value?.required_players || 0)
+const isTargetedOrder = computed(() => orderInfo.value?.fulfillment_mode === 'targeted')
 const waitingSlots = computed(() => Array.from({ length: Math.max(0, requiredCount.value - readyCount.value) }, (_, index) => index))
 const progressPercent = computed(() => requiredCount.value ? `${Math.min(100, readyCount.value / requiredCount.value * 100)}%` : '0%')
 const bookedHoursText = computed(() => `${Number(orderInfo.value?.booked_hours || 1)}小时`)
 const createdTimeText = computed(() => orderInfo.value?.created_at ? formatDateTime(orderInfo.value.created_at) : '待确认')
 const amountText = computed(() => { const amount = orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour; return amount ? `¥${Number(amount).toFixed(2)}` : '待确认' })
 const activeDesignationNames = computed(() => designations.value.filter(item => ['pending', 'accepted'].includes(item.status)).map(item => item.player_name).join('、'))
-const statusTitle = computed(() => designations.value.some(item => item.status === 'pending') ? '等待指定陪玩回应' : '订单已派发')
-const statusSubtitle = computed(() => designations.value.some(item => item.status === 'pending') ? '指定邀请接受后，剩余名额继续公开匹配' : '陪玩接满后将自动进入付款页面')
+const statusTitle = computed(() => designations.value.some(item => item.status === 'pending') ? '等待指定陪玩回应' : (isTargetedOrder.value ? '指定服务正在确认' : '订单已派发'))
+const statusSubtitle = computed(() => designations.value.some(item => item.status === 'pending') ? (isTargetedOrder.value ? 'TA 接受后即可开始服务；拒绝或超时将自动退款' : '指定邀请接受后，剩余名额继续公开匹配') : (isTargetedOrder.value ? '等待指定陪玩师确认服务' : '陪玩接满后将自动进入付款页面'))
 
 function countdownText(value: string) {
   const diff = Math.max(0, Math.floor((new Date(value).getTime() - now.value) / 1000))
-  if (!diff) return '邀请即将超时并转公开'
+  if (!diff) return isTargetedOrder.value ? '邀请即将超时并进入退款流程' : '邀请即将超时并转公开'
   return `${Math.floor(diff / 60)}分${diff % 60}秒后超时`
 }
 
@@ -158,7 +159,7 @@ async function checkOrder() {
     if (res.status === '待支付') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
     else if (res.status === '待开打' || res.status === '进行中') { stopTimers(); replace('/pages/boss/in-progress/index', { orderNo: orderNo.value }) }
     else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
-    else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') }
+    else if (res.status === '已取消') { stopTimers(); toast(res.fulfillment_mode === 'targeted' ? '指定订单已取消，退款将按原支付方式处理' : '订单已取消'); goMain('home') }
     return true
   } catch (error) {
     toast(getErrorMessage(error, '订单刷新失败'))

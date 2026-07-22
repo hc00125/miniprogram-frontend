@@ -114,13 +114,12 @@
 
     <view v-if="product" class="bottom-bar">
       <view class="bottom-icon" @tap="goHome"><text>⌂</text><text>首页</text></view>
-      <view class="bottom-icon" @tap="openCart">
+      <view v-if="!isPlayerServiceProduct" class="bottom-icon" @tap="openCart">
         <view class="cart-icon-wrap"><text>🛒</text><text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text></view>
         <text>购物车</text>
       </view>
-      <button v-if="canStartDesignated" class="designated-action" @tap="startDesignatedGroup">指定陪玩</button>
-      <button class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
-      <button class="buy-action" @tap="openSpecPopup('buy')">立即购买</button>
+      <button v-if="!isPlayerServiceProduct" class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
+      <button class="buy-action" @tap="openSpecPopup('buy')">{{ isPlayerServiceProduct ? '立即指定' : '立即购买' }}</button>
     </view>
 
     <view v-if="product && specPopupVisible" class="spec-popup-mask" @tap="closeSpecPopup">
@@ -155,8 +154,8 @@
           <view v-else class="single-order-tip">本商品按单收费，每次购买1份。</view>
         </view>
         <view class="spec-popup-footer">
-          <button class="popup-cart-btn" @tap="confirmSpecAction('cart')">加入购物车</button>
-          <button class="popup-buy-btn" @tap="confirmSpecAction('buy')">立即购买</button>
+          <button v-if="!isPlayerServiceProduct" class="popup-cart-btn" @tap="confirmSpecAction('cart')">加入购物车</button>
+          <button class="popup-buy-btn" @tap="confirmSpecAction('buy')">{{ isPlayerServiceProduct ? '确认指定' : '立即购买' }}</button>
         </view>
       </view>
     </view>
@@ -166,7 +165,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
-import { getPackages, type BossPackage, type BossPackageSpec } from '@/api/boss'
+import { getPackages, getPlayerServiceProducts, type BossPackage, type BossPackageSpec } from '@/api/boss'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
@@ -174,6 +173,7 @@ import { isHourlyService, MAX_SERVICE_HOURS, normalizeServiceHours } from '@/uti
 
 const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
+const playerId = ref<number | null>(null)
 const loading = ref(false)
 const product = ref<BossPackage | null>(null)
 const allProducts = ref<BossPackage[]>([])
@@ -192,14 +192,7 @@ const previewImages = computed(() => Array.from(new Set([rawProductImage.value, 
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const hourlyService = computed(() => isHourlyService(product.value))
 const effectiveHours = computed(() => hourlyService.value ? normalizeServiceHours(selectedQuantity.value) : 1)
-const canStartDesignated = computed(() => Boolean(
-  product.value
-  && !isGuaranteeProduct.value
-  && product.value.product_type !== 'guarantee'
-  && [1, 2, 3].includes(Number(product.value.player_count || 1))
-  && product.value.package_family_id
-  && specs.value.some(spec => spec.is_active !== false && spec.required_player_type_id)
-))
+const isPlayerServiceProduct = computed(() => product.value?.selling_mode === 'player_designated')
 const productPrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
 const selectedTotalPrice = computed(() => productPrice.value * effectiveHours.value)
 const originalPrice = computed(() => product.value ? getOriginalPrice(product.value) : 0)
@@ -220,8 +213,9 @@ const guaranteeRules = computed(() => {
 })
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 
-onShareAppMessage(() => ({ title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务', path: packageId.value ? `/pages/shop/detail/index?packageId=${packageId.value}` : '/pages/shop/category/index', ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {}) }))
-onShareTimeline(() => ({ title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务', query: packageId.value ? `packageId=${packageId.value}` : '', ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {}) }))
+const shareQuery = computed(() => packageId.value ? `packageId=${packageId.value}${playerId.value ? `&playerId=${playerId.value}` : ''}` : '')
+onShareAppMessage(() => ({ title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务', path: shareQuery.value ? `/pages/shop/detail/index?${shareQuery.value}` : '/pages/shop/category/index', ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {}) }))
+onShareTimeline(() => ({ title: product.value ? `偷吃电竞｜${product.value.name}` : '偷吃电竞｜精选游戏服务', query: shareQuery.value, ...(rawProductImage.value ? { imageUrl: rawProductImage.value } : {}) }))
 
 function getRawProductImage(item: BossPackage) { const value = item as BossPackage & Record<string, any>; return value.cover_url || value.image_url || value.thumb_url || value.picture_url || '' }
 function getDisplayPrice(item: BossPackage) { const itemSpecs = item.specs || []; if (itemSpecs.length) return Math.min(...itemSpecs.map(spec => Number(spec.price || 0)).filter(price => price >= 0)); return getProductPrice(item) }
@@ -234,21 +228,16 @@ function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
 function adjustQuantity(delta: number) { const next = effectiveHours.value + delta; if (next < 1) return; if (next > MAX_SERVICE_HOURS) return toast(`单次最多选择${MAX_SERVICE_HOURS}小时`); selectedQuantity.value = next }
 function previewProductImage(url: string) { if (!url) return; uni.previewImage({ urls: previewImages.value.length ? previewImages.value : [url], current: url }) }
 async function refreshCartCount() { try { cartCount.value = await getShopCartCount() } catch { cartCount.value = 0 } }
-async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = await getPackages(); allProducts.value = list; product.value = list.find(item => item.id === packageId.value) || null; selectedSpec.value = product.value?.specs?.[0] || null; selectedQuantity.value = 1 } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
+async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = playerId.value ? (await getPlayerServiceProducts(playerId.value)).products : await getPackages(); allProducts.value = list; product.value = list.find(item => item.id === packageId.value) || null; selectedSpec.value = product.value?.specs?.[0] || null; selectedQuantity.value = 1 } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
 function openProduct(nextPackageId: number) { go('/pages/shop/detail/index', { packageId: nextPackageId }) }
 function openSpecPopup(action: 'cart' | 'buy' = 'buy') { if (!product.value) return; pendingAction.value = action; if (!hourlyService.value) selectedQuantity.value = 1; specPopupVisible.value = true }
 function closeSpecPopup() { specPopupVisible.value = false }
-function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') return void handleCartTap(); if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, specId: selectedSpec.value?.id, quantity: effectiveHours.value }) }
-function startDesignatedGroup() {
-  if (!product.value) return
-  if (specs.value.length && !selectedSpec.value) return toast('请先选择基础规格')
-  go('/pages/designated/group/index', { packageId: product.value.id, specId: selectedSpec.value?.id })
-}
-async function handleCartTap() { if (!product.value) return; try { await addShopCartItem({ product: product.value, spec: selectedSpec.value, spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined, image_url: specPopupImage.value, price: productPrice.value, description: productSummary.value, quantity: effectiveHours.value }); await refreshCartCount(); success(hourlyService.value ? `已加入购物车 · ${effectiveHours.value}小时` : '已加入购物车') } catch (error) { toast(getErrorMessage(error, '加入购物车失败')) } }
+function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') return void handleCartTap(); if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, playerId: playerId.value || product.value.owner_player_id || '', specId: selectedSpec.value?.id, quantity: effectiveHours.value }) }
+async function handleCartTap() { if (!product.value) return; if (isPlayerServiceProduct.value) return toast('陪玩师专属商品请直接指定下单'); try { await addShopCartItem({ product: product.value, spec: selectedSpec.value, spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined, image_url: specPopupImage.value, price: productPrice.value, description: productSummary.value, quantity: effectiveHours.value }); await refreshCartCount(); success(hourlyService.value ? `已加入购物车 · ${effectiveHours.value}小时` : '已加入购物车') } catch (error) { toast(getErrorMessage(error, '加入购物车失败')) } }
 function openCart() { go('/pages/shop/cart/index') }
 function goHome() { goMain('home') }
 function goBack() { uni.navigateBack({ delta: 1 }) }
-onLoad(query => { const id = Number(query?.packageId); packageId.value = Number.isFinite(id) ? id : null; void fetchProduct() })
+onLoad(query => { const id = Number(query?.packageId); const player = Number(query?.playerId); packageId.value = Number.isFinite(id) ? id : null; playerId.value = Number.isFinite(player) && player > 0 ? player : null; void fetchProduct() })
 onShow(refreshCartCount)
 </script>
 
