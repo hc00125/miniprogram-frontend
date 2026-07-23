@@ -1,0 +1,25 @@
+name: Shared service listing frontend check
+
+on:
+  push:
+    branches:
+      - feat/product-order-management
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mp-weixin-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          show-progress: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build WeChat Mini Program
+        run: npm run build:mp-weixin
