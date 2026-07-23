@@ -59,8 +59,9 @@
             <text class="order-time-label">发布时间</text>
             <text class="order-time-value">{{ formatPublishedAt(order.created_at) }}</text>
           </view>
-          <view class="meta-grid meta-grid--single">
+          <view class="meta-grid order-meta-grid">
             <view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view>
+            <view><text>陪玩类型</text><text class="order-type-value">{{ orderPlayerTypeText(order) }}</text></view>
           </view>
           <text class="boss-note">老板备注：{{ bossNote(order.boss_note) || '无' }}</text>
           <button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button>
@@ -90,6 +91,7 @@ import {
   updatePlayerOnlineStatus,
   type DesignationInvitation
 } from '@/api/player'
+import { getPlayerTypes, type PlayerType } from '@/api/boss'
 import { getStorage, removeStorage } from '@/utils/storage'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
@@ -100,6 +102,7 @@ import { createOrderAlert } from '@/utils/orderAlert'
 const player = ref<any>(null)
 const orders = ref<any[]>([])
 const invitations = ref<Array<DesignationInvitation & { responding?: boolean }>>([])
+const playerTypes = ref<PlayerType[]>([])
 const online = ref(getPlayerOnlineStatus())
 const onlineUpdating = ref(false)
 const refreshing = ref(false)
@@ -124,6 +127,19 @@ function bossNote(value: string | null | undefined) {
     .map(line => line.trim())
     .filter(line => line && !/^(规格：|基础规格：|指定陪玩：|指定陪玩等级计价：|指定后预计价格：|购买数量：|合并结算商品：)/.test(line))
     .join('\n')
+}
+
+function orderPlayerTypeText(order: any) {
+  const ids = Array.from(new Set(
+    (Array.isArray(order?.designated_type_ids) ? order.designated_type_ids : [])
+      .map((id: unknown) => Number(id || 0))
+      .filter((id: number) => id > 0)
+  ))
+  if (!ids.length) return '不限类型'
+
+  const typeMap = new Map(playerTypes.value.map(item => [Number(item.id), item.name]))
+  const names = ids.map(id => typeMap.get(id)).filter(Boolean)
+  return names.length ? names.join('、') : '指定类型'
 }
 
 function pad(value: number) { return String(value).padStart(2, '0') }
@@ -321,6 +337,11 @@ onMounted(async () => {
     replace('/pages/client/profile/index')
     return
   }
+  try {
+    playerTypes.value = await getPlayerTypes()
+  } catch {
+    playerTypes.value = []
+  }
   void orderAlert.prepare()
   await startRefresh()
   clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
@@ -373,11 +394,12 @@ onUnmounted(() => {
 .order-time-label { color: #879083; font-size: 20rpx; }
 .order-time-value { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
 .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10rpx; margin-top: 16rpx; }
-.meta-grid--single { grid-template-columns: 1fr; margin-top: 0; }
+.order-meta-grid { margin-top: 0; }
 .meta-grid view { padding: 14rpx; border-radius: 16rpx; background: #f7faf4; }
 .meta-grid text { display: block; }
 .meta-grid text:first-child { color: #879083; font-size: 19rpx; }
 .meta-grid text:last-child { margin-top: 5rpx; font-size: 24rpx; font-weight: 900; }
+.order-type-value { color: #1f7c4b; }
 .boss-note { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: #687665; font-size: 21rpx; line-height: 1.5; white-space: pre-wrap; background: #f7f7f2; }
 .invite-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 12rpx; margin-top: 16rpx; }
 .invite-actions button, .grab-btn { height: 72rpx; margin: 0; border-radius: 999rpx; font-size: 25rpx; font-weight: 900; }
