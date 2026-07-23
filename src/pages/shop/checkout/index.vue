@@ -24,10 +24,10 @@
       </view>
 
       <view v-if="!isCartCheckout && product && allSpecs.length" class="card">
-        <view class="head"><view><text class="title">选择规格</text><text class="sub">规格和时长均由陪玩师后台配置，价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
+        <view class="head"><view><text class="title">选择规格</text><text class="sub">服务规格由平台统一配置，价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
         <view class="specs">
           <view v-for="spec in allSpecs" :key="spec.id" class="spec" :class="{ active: selectedSpec?.id === spec.id }" @tap="chooseSpec(spec)">
-            <text>{{ spec.name }}</text><text v-if="spec.description" class="muted">{{ spec.description }}</text><text class="spec-price">¥{{ money(Number(spec.price)) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
+            <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><text class="spec-price">¥{{ money(Number(spec.price)) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
           </view>
         </view>
       </view>
@@ -68,8 +68,9 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { createOrder, getMyBossOrders, getPackages, getPlayerServiceProducts, type BossOrderListItem, type BossPackage, type BossPackageSpec } from '@/api/boss'
+import { createOrder, getMyBossOrders, getPackages, getPlayerServiceProducts, type BossOrderListItem, type BossPackage, type BossPackageSpec, type OrderCreatePayload } from '@/api/boss'
 import { createCartOrderBatch } from '@/api/orderBatch'
+import { createSharedListingOrder } from '@/api/serviceListings'
 import { getClientProfile, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain, replace } from '@/utils/nav'
@@ -95,6 +96,7 @@ let fieldBlurTimer: ReturnType<typeof setTimeout> | null = null
 
 const isCartCheckout = computed(() => cartItemIds.value.length > 0)
 const isTargetedPlayerProduct = computed(() => product.value?.selling_mode === 'player_designated')
+const currentListingId = computed(() => Number(selectedSpec.value?.listing_id || product.value?.listing_id || 0))
 const hasData = computed(() => isCartCheckout.value ? cartItems.value.length > 0 : Boolean(product.value))
 const allSpecs = computed(() => [...(product.value?.specs || [])].filter(item => item.is_active !== false).sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 const requiredPlayers = computed(() => isTargetedPlayerProduct.value ? 1 : Math.max(1, Number(product.value?.player_count || 1)))
@@ -161,7 +163,10 @@ async function submit() {
       return
     }
     const hours = effectiveHours.value
-    const res = await createOrder({ boss_wechat: openid, game_id: form.gameId.trim(), package_id: product.value?.id, spec_id: Number(selectedSpec.value?.id || 0) || null, quantity: hours, required_players: requiredPlayers.value, addon_details: null, boss_note: note(), booked_hours: hours })
+    const payload: OrderCreatePayload = { boss_wechat: openid, game_id: form.gameId.trim(), package_id: product.value?.id, spec_id: Number(selectedSpec.value?.id || 0) || null, quantity: hours, required_players: requiredPlayers.value, addon_details: null, boss_note: note(), booked_hours: hours }
+    const res = isTargetedPlayerProduct.value && currentListingId.value > 0
+      ? await createSharedListingOrder({ ...payload, listing_id: currentListingId.value })
+      : await createOrder(payload)
     success(isTargetedPlayerProduct.value ? '指定订单已创建，请完成支付' : '下单成功')
     replace('/pages/boss/waiting/index', { orderNo: res.order_no })
   } catch (error) { toast(getErrorMessage(error, '创建订单失败')) } finally { submitting.value = false }
