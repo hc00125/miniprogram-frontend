@@ -1,3 +1,4 @@
+import type { OrderCreatePayload } from '@/api/boss'
 import api from '@/utils/request'
 
 export interface SharedServiceSpec {
@@ -36,6 +37,10 @@ export interface PlayerServiceListingResult {
   available_specs: SharedServiceSpec[]
 }
 
+export type SharedListingOrderPayload = OrderCreatePayload & {
+  listing_id: number
+}
+
 export function getPlayerServiceListings() {
   return api.get<PlayerServiceListingResult>('/player/service-listings')
 }
@@ -59,6 +64,6 @@ export function updatePlayerServiceListing(
   return api.patch<{ message: string; listing: PlayerServiceListing }>(`/player/service-listings/${listingId}`, payload)
 }
 
-export function createSharedListingOrder(payload: Record<string, any> & { listing_id: number }) {
+export function createSharedListingOrder(payload: SharedListingOrderPayload) {
   return api.post<{ order_no: string; status: string; total_price: number; message: string }>('/boss/listing-order', payload)
 }
