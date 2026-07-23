@@ -15,6 +15,9 @@ export interface BossPackageSpec {
   required_player_type_id?: number | null
   required_player_type_name?: string | null
   required_player_type_priority?: number | null
+  listing_id?: number | null
+  listing_status?: string
+  listing_description?: string
   sort_order?: number
   is_active?: boolean
 }
@@ -26,6 +29,7 @@ export interface BossPackage {
   owner_player_id?: number | null
   owner_player_name?: string | null
   owner_player_type_name?: string | null
+  listing_id?: number | null
   player_count: number
   base_price: number
   description?: string
@@ -252,6 +256,7 @@ export function getPackages() {
     return filtered
   })
 }
+
 export function getPlayerServiceProducts(playerId: number) {
   return api.get<{ player_id: number; player_name: string; products: BossPackage[] }>(`/catalog/players/${playerId}/products`)
 }
