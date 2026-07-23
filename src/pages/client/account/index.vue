@@ -6,14 +6,14 @@
         <view class="hero-sub">登录身份与基础资料</view>
       </view>
       <view class="hero-body">
-        <button class="avatar-shell" open-type="chooseAvatar" @chooseavatar="chooseAvatar">
+        <button class="avatar-shell" :class="{ 'avatar-shell--dirty': avatarDirty }" open-type="chooseAvatar" @chooseavatar="chooseAvatar">
           <image v-if="draftAvatar" class="avatar-img" :src="draftAvatar" mode="aspectFill" />
           <text v-else>{{ displayInitial }}</text>
         </button>
         <view class="identity-block">
           <view class="identity-name">{{ draftNickname || '未设置昵称' }}</view>
           <view class="identity-meta">{{ statusText }}</view>
-          <view class="identity-tip">点击头像可重新选择头像</view>
+          <view class="identity-tip">{{ avatarDirty ? '已选择新头像，请点击下方“保存资料”' : '点击头像可重新选择头像' }}</view>
         </view>
       </view>
     </view>
@@ -99,6 +99,8 @@ const profile = ref<ClientProfile | null>(null)
 const draftNickname = ref('')
 const draftAvatar = ref('')
 const saving = ref(false)
+const avatarDirty = ref(false)
+const initialized = ref(false)
 
 const statusText = computed(() => {
   const status = profile.value?.player_status || 'none'
@@ -171,7 +173,14 @@ async function loadAccount() {
 }
 
 function chooseAvatar(event: any) {
-  draftAvatar.value = event.detail.avatarUrl || ''
+  const avatarUrl = String(event?.detail?.avatarUrl || '').trim()
+  if (!avatarUrl) {
+    toast('头像选择失败，请重新选择')
+    return
+  }
+  draftAvatar.value = avatarUrl
+  avatarDirty.value = true
+  toast('已选择新头像，请点击保存资料')
 }
 
 async function handleSave() {
@@ -194,6 +203,7 @@ async function handleSave() {
     })
     saveClientProfile(updated)
     syncDraft(updated)
+    avatarDirty.value = false
     success('资料已保存')
   } catch (error) {
     toast(getErrorMessage(error, '保存失败'))
@@ -209,7 +219,12 @@ async function handleLogout() {
   replace('/pages/client/login/index')
 }
 
-onShow(loadAccount)
+onShow(async () => {
+  // 微信头像选择器返回页面时也会再次触发 onShow；只在首次进入时同步资料，避免覆盖刚选中的临时头像。
+  if (initialized.value || avatarDirty.value) return
+  initialized.value = true
+  await loadAccount()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -219,6 +234,7 @@ onShow(loadAccount)
 .hero-sub { margin-top: 8rpx; color: #687665; font-size: 24rpx; }
 .hero-body { margin-top: 24rpx; display: flex; align-items: center; gap: 22rpx; position: relative; z-index: 1; }
 .avatar-shell { width: 150rpx; height: 150rpx; border-radius: 42rpx; background: #172116; border: 1px solid rgba(216,161,68,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #d8a144; font-size: 54rpx; font-weight: 900; }
+.avatar-shell--dirty { border: 4rpx solid rgba(47,155,99,.72); box-shadow: 0 0 0 8rpx rgba(47,155,99,.10); }
 .avatar-img { width: 150rpx; height: 150rpx; }
 .identity-block { flex: 1; min-width: 0; }
 .identity-name { color: #172116; font-size: 44rpx; font-weight: 900; word-break: break-all; }
@@ -242,46 +258,40 @@ onShow(loadAccount)
 .vip-head text { display: block; }
 .vip-eyebrow { font-size: 19rpx; font-weight: 900; letter-spacing: 3rpx; opacity: .68; }
 .vip-title { margin-top: 7rpx; font-size: 38rpx; font-weight: 900; }
-.vip-spend { font-size: 22rpx; font-weight: 800; opacity: .88; text-align: right; }
-.vip-progress-track { height: 12rpx; margin-top: 24rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255,255,255,.22); }
-.vip-card--silver .vip-progress-track,.vip-card--gold .vip-progress-track,.vip-card--platinum .vip-progress-track,.vip-card--diamond .vip-progress-track,.vip-card--brilliant .vip-progress-track,.vip-card--elegant .vip-progress-track { background: rgba(23,52,38,.14); }
-.vip-progress-bar { height: 100%; border-radius: 999rpx; background: #f3d79b; transition: width .25s ease; }
-.vip-card--silver .vip-progress-bar,.vip-card--platinum .vip-progress-bar,.vip-card--diamond .vip-progress-bar { background: #1f7c6d; }
-.vip-card--gold .vip-progress-bar,.vip-card--elegant .vip-progress-bar { background: #6a4814; }
-.vip-card--brilliant .vip-progress-bar { background: #61388f; }
-.vip-progress-text { margin-top: 10rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 20rpx; opacity: .82; }
-.vip-benefits { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 22rpx; }
-.vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 800; background: rgba(255,255,255,.14); }
-.vip-card--silver .vip-benefits text,.vip-card--gold .vip-benefits text,.vip-card--platinum .vip-benefits text,.vip-card--diamond .vip-benefits text,.vip-card--brilliant .vip-benefits text,.vip-card--elegant .vip-benefits text { background: rgba(23,52,38,.10); }
+.vip-spend { font-size: 22rpx; font-weight: 900; }
+.vip-progress-track { height: 12rpx; margin-top: 25rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255,255,255,.18); }
+.vip-progress-bar { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#f7dda0,#d8a144); }
+.vip-progress-text { margin-top: 14rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 22rpx; opacity: .82; }
+.vip-benefits { margin-top: 18rpx; display: flex; flex-wrap: wrap; gap: 10rpx; }
+.vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; background: rgba(255,255,255,.12); }
 
-.vip-room-card { margin-bottom: 22rpx; padding: 28rpx; }
-.vip-room-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
+.vip-room-card { margin-top: 0; padding: 28rpx; }
+.vip-room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
 .vip-room-head text { display: block; }
-.vip-room-eyebrow { color: #a87520; font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.vip-room-title { margin-top: 6rpx; color: #172116; font-size: 32rpx; font-weight: 900; }
-.vip-room-state { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; }
-.vip-room-state--locked { color: #7c5a1c; background: #fff5dc; }
-.vip-room-state--pending_configuration { color: #1f6f48; background: #eef8f1; }
-.vip-room-state--disabled { color: #8d4c3b; background: #fff0ea; }
-.vip-room-state--active { color: #fff; background: #1f7c4b; }
-.vip-room-body { margin-top: 22rpx; display: flex; align-items: flex-start; gap: 18rpx; padding: 22rpx; border-radius: 24rpx; background: linear-gradient(180deg,#f7faf4,#f1f6ee); }
-.vip-room-icon { width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 20rpx; color: #fff; font-size: 28rpx; font-weight: 900; background: #2f9b63; }
+.vip-room-eyebrow { color: #a87520; font-size: 21rpx; font-weight: 900; }
+.vip-room-title { margin-top: 6rpx; color: #172116; font-size: 34rpx; font-weight: 900; }
+.vip-room-state { padding: 8rpx 14rpx; border-radius: 999rpx; color: #9a6a16; font-size: 20rpx; font-weight: 900; background: #fff3d4; }
+.vip-room-state--active { color: #1f7c4b; background: #e8f7ec; }
+.vip-room-state--pending_configuration { color: #9a6a16; background: #fff3d4; }
+.vip-room-state--disabled { color: #6e746e; background: #eef0ec; }
+.vip-room-body { margin-top: 20rpx; padding: 20rpx; display: flex; align-items: center; gap: 18rpx; border-radius: 22rpx; background: #f7faf4; }
+.vip-room-icon { width: 74rpx; height: 74rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 30rpx; font-weight: 900; background: linear-gradient(135deg,#4fc083,#1f7c4b); }
 .vip-room-main { flex: 1; min-width: 0; }
-.vip-room-description { display: block; color: #687665; font-size: 22rpx; line-height: 1.55; }
-.vip-room-number-row { margin-top: 16rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.vip-room-number { flex: 1; min-width: 0; color: #172116; font-size: 30rpx; font-weight: 900; word-break: break-all; }
-.vip-room-copy { flex-shrink: 0; padding: 9rpx 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; background: #fff; border: 1rpx solid rgba(31,124,75,.16); }
-.vip-room-threshold { display: block; margin-top: 14rpx; color: #8a6a31; font-size: 21rpx; font-weight: 800; }
+.vip-room-description { display: block; color: #687665; font-size: 23rpx; line-height: 1.5; }
+.vip-room-number-row { margin-top: 10rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
+.vip-room-number { color: #172116; font-size: 29rpx; font-weight: 900; word-break: break-all; }
+.vip-room-copy { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; background: #e8f7ec; }
+.vip-room-threshold { display: block; margin-top: 10rpx; color: #a87520; font-size: 22rpx; font-weight: 900; }
 
-.form-card { padding-bottom: 10rpx; }
-.form-head { display: flex; flex-direction: column; gap: 8rpx; }
-.helper { color: #687665; font-size: 23rpx; }
+.form-card { margin-top: 24rpx; }
+.form-head { align-items: flex-start; }
+.helper { color: #687665; font-size: 22rpx; }
 .form-body { display: flex; flex-direction: column; gap: 22rpx; }
-.field-group { display: flex; flex-direction: column; gap: 14rpx; }
-.field-label { color: #475646; font-size: 25rpx; font-weight: 800; }
-.readonly { padding: 22rpx; border-radius: 24rpx; background: linear-gradient(180deg, #f7faf4, #f2f6ef); border: 1px solid rgba(37,49,35,.06); }
-.field-value { color: #172116; font-size: 30rpx; font-weight: 900; }
-.action-card { display: flex; flex-direction: column; gap: 18rpx; }
-.save-btn { width: 100%; }
-.ghost-btn { width: 100%; height: 90rpx; border-radius: 28rpx; background: #fff; color: #7c4e16; border: 1px solid rgba(199,145,70,.22); font-size: 28rpx; font-weight: 800; }
+.field-label { display: block; margin-bottom: 12rpx; color: #526153; font-size: 24rpx; font-weight: 900; }
+.readonly { padding: 20rpx; border-radius: 22rpx; background: #f7faf4; border: 1rpx solid rgba(39,61,42,.08); }
+.field-value { color: #172116; font-size: 29rpx; font-weight: 900; }
+.action-card { margin-top: 24rpx; padding: 24rpx; }
+.save-btn, .ghost-btn { width: 100%; }
+.ghost-btn { height: 80rpx; margin-top: 14rpx; border-radius: 22rpx; color: #687665; font-size: 27rpx; font-weight: 900; background: #f7faf4; }
+.save-btn::after, .ghost-btn::after, .avatar-shell::after { border: none; }
 </style>
