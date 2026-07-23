@@ -11,6 +11,12 @@
       <view class="current-row"><text>语音介绍</text><text>{{ settings?.player.audio_intro_url ? '已配置' : '未配置' }}</text></view>
     </view>
 
+    <view class="card escort-card" @tap="go('/pages/player/service-management/index')">
+      <view class="escort-icon">服</view>
+      <view class="escort-main"><text class="card-title">我的服务</text><text class="card-sub">从平台共享规格中申请上架、暂停或下架服务</text></view>
+      <view class="escort-status"><text>管理</text><text>›</text></view>
+    </view>
+
     <view class="card escort-card" @tap="go('/pages/player/escort-qualification/index')">
       <view class="escort-icon">护</view>
       <view class="escort-main"><text class="card-title">护航资格</text><text class="card-sub">独立专业资格，申请后由后台审核</text></view>
