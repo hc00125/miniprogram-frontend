@@ -87,6 +87,9 @@ export const api = {
   put<T>(url: string, data?: any) {
     return request<T>('PUT', url, data)
   },
+  patch<T>(url: string, data?: any) {
+    return request<T>('PATCH', url, data)
+  },
   delete<T>(url: string, data?: any) {
     return request<T>('DELETE', url, data)
   }
