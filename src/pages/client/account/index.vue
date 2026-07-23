@@ -6,14 +6,21 @@
         <view class="hero-sub">登录身份与基础资料</view>
       </view>
       <view class="hero-body">
-        <button class="avatar-shell" :class="{ 'avatar-shell--dirty': avatarDirty }" open-type="chooseAvatar" @chooseavatar="chooseAvatar">
+        <button
+          class="avatar-shell"
+          :class="{ 'avatar-shell--dirty': avatarDirty }"
+          :disabled="avatarPicking"
+          @tap="handleAvatarTap"
+        >
           <image v-if="draftAvatar" class="avatar-img" :src="draftAvatar" mode="aspectFill" />
           <text v-else>{{ displayInitial }}</text>
         </button>
         <view class="identity-block">
           <view class="identity-name">{{ draftNickname || '未设置昵称' }}</view>
           <view class="identity-meta">{{ statusText }}</view>
-          <view class="identity-tip">{{ avatarDirty ? '已选择新头像，请点击下方“保存资料”' : '点击头像可重新选择头像' }}</view>
+          <view class="identity-tip">
+            {{ avatarPicking ? '正在打开相册或相机…' : (avatarDirty ? '已选择新头像，请点击下方“保存资料”' : '点击头像可从相册或相机选择图片') }}
+          </view>
         </view>
       </view>
     </view>
@@ -83,6 +90,26 @@
       </button>
       <button class="ghost-btn" @tap="handleLogout">退出登录</button>
     </view>
+
+    <view v-if="privacyDialogVisible" class="privacy-mask">
+      <view class="privacy-dialog">
+        <text class="privacy-title">头像选择授权</text>
+        <text class="privacy-content">
+          为了让你从相册或相机选择并上传账号头像，需要你先阅读并同意{{ privacyContractName }}。头像仅用于个人中心、订单服务阵容和陪玩师资料展示。
+        </text>
+        <text class="privacy-link" @tap="openPrivacyPolicy">查看《隐私政策》</text>
+        <view class="privacy-actions">
+          <button class="privacy-cancel" @tap="closePrivacyDialog">暂不同意</button>
+          <button
+            class="privacy-agree"
+            open-type="agreePrivacyAuthorization"
+            @agreeprivacyauthorization="handlePrivacyAgreed"
+          >
+            同意并继续
+          </button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -92,15 +119,20 @@ import { computed, ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi } from '@/api/client'
 import { getClientProfile, normalizeAvatarUrl, saveClientProfile, shouldUploadAvatarUrl, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { replace } from '@/utils/nav'
+import { go, replace } from '@/utils/nav'
 import { clearPlayerAuth } from '@/utils/storage'
+
+declare const wx: any
 
 const profile = ref<ClientProfile | null>(null)
 const draftNickname = ref('')
 const draftAvatar = ref('')
 const saving = ref(false)
 const avatarDirty = ref(false)
+const avatarPicking = ref(false)
 const initialized = ref(false)
+const privacyDialogVisible = ref(false)
+const privacyContractName = ref('《用户隐私保护指引》')
 
 const statusText = computed(() => {
   const status = profile.value?.player_status || 'none'
@@ -172,15 +204,89 @@ async function loadAccount() {
   }
 }
 
-function chooseAvatar(event: any) {
-  const avatarUrl = String(event?.detail?.avatarUrl || '').trim()
-  if (!avatarUrl) {
-    toast('头像选择失败，请重新选择')
+function openPrivacyPolicy() {
+  go('/pages/legal/privacy/index')
+}
+
+function closePrivacyDialog() {
+  privacyDialogVisible.value = false
+}
+
+function applySelectedAvatar(path: string) {
+  const avatarPath = String(path || '').trim()
+  if (!avatarPath) {
+    toast('没有获取到图片，请重新选择')
     return
   }
-  draftAvatar.value = avatarUrl
+  draftAvatar.value = avatarPath
   avatarDirty.value = true
   toast('已选择新头像，请点击保存资料')
+}
+
+function openAvatarPicker() {
+  if (avatarPicking.value) return
+  if (!uni.canIUse('chooseMedia')) {
+    toast('当前微信版本过低，请升级微信后重新选择头像')
+    return
+  }
+
+  avatarPicking.value = true
+  uni.chooseMedia({
+    count: 1,
+    mediaType: ['image'],
+    sourceType: ['album', 'camera'],
+    success: (result: any) => {
+      applySelectedAvatar(result?.tempFiles?.[0]?.tempFilePath || '')
+    },
+    fail: (error: any) => {
+      const message = String(error?.errMsg || '').trim()
+      console.error('[account-avatar] chooseMedia failed', error)
+      if (/cancel/i.test(message)) return
+      toast(message ? `头像选择失败：${message}` : '头像选择失败，请重试')
+    },
+    complete: () => {
+      avatarPicking.value = false
+    }
+  })
+}
+
+function handleAvatarTap() {
+  if (avatarPicking.value) return
+
+  // #ifdef MP-WEIXIN
+  if (typeof wx !== 'undefined' && typeof wx.getPrivacySetting === 'function') {
+    wx.getPrivacySetting({
+      success: (result: any) => {
+        privacyContractName.value = result?.privacyContractName
+          ? `《${result.privacyContractName}》`
+          : '《用户隐私保护指引》'
+        if (result?.needAuthorization) {
+          privacyDialogVisible.value = true
+          return
+        }
+        openAvatarPicker()
+      },
+      fail: (error: any) => {
+        console.error('[account-avatar] getPrivacySetting failed', error)
+        // 隐私状态读取失败时仍调用媒体选择器，由官方接口返回可见错误，避免点击无反馈。
+        openAvatarPicker()
+      }
+    })
+    return
+  }
+  // #endif
+
+  openAvatarPicker()
+}
+
+function handlePrivacyAgreed(event: any) {
+  const message = String(event?.detail?.errMsg || '')
+  if (message && !/ok/i.test(message)) {
+    toast(`隐私授权失败：${message}`)
+    return
+  }
+  privacyDialogVisible.value = false
+  setTimeout(openAvatarPicker, 0)
 }
 
 async function handleSave() {
@@ -220,7 +326,7 @@ async function handleLogout() {
 }
 
 onShow(async () => {
-  // 微信头像选择器返回页面时也会再次触发 onShow；只在首次进入时同步资料，避免覆盖刚选中的临时头像。
+  // 从相册、相机或隐私政策页返回时也会再次触发 onShow；只在首次进入时同步资料，避免覆盖刚选中的临时头像。
   if (initialized.value || avatarDirty.value) return
   initialized.value = true
   await loadAccount()
@@ -233,7 +339,8 @@ onShow(async () => {
 .hero-tag { color: #a87520; font-size: 22rpx; font-weight: 900; letter-spacing: 4rpx; }
 .hero-sub { margin-top: 8rpx; color: #687665; font-size: 24rpx; }
 .hero-body { margin-top: 24rpx; display: flex; align-items: center; gap: 22rpx; position: relative; z-index: 1; }
-.avatar-shell { width: 150rpx; height: 150rpx; border-radius: 42rpx; background: #172116; border: 1px solid rgba(216,161,68,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #d8a144; font-size: 54rpx; font-weight: 900; }
+.avatar-shell { width: 150rpx; height: 150rpx; padding: 0; border-radius: 42rpx; background: #172116; border: 1px solid rgba(216,161,68,.18); display: flex; align-items: center; justify-content: center; overflow: hidden; color: #d8a144; font-size: 54rpx; font-weight: 900; }
+.avatar-shell[disabled] { opacity: .72; }
 .avatar-shell--dirty { border: 4rpx solid rgba(47,155,99,.72); box-shadow: 0 0 0 8rpx rgba(47,155,99,.10); }
 .avatar-img { width: 150rpx; height: 150rpx; }
 .identity-block { flex: 1; min-width: 0; }
@@ -294,4 +401,15 @@ onShow(async () => {
 .save-btn, .ghost-btn { width: 100%; }
 .ghost-btn { height: 80rpx; margin-top: 14rpx; border-radius: 22rpx; color: #687665; font-size: 27rpx; font-weight: 900; background: #f7faf4; }
 .save-btn::after, .ghost-btn::after, .avatar-shell::after { border: none; }
+
+.privacy-mask { position: fixed; z-index: 9999; left: 0; right: 0; top: 0; bottom: 0; padding: 32rpx; display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: rgba(13,25,17,.56); }
+.privacy-dialog { width: 100%; padding: 34rpx 30rpx 28rpx; box-sizing: border-box; border-radius: 30rpx; background: #fff; box-shadow: 0 24rpx 70rpx rgba(13,25,17,.22); }
+.privacy-title { display: block; color: #172116; font-size: 34rpx; font-weight: 900; text-align: center; }
+.privacy-content { display: block; margin-top: 20rpx; color: #687665; font-size: 24rpx; line-height: 1.7; }
+.privacy-link { display: inline-block; margin-top: 18rpx; color: #1f7c4b; font-size: 23rpx; font-weight: 900; text-decoration: underline; }
+.privacy-actions { margin-top: 28rpx; display: grid; grid-template-columns: 1fr 1.6fr; gap: 14rpx; }
+.privacy-actions button { height: 80rpx; margin: 0; border-radius: 999rpx; font-size: 25rpx; font-weight: 900; }
+.privacy-actions button::after { border: none; }
+.privacy-cancel { color: #687665; background: #f1f3ef; }
+.privacy-agree { color: #fff; background: linear-gradient(135deg,#4fc083,#1f7c4b); }
 </style>
