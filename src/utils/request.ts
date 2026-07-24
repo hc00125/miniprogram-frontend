@@ -35,7 +35,21 @@ function normalizeErrorData(data: any, statusCode: number) {
   if (typeof data === 'string' && /<\/?[a-z][\s\S]*>/i.test(data)) {
     return { statusCode, detail: `请求失败（${statusCode}）` }
   }
+  if (data && typeof data === 'object') return { statusCode, ...data }
   return data || { statusCode }
+}
+
+function handleRoomEntryTimeout(statusCode: number, data: any) {
+  if (statusCode !== 410 || data?.code !== 'ROOM_ENTRY_TIMEOUT_REQUEUED') return false
+  uni.showToast({
+    title: data?.detail || '进入超时，订单已转入公共抢单大厅',
+    icon: 'none',
+    duration: 2600
+  })
+  setTimeout(() => {
+    uni.redirectTo({ url: '/pages/player/grab/index' })
+  }, 900)
+  return true
 }
 
 function request<T>(method: RequestMethod, url: string, data?: any, header: Record<string, string> = {}) {
@@ -55,6 +69,11 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
           resolve(res.data as T)
           return
         }
+        const errorData = normalizeErrorData(res.data, statusCode)
+        if (handleRoomEntryTimeout(statusCode, errorData)) {
+          reject(errorData)
+          return
+        }
         if (statusCode === 401 || statusCode === 403) {
           if (url.startsWith('/player/')) {
             uni.removeStorageSync('token')
@@ -70,7 +89,7 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
             uni.removeStorageSync('player')
           }
         }
-        reject(normalizeErrorData(res.data, statusCode))
+        reject(errorData)
       },
       fail: reject
     })
