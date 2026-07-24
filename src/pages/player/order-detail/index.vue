@@ -24,18 +24,47 @@
         <view class="info-row"><text>主订单金额</text><text class="amount">¥{{ orderInfo.total_amount || orderInfo.total_price_per_hour }}</text></view>
         <view class="info-row"><text>累计服务时长</text><text class="duration">{{ totalBookedHoursText }}</text></view>
         <view v-if="orderInfo.status === '待接单'" class="info-row"><text>等待时间</text><text>{{ waitTime }}</text></view>
-        <view v-if="orderInfo.status === '待支付'" class="info-row"><text>当前阶段</text><text>等待老板付款</text></view>
+        <view v-if="orderInfo.status === '待支付'" class="info-row"><text>当前阶段</text><text>{{ serverConfirming ? '微信支付结果核验中' : '等待老板付款' }}</text></view>
         <view v-if="orderInfo.status === '待开打'" class="info-row"><text>当前阶段</text><text class="duration">老板已付款，可开打</text></view>
         <view v-if="orderInfo.status === '进行中'" class="info-row"><text>已进行</text><text class="duration">{{ duration }}</text></view>
         <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ orderInfo.duration_minutes }} 分钟</text></view>
       </view>
     </view>
 
-    <view v-if="orderInfo && myOrderPlayer" class="club-card room-entry-card" :class="`room-entry-${roomJoinStatus}`">
+    <view v-if="orderInfo?.status === '待支付'" class="club-card payment-wait-card" :class="{ 'payment-wait-card--confirming': serverConfirming }">
+      <view class="club-card__hd">
+        <view>
+          <text class="club-card__title">{{ serverConfirming ? '正在核验老板支付结果' : '等待老板付款' }}</text>
+          <text class="payment-wait-sub">{{ serverConfirming ? '支付入口已关闭，阵容暂时继续保留' : '老板有10分钟完成支付，期间请保持在线' }}</text>
+        </view>
+        <text class="payment-wait-chip">{{ paymentCountdown }}</text>
+      </view>
+      <view v-if="serverConfirming" class="payment-wait-message">
+        <text>系统正在向微信确认是否已经扣款。</text>
+        <text>核验结束前无需进入老板房间，也不会因为等待产生迟到记录。</text>
+      </view>
+      <view v-else class="payment-wait-message">
+        <text>当前阵容已经为老板保留。</text>
+        <text>付款成功后页面会自动变为“待开打”，届时才开始计算进入房间的时间。</text>
+      </view>
+    </view>
+
+    <view v-if="timeoutCancelled" class="club-card payment-release-card">
+      <view class="club-card__hd">
+        <text class="club-card__title">订单已由系统释放</text>
+        <text class="payment-release-chip">不计责任</text>
+      </view>
+      <view class="payment-release-message">
+        <text>老板未在规定时间内完成付款，订单已经自动取消。</text>
+        <text>本次不会计入你的取消、迟到或处罚记录，可以返回大厅继续接单。</text>
+      </view>
+    </view>
+
+    <view v-if="orderInfo && myOrderPlayer && roomEntryVisible" class="club-card room-entry-card" :class="`room-entry-${roomJoinStatus}`">
       <view class="club-card__hd">
         <view>
           <text class="club-card__title">进入老板房间</text>
-          <text class="room-entry-sub">接单后10分钟内进入房间并主动确认</text>
+          <text class="room-entry-sub">老板付款后10分钟内进入房间并主动确认</text>
         </view>
         <text class="room-entry-chip">{{ roomJoinStatusText }}</text>
       </view>
@@ -135,7 +164,8 @@
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.timer_started_at && !orderInfo?.is_paused" class="club-btn club-btn--warn" @tap="handlePause">暂停</button>
       <button v-if="orderInfo?.status === '进行中' && orderInfo?.is_paused" class="club-btn" @tap="handleResume">继续</button>
       <button v-if="orderInfo?.status === '进行中'" class="club-btn" :disabled="completing" @tap="handleComplete">完成</button>
-      <button v-if="orderInfo?.status === '待支付'" class="club-btn club-btn--ghost" @tap="toast('等待老板完成付款')">等待付款</button>
+      <button v-if="orderInfo?.status === '待支付'" class="club-btn club-btn--ghost" @tap="toast(serverConfirming ? '系统正在核验微信支付结果' : '等待老板在倒计时内完成付款')">{{ serverConfirming ? '支付核验中' : '等待付款' }}</button>
+      <button v-if="timeoutCancelled" class="club-btn" @tap="backToRoute('/pages/player/grab/index')">继续接单</button>
     </view>
   </view>
 </template>
@@ -175,12 +205,27 @@ const now = ref(Date.now())
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 let prevPlayerCount = 0
+let previousStatus = ''
 
 const canEditKookRoom = computed(() => Boolean(orderInfo.value && ['待开打', '进行中'].includes(orderInfo.value.status)))
 const renewalCount = computed(() => Number(orderInfo.value?.renewal_count || 0))
 const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid))
 const totalBookedHoursText = computed(() => formatHours(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0))
 const myOrderPlayer = computed(() => (orderInfo.value?.players || []).find((item: any) => Number(item.id) === Number(player.value?.id)) || null)
+const roomEntryVisible = computed(() => Boolean(['待开打', '进行中', '已完成'].includes(orderInfo.value?.status)))
+const paymentPhase = computed(() => String(orderInfo.value?.payment_phase || 'inactive'))
+const serverConfirming = computed(() => orderInfo.value?.status === '待支付' && paymentPhase.value === 'confirming')
+const timeoutCancelled = computed(() => Boolean(
+  orderInfo.value?.status === '已取消'
+  && /10分钟|自动取消|未完成支付/.test(String(orderInfo.value?.cancel_reason || ''))
+))
+const paymentCountdown = computed(() => {
+  const deadline = serverConfirming.value
+    ? orderInfo.value?.payment_confirmation_deadline_at
+    : orderInfo.value?.payment_deadline_at
+  if (!deadline) return '--:--'
+  return formatCountdown(Math.max(0, Math.floor((new Date(deadline).getTime() - now.value) / 1000)))
+})
 const roomJoinStatus = computed(() => String(myOrderPlayer.value?.room_join_status || 'pending'))
 const roomJoinStatusText = computed(() => myOrderPlayer.value?.room_join_status_text || ({
   pending: '等待进入',
@@ -194,10 +239,11 @@ const roomJoinCountdown = computed(() => {
   if (!deadline) return '--:--'
   const seconds = Math.max(0, Math.floor((new Date(deadline).getTime() - now.value) / 1000))
   if (!seconds) return '已超时'
-  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+  return formatCountdown(seconds)
 })
 const canConfirmRoomEntry = computed(() => Boolean(
-  myOrderPlayer.value?.can_confirm_room_join
+  roomEntryVisible.value
+  && myOrderPlayer.value?.can_confirm_room_join
   && !['已完成', '已取消'].includes(orderInfo.value?.status)
   && ['pending', 'overdue'].includes(roomJoinStatus.value)
 ))
@@ -205,6 +251,11 @@ const canConfirmRoomEntry = computed(() => Boolean(
 function formatHours(value: number) {
   const hours = Number(value || 0)
   return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
+}
+
+function formatCountdown(value: number) {
+  const seconds = Math.max(0, Math.floor(Number(value || 0)))
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 }
 
 function statusClass(status: string) {
@@ -249,6 +300,11 @@ async function fetchOrder() {
     const newCount = res.players?.length || 0
     if (newCount > prevPlayerCount && prevPlayerCount > 0) toast('有陪玩就位')
     prevPlayerCount = newCount
+    if (previousStatus === '待支付' && res.status === '待开打') success('老板已付款，可以准备进入房间')
+    if (previousStatus === '待支付' && res.status === '已取消' && /10分钟|自动取消|未完成支付/.test(String(res.cancel_reason || ''))) {
+      toast('老板未完成付款，订单已由系统释放')
+    }
+    previousStatus = res.status
     orderInfo.value = res
     if (!roomFocused.value) roomInput.value = res.kook_room_number || ''
     updateDuration()
@@ -416,7 +472,7 @@ onMounted(async () => {
     return
   }
   player.value = playerInfo
-  fetchOrder()
+  await fetchOrder()
   refreshTimer = setInterval(fetchOrder, 5000)
   durationTimer = setInterval(updateDuration, 1000)
 })
@@ -438,6 +494,22 @@ onUnmounted(stopTimers)
 .amount { color: #a87520; font-weight: 900; }
 .duration { color: #1f7c4b; font-weight: 900; }
 .copyable { color: #1f7c4b; font-weight: 800; }
+.payment-wait-card { border-color: rgba(47,155,99,.18); background: linear-gradient(180deg,#f2faf4,#fff); }
+.payment-wait-card--confirming { border-color: rgba(216,161,68,.28); background: linear-gradient(180deg,#fff8e7,#fff); }
+.payment-wait-card .club-card__hd > view { flex: 1; min-width: 0; }
+.payment-wait-sub { display: block; margin-top: 6rpx; color: #788375; font-size: 21rpx; }
+.payment-wait-chip { flex-shrink: 0; min-width: 112rpx; padding: 9rpx 14rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 28rpx; font-family: monospace; font-weight: 900; text-align: center; background: #e6f6ea; }
+.payment-wait-card--confirming .payment-wait-chip { color: #945f12; background: #fff0c8; }
+.payment-wait-message { padding: 20rpx; border-radius: 20rpx; background: rgba(255,255,255,.82); }
+.payment-wait-message text { display: block; color: #5e6b5c; font-size: 23rpx; line-height: 1.55; }
+.payment-wait-message text:first-child { color: #243624; font-weight: 900; }
+.payment-wait-message text + text { margin-top: 8rpx; }
+.payment-release-card { border-color: rgba(216,161,68,.24); background: linear-gradient(180deg,#fff8e8,#fff); }
+.payment-release-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: #94600f; font-size: 21rpx; font-weight: 900; background: #ffedbf; }
+.payment-release-message { padding: 20rpx; border-radius: 20rpx; background: rgba(255,255,255,.86); }
+.payment-release-message text { display: block; color: #78633d; font-size: 23rpx; line-height: 1.55; }
+.payment-release-message text:first-child { color: #6f4c10; font-weight: 900; }
+.payment-release-message text + text { margin-top: 8rpx; }
 .room-entry-card { border-color: rgba(47,155,99,.18); background: linear-gradient(180deg,#f3faf5,#fff); }
 .room-entry-card .club-card__hd > view { flex: 1; min-width: 0; }
 .room-entry-sub { display: block; margin-top: 6rpx; color: #879083; font-size: 21rpx; }
