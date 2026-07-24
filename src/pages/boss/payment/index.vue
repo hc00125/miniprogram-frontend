@@ -18,6 +18,24 @@
       <view class="secure-tip"><text>盾</text><text>微信官方小程序虚拟支付</text></view>
     </view>
 
+    <view v-if="showPaymentWindow" class="card virtual-pay-card">
+      <view class="virtual-head">
+        <view class="wechat-icon">时</view>
+        <view>
+          <text>{{ isRenewal ? '续单支付窗口' : '服务阵容已为您保留' }}</text>
+          <text>{{ paymentWindowSubtitle }}</text>
+        </view>
+      </view>
+      <view class="virtual-notice">
+        <text></text>
+        <text>{{ paymentWindowNotice }}</text>
+      </view>
+      <view class="info-row total-row">
+        <text>{{ serverConfirming ? '微信核验剩余' : '支付剩余时间' }}</text>
+        <text>{{ paymentCountdownText }}</text>
+      </view>
+    </view>
+
     <view v-if="loadError" class="error-card">
       <view class="error-icon">!</view>
       <view class="error-main">
@@ -86,6 +104,24 @@
       </scroll-view>
     </view>
 
+    <view v-if="serverConfirming && !paymentConfirming" class="card virtual-pay-card">
+      <view class="virtual-head">
+        <view class="wechat-icon">核</view>
+        <view>
+          <text>支付时间已结束</text>
+          <text>系统正在向微信确认最终支付结果</text>
+        </view>
+      </view>
+      <view class="virtual-notice">
+        <text></text>
+        <text>核验期间不能再次发起支付，也不会立即释放陪玩阵容。若微信确认未付款，订单将自动取消。</text>
+      </view>
+      <button class="pay-button" :disabled="confirmationRefreshing" @tap="refreshPaymentStatus(false)">
+        {{ confirmationRefreshing ? '正在核验微信支付...' : '刷新核验结果' }}
+      </button>
+      <text class="pay-help">请勿重复付款。核验通常会在几十秒内完成。</text>
+    </view>
+
     <view v-if="paymentConfirming" class="card virtual-pay-card">
       <view class="virtual-head">
         <view class="wechat-icon">✓</view>
@@ -104,7 +140,14 @@
       <text class="pay-help">可以停留在本页等待，也可以稍后重新进入订单查看；请不要重复付款。</text>
     </view>
 
-    <view v-if="payError" class="pay-error-card">
+    <view v-if="timeoutCancelled" class="card completed-card">
+      <view class="completed-icon">!</view>
+      <text class="completed-title">订单已超时取消</text>
+      <text class="completed-sub">超过10分钟未完成支付，当前陪玩阵容已经释放。本次不会扣款。</text>
+      <button class="progress-button" @tap="goReorder">重新下单</button>
+    </view>
+
+    <view v-if="payError && !serverConfirming && !timeoutCancelled" class="pay-error-card">
       <view class="pay-error-head">
         <view class="error-icon">!</view>
         <view class="error-main">
@@ -118,7 +161,7 @@
       <text class="error-action">{{ payError.action }}</text>
       <view class="error-actions">
         <button class="ghost-button" @tap="copyErrorInfo">复制错误信息</button>
-        <button class="retry-button" :disabled="paying" @tap="payByWechat">{{ paying ? '重试中...' : '重新尝试' }}</button>
+        <button class="retry-button" :disabled="paying || !canStartPayment" @tap="payByWechat">{{ paying ? '重试中...' : '重新尝试' }}</button>
       </view>
     </view>
 
@@ -127,14 +170,14 @@
         <view class="wechat-icon">微</view>
         <view>
           <text>微信虚拟支付</text>
-          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '队伍已就位 · 可付款或取消订单' }}</text>
+          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '阵容已就位 · 请在保留期内付款' }}</text>
         </view>
       </view>
       <view class="virtual-notice">
         <text></text>
         <text>{{ payNotice }}</text>
       </view>
-      <button class="pay-button" :disabled="paying || cancelling" @tap="payByWechat">
+      <button class="pay-button" :disabled="paying || cancelling || !canStartPayment" @tap="payByWechat">
         {{ paying ? '正在拉起虚拟支付...' : `微信虚拟支付 ¥${orderAmount}` }}
       </button>
       <button v-if="isRenewal" class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelRenewalOrder">
@@ -217,12 +260,43 @@ const ratings = ref<Record<number, number>>({})
 const existingRatings = ref<Record<number, OrderRatingRecord>>({})
 const ratingComment = ref('')
 const ratingSubmitting = ref(false)
+const clockNow = ref(Date.now())
+const paymentClockSyncedAt = ref(Date.now())
+const paymentRemainingAtSync = ref(0)
+const confirmationRemainingAtSync = ref(0)
 let confirmationTimer: ReturnType<typeof setTimeout> | null = null
+let clockTimer: ReturnType<typeof setInterval> | null = null
 
 const isPaid = computed(() => Boolean(orderInfo.value?.paid))
 const isRenewal = computed(() => orderInfo.value?.order_type === 'renewal')
 const isCompleted = computed(() => orderInfo.value?.status === '已完成')
-const showPayPanel = computed(() => Boolean(orderInfo.value && orderInfo.value.status === '待支付' && !orderInfo.value.paid && !paymentConfirming.value))
+const timeoutCancelled = computed(() => Boolean(
+  orderInfo.value?.status === '已取消'
+  && /10分钟|自动取消|未完成支付/.test(String(orderInfo.value?.cancel_reason || ''))
+))
+const paymentPhase = computed(() => String(orderInfo.value?.payment_phase || 'inactive'))
+const serverConfirming = computed(() => Boolean(
+  orderInfo.value?.status === '待支付'
+  && !isPaid.value
+  && paymentPhase.value === 'confirming'
+))
+const elapsedSinceSync = computed(() => Math.max(0, Math.floor((clockNow.value - paymentClockSyncedAt.value) / 1000)))
+const paymentRemainingSeconds = computed(() => Math.max(0, paymentRemainingAtSync.value - elapsedSinceSync.value))
+const confirmationRemainingSeconds = computed(() => Math.max(0, confirmationRemainingAtSync.value - elapsedSinceSync.value))
+const canStartPayment = computed(() => Boolean(
+  orderInfo.value?.status === '待支付'
+  && !isPaid.value
+  && paymentPhase.value === 'open'
+  && paymentRemainingSeconds.value > 0
+  && orderInfo.value?.can_start_payment !== false
+))
+const showPaymentWindow = computed(() => Boolean(
+  orderInfo.value?.status === '待支付'
+  && !isPaid.value
+  && ['open', 'confirming'].includes(paymentPhase.value)
+))
+const showPayPanel = computed(() => Boolean(canStartPayment.value && !paymentConfirming.value))
+const shouldPollPaymentStatus = computed(() => paymentConfirming.value || serverConfirming.value)
 const showProgressButton = computed(() => isRenewal.value ? isPaid.value : ['待开打', '进行中'].includes(orderInfo.value?.status))
 const serviceOrderNo = computed(() => isRenewal.value ? orderInfo.value?.parent_order_no : orderNo.value)
 const orderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
@@ -233,7 +307,7 @@ const showRenewalSummary = computed(() => !isRenewal.value && Number(orderInfo.v
 const cumulativePaidAmount = computed(() => money(Number(mainOrderAmount.value) + Number(renewalPaidAmount.value)))
 const amountCardValue = computed(() => isRenewal.value ? orderAmount.value : (isPaid.value ? cumulativePaidAmount.value : orderAmount.value))
 const amountCardLabel = computed(() => {
-  if (paymentConfirming.value) return '微信已付款，待确认'
+  if (paymentConfirming.value || serverConfirming.value) return '微信支付核验中'
   if (!isPaid.value) return '待支付金额'
   if (showRenewalSummary.value) return '累计已支付'
   return '已支付金额'
@@ -249,11 +323,21 @@ const selectedUnratedPlayerIds = computed(() => Object.keys(ratings.value)
   .map(Number)
   .filter(playerId => ratings.value[playerId] > 0 && !existingRatings.value[playerId]))
 const payNotice = computed(() => isRenewal.value
-  ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。付款成功后会自动合并到原订单，陪玩阵容和房间号保持不变。`
-  : '支付前会核对微信道具、规格和订单金额。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
+  ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。请在倒计时结束前完成付款，成功后会自动合并到原订单。`
+  : '当前陪玩阵容仅保留10分钟。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
+const paymentWindowSubtitle = computed(() => serverConfirming.value
+  ? '支付入口已关闭 · 阵容暂不释放'
+  : `请在 ${paymentCountdownText.value} 内完成付款`)
+const paymentWindowNotice = computed(() => serverConfirming.value
+  ? '系统正在核验微信是否已经扣款。确认期间请勿重复支付，阵容会暂时继续保留。'
+  : '倒计时结束后将停止发起新支付，并进入短暂的微信结果核验；确认未付款后订单自动取消。')
+const paymentCountdownText = computed(() => formatCountdown(
+  serverConfirming.value ? confirmationRemainingSeconds.value : paymentRemainingSeconds.value
+))
 const payStatusText = computed(() => {
   if (!orderInfo.value) return '加载中'
-  if (paymentConfirming.value) return '确认中'
+  if (paymentConfirming.value || serverConfirming.value) return '确认中'
+  if (timeoutCancelled.value) return '已超时'
   if (isRenewal.value && orderInfo.value.status === '待支付') return '续单待支付'
   if (isRenewal.value && isPaid.value) return '续单成功'
   if (orderInfo.value.status === '待支付') return '待支付'
@@ -265,8 +349,10 @@ const payStatusText = computed(() => {
 const stripText = computed(() => {
   if (!orderInfo.value) return '订单加载中'
   if (paymentConfirming.value) return '微信已付款，订单确认中'
+  if (serverConfirming.value) return '支付窗口已结束，正在核验微信结果'
+  if (timeoutCancelled.value) return '订单已超时，服务阵容已释放'
   if (isRenewal.value) return isPaid.value ? '续单支付完成' : '续单已创建，请完成付款'
-  if (orderInfo.value.status === '待支付') return '队伍已就位，请付款或取消订单'
+  if (orderInfo.value.status === '待支付') return '队伍已就位，请在保留期内付款'
   if (orderInfo.value.status === '待开打') return '付款成功，等待陪玩开打'
   if (orderInfo.value.status === '进行中') return '付款已完成，服务进行中'
   if (orderInfo.value.status === '已完成') return '订单服务已完成'
@@ -295,11 +381,45 @@ function formatHours(value: number) {
   return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时`
 }
 
+function formatCountdown(value: number) {
+  const seconds = Math.max(0, Math.floor(Number(value || 0)))
+  const minutes = Math.floor(seconds / 60)
+  return `${String(minutes).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
+}
+
 function formatRenewalTime(value?: string | null) {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function syncPaymentClock() {
+  paymentClockSyncedAt.value = Date.now()
+  clockNow.value = paymentClockSyncedAt.value
+  paymentRemainingAtSync.value = Number(orderInfo.value?.payment_remaining_seconds || 0)
+  confirmationRemainingAtSync.value = Number(orderInfo.value?.payment_confirmation_remaining_seconds || 0)
+}
+
+function startClock() {
+  if (clockTimer) return
+  clockTimer = setInterval(() => {
+    const previousPaymentSeconds = paymentRemainingSeconds.value
+    const previousConfirmationSeconds = confirmationRemainingSeconds.value
+    clockNow.value = Date.now()
+    if (
+      (paymentPhase.value === 'open' && previousPaymentSeconds > 0 && paymentRemainingSeconds.value === 0)
+      || (paymentPhase.value === 'confirming' && previousConfirmationSeconds > 0 && confirmationRemainingSeconds.value === 0)
+    ) {
+      void fetchOrder()
+    }
+  }, 1000)
+}
+
+function stopClock() {
+  if (!clockTimer) return
+  clearInterval(clockTimer)
+  clockTimer = null
 }
 
 function isPlayerRated(playerId: number) {
@@ -341,6 +461,7 @@ function classifyPayError(error: any): PayErrorState {
   const code = extractCode(error)
   const text = `${detail} ${error?.errMsg || ''}`.toLowerCase()
 
+  if (/10分钟|支付窗口|核验微信/.test(text)) return { title: '支付窗口已结束', detail, action: '系统正在核验微信结果，请勿再次付款，稍后刷新订单状态。', code }
   if (/未绑定|绑定微信虚拟支付道具|product/.test(text)) return { title: '商品暂不可支付', detail, action: '请联系管理员为当前商品规格绑定正确的微信虚拟道具。', code }
   if (/金额|价格|不一致|price|fee/.test(text)) return { title: '订单金额校验未通过', detail, action: '请确认订单仅包含一个固定价格规格，且没有额外加价或动态计费。', code }
   if (/openid|登录态|session|重新登录|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入订单支付页。', code }
@@ -365,7 +486,7 @@ function clearPendingPaymentState() {
 
 function scheduleConfirmationRefresh() {
   clearConfirmationTimer()
-  if (!paymentConfirming.value) return
+  if (!shouldPollPaymentStatus.value) return
   confirmationTimer = setTimeout(() => { void refreshPaymentStatus(true) }, 2500)
 }
 
@@ -393,12 +514,14 @@ async function fetchOrder() {
   loadError.value = ''
   try {
     orderInfo.value = await getOrder(orderNo.value)
+    syncPaymentClock()
     if (isPaid.value) {
       payError.value = null
       clearPendingPaymentState()
-    } else if (paymentConfirming.value && orderInfo.value?.status !== '待支付') {
+    } else if (orderInfo.value?.status !== '待支付') {
       clearPendingPaymentState()
     }
+    if (shouldPollPaymentStatus.value) scheduleConfirmationRefresh()
     await fetchRatingStatus()
     return true
   } catch (error) {
@@ -418,17 +541,26 @@ async function refreshPaymentStatus(silent = false) {
       if (!silent) success(isRenewal.value ? '续单支付状态已确认' : '支付状态已确认')
       return
     }
+    if (timeoutCancelled.value) {
+      if (!silent) toast('订单已超时取消，服务阵容已释放')
+      return
+    }
     if (!silent) {
-      toast(loaded ? '微信付款已完成，服务器仍在确认中，请勿重复支付' : '订单状态暂时获取失败，系统会继续确认')
+      toast(loaded ? '微信支付结果仍在核验中，请勿重复付款' : '订单状态暂时获取失败，系统会继续确认')
     }
   } finally {
     confirmationRefreshing.value = false
-    if (paymentConfirming.value) scheduleConfirmationRefresh()
+    if (shouldPollPaymentStatus.value) scheduleConfirmationRefresh()
   }
 }
 
 async function payByWechat() {
   if (!orderNo.value || paying.value || cancelling.value || paymentConfirming.value) return
+  if (!canStartPayment.value) {
+    await fetchOrder()
+    toast(serverConfirming.value ? '支付窗口已结束，系统正在核验微信结果' : '当前订单已不能继续支付')
+    return
+  }
   payError.value = null
   paying.value = true
   try {
@@ -459,6 +591,7 @@ async function payByWechat() {
       toast('已取消支付')
     } else {
       payError.value = classifyPayError(error)
+      if (/支付窗口|核验微信/.test(payError.value.detail)) await fetchOrder()
       toast(payError.value.title)
     }
   } finally {
@@ -475,7 +608,6 @@ async function cancelMainOrder() {
 
   cancelling.value = true
   try {
-    // 普通主订单在付款前允许取消；后端负责停止入房倒计时并释放已接单陪玩。
     await cancelOrder(orderNo.value, '老板在支付前主动取消')
     success('订单已取消，服务阵容已释放')
     relaunch('/pages/boss/home/index', { tab: 'home' })
@@ -487,7 +619,7 @@ async function cancelMainOrder() {
 }
 
 async function cancelRenewalOrder() {
-  if (!isRenewal.value || isPaid.value || cancelling.value) return
+  if (!isRenewal.value || isPaid.value || cancelling.value || !canStartPayment.value) return
   if (!(await confirm('取消后本次续单不会增加服务时长，确定取消吗？', '取消续单'))) return
   cancelling.value = true
   try {
@@ -542,15 +674,23 @@ function goProgress() {
   replace('/pages/boss/in-progress/index', { orderNo: serviceOrderNo.value })
 }
 
+function goReorder() {
+  relaunch('/pages/boss/home/index', { tab: 'order' })
+}
+
 onLoad((query) => {
   orderNo.value = String(query?.orderNo || '')
   restorePendingPaymentState()
 })
 onShow(async () => {
+  startClock()
   await fetchOrder()
-  if (paymentConfirming.value) scheduleConfirmationRefresh()
+  if (shouldPollPaymentStatus.value) scheduleConfirmationRefresh()
 })
-onUnload(clearConfirmationTimer)
+onUnload(() => {
+  clearConfirmationTimer()
+  stopClock()
+})
 </script>
 
 <style lang="scss" src="./index.scss" scoped></style>
