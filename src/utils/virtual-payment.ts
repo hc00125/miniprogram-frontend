@@ -28,14 +28,19 @@ export function isVirtualPaymentConfirmationPending(error: any) {
   return Boolean(error?.paymentAccepted) || Number(error?.errCode) === CONFIRMATION_PENDING_ERR_CODE
 }
 
-async function waitForServerConfirmation(paymentNo: string) {
+export interface VirtualPaymentOptions {
+  /** 自定义服务器确认查询（默认查订单虚拟支付；充值等场景可传入自己的查询函数）。 */
+  query?: (no: string) => Promise<any>
+}
+
+async function waitForServerConfirmation(paymentNo: string, query: (no: string) => Promise<any> = queryVirtualPayment) {
   let latest: any = null
   let lastError: unknown = null
 
   for (let index = 0; index < 20; index += 1) {
     try {
-      latest = await queryVirtualPayment(paymentNo)
-      if (latest?.status === 'paid' || latest?.order_status === '已完成') return latest
+      latest = await query(paymentNo)
+      if (latest?.status === 'paid' || latest?.status === 'credited' || latest?.order_status === '已完成') return latest
       if (latest?.status === 'closed' || latest?.status === 'failed') {
         throw new VirtualPaymentConfirmationPendingError(
           paymentNo,
@@ -70,7 +75,7 @@ function getNativeVirtualPaymentApi() {
   return null
 }
 
-export async function requestWechatVirtualPayment(params: MiniPaymentRequest) {
+export async function requestWechatVirtualPayment(params: MiniPaymentRequest, options?: VirtualPaymentOptions) {
   if (!params?.signData || !params?.paySig || !params?.signature || !params?.mode || !params?.payment_no) {
     const missing: string[] = []
     if (!params?.signData) missing.push('signData')
@@ -101,5 +106,5 @@ export async function requestWechatVirtualPayment(params: MiniPaymentRequest) {
     })
   })
 
-  return waitForServerConfirmation(params.payment_no)
+  return waitForServerConfirmation(params.payment_no, options?.query || queryVirtualPayment)
 }

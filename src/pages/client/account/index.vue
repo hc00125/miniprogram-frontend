@@ -46,6 +46,21 @@
       </view>
     </view>
 
+    <view class="club-card wallet-entry-card" @tap="goWallet">
+      <view class="wallet-entry-head">
+        <view>
+          <text class="wallet-entry-eyebrow">钱包余额</text>
+          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>¥</text><text>{{ walletBalance }}</text></view>
+          <view v-else class="wallet-entry-balance wallet-entry-balance--error" @tap.stop="retryWalletOverview"><text>加载失败 · 点击重试</text></view>
+        </view>
+        <view class="wallet-entry-recharge" @tap.stop="goRecharge">充值</view>
+      </view>
+      <view class="wallet-entry-foot">
+        <text>余额可直接支付陪玩订单</text>
+        <text>查看明细 ›</text>
+      </view>
+    </view>
+
     <view class="club-card vip-room-card">
       <view class="vip-room-head">
         <view>
@@ -117,6 +132,7 @@
 import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi } from '@/api/client'
+import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import { getClientProfile, normalizeAvatarUrl, saveClientProfile, shouldUploadAvatarUrl, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
@@ -133,6 +149,9 @@ const avatarPicking = ref(false)
 const initialized = ref(false)
 const privacyDialogVisible = ref(false)
 const privacyContractName = ref('《用户隐私保护指引》')
+const walletOverview = ref<WalletOverview | null>(null)
+// 仅在"从未成功加载过钱包余额"时展示失败态；已有已知余额时拉取失败保留旧值。
+const walletLoadFailed = ref(false)
 
 const statusText = computed(() => {
   const status = profile.value?.player_status || 'none'
@@ -166,6 +185,30 @@ const vipKookRoomDescription = computed(() => {
   if (status === 'disabled') return '房间记录已保留，当前暂不应用到新订单。'
   return '累计钻石达到20,000后解锁，由平台超管统一配置。'
 })
+
+const walletBalance = computed(() => Number(walletOverview.value?.balance || 0).toFixed(2))
+
+async function loadWalletOverview() {
+  try {
+    walletOverview.value = await getWalletOverview()
+    walletLoadFailed.value = false
+  } catch {
+    // 保留已知余额不清空；从未加载成功时钱包卡展示"加载失败/点击重试"而非 ¥0.00。
+    walletLoadFailed.value = walletOverview.value === null
+  }
+}
+
+function retryWalletOverview() {
+  void loadWalletOverview()
+}
+
+function goWallet() {
+  go('/pages/client/wallet/index')
+}
+
+function goRecharge() {
+  go('/pages/client/recharge/index')
+}
 
 function diamond(value: number) {
   const converted = Math.round(Number(value || 0) * 100) / 10
@@ -326,6 +369,8 @@ async function handleLogout() {
 }
 
 onShow(async () => {
+  // 钱包余额每次回到本页都刷新（从充值/钱包页返回时保持最新）。
+  void loadWalletOverview()
   // 从相册、相机或隐私政策页返回时也会再次触发 onShow；只在首次进入时同步资料，避免覆盖刚选中的临时头像。
   if (initialized.value || avatarDirty.value) return
   initialized.value = true
@@ -371,6 +416,18 @@ onShow(async () => {
 .vip-progress-text { margin-top: 14rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 22rpx; opacity: .82; }
 .vip-benefits { margin-top: 18rpx; display: flex; flex-wrap: wrap; gap: 10rpx; }
 .vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; background: rgba(255,255,255,.12); }
+
+.wallet-entry-card { margin-bottom: 24rpx; padding: 28rpx; }
+.wallet-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+.wallet-entry-eyebrow { display: block; color: #a87520; font-size: 21rpx; font-weight: 900; }
+.wallet-entry-balance { margin-top: 8rpx; display: flex; align-items: baseline; gap: 6rpx; color: #172116; }
+.wallet-entry-balance text:first-child { font-size: 26rpx; font-weight: 900; }
+.wallet-entry-balance text:last-child { font-size: 48rpx; line-height: 1; font-weight: 900; }
+.wallet-entry-balance--error text:first-child, .wallet-entry-balance--error text:last-child { font-size: 27rpx; line-height: 1.4; font-weight: 900; color: #a13d35; text-decoration: underline; }
+.wallet-entry-recharge { flex-shrink: 0; padding: 14rpx 34rpx; border-radius: 999rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg, #4fc083, #1f7c4b); box-shadow: 0 10rpx 22rpx rgba(31,124,75,.18); }
+.wallet-entry-foot { margin-top: 20rpx; padding-top: 18rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-top: 1rpx solid rgba(39,61,42,.07); font-size: 22rpx; }
+.wallet-entry-foot text:first-child { color: #687665; }
+.wallet-entry-foot text:last-child { color: #1f7c4b; font-weight: 900; }
 
 .vip-room-card { margin-top: 0; padding: 28rpx; }
 .vip-room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }

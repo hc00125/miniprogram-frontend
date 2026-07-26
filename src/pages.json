@@ -19,6 +19,8 @@
     { "path": "pages/client/account/index", "style": { "navigationBarTitleText": "账号信息" } },
     { "path": "pages/client/settings/index", "style": { "navigationBarTitleText": "设置与权限", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/customer-service/index", "style": { "navigationBarTitleText": "联系客服", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/wallet/index", "style": { "navigationBarTitleText": "我的钱包", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/recharge/index", "style": { "navigationBarTitleText": "余额充值", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/player/apply/index", "style": { "navigationBarTitleText": "申请陪玩师" } },
     { "path": "pages/player/profile-settings/index", "style": { "navigationBarTitleText": "陪玩资料设置", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/player/service-management/index", "style": { "navigationBarTitleText": "我的服务", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },

@@ -10,6 +10,8 @@ export interface MiniPaymentRequest {
   virtual?: boolean
   virtual_env?: number
   product_id?: string
+  /** 后端处于模拟支付模式时返回 true（此时无 signData 等签名字段） */
+  mock?: boolean
   // 兼容旧版支付页的字段
   timeStamp?: string
   nonceStr?: string
@@ -40,6 +42,11 @@ export function queryVirtualPayment(payment_no: string) {
 
 export function queryVirtualPaymentByOrder(order_no: string) {
   return api.post<VirtualPaymentReconcileResult>(`/pay/wechat/virtual/query-order/${order_no}`)
+}
+
+/** 用户主动放弃支付时关闭 'paying' 状态的虚拟支付单，释放余额支付通道；其他状态幂等返回现状。 */
+export function closeVirtualPayment(payment_no: string) {
+  return api.post<{ payment_no: string; status: string }>(`/pay/wechat/virtual/close/${payment_no}`)
 }
 
 /**

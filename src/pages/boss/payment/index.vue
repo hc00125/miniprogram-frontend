@@ -161,24 +161,48 @@
       <text class="error-action">{{ payError.action }}</text>
       <view class="error-actions">
         <button class="ghost-button" @tap="copyErrorInfo">复制错误信息</button>
-        <button class="retry-button" :disabled="paying || !canStartPayment" @tap="payByWechat">{{ paying ? '重试中...' : '重新尝试' }}</button>
+        <button class="retry-button" :disabled="paying || !canStartPayment" @tap="handlePay">{{ paying ? '重试中...' : '重新尝试' }}</button>
       </view>
     </view>
 
     <view v-if="showPayPanel" class="card virtual-pay-card">
       <view class="virtual-head">
-        <view class="wechat-icon">微</view>
+        <view class="wechat-icon">付</view>
         <view>
-          <text>微信虚拟支付</text>
+          <text>选择支付方式</text>
           <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '阵容已就位 · 请在保留期内付款' }}</text>
+        </view>
+      </view>
+      <view class="pay-methods">
+        <view class="pay-method" :class="{ active: payMethod === 'wechat' }" @tap="selectPayMethod('wechat')">
+          <view class="pay-method-icon pay-method-icon--wechat">微</view>
+          <view class="pay-method-main">
+            <text>微信虚拟支付</text>
+            <text>微信官方小程序虚拟支付</text>
+          </view>
+          <view class="pay-method-check" :class="{ checked: payMethod === 'wechat' }">✓</view>
+        </view>
+        <view
+          class="pay-method"
+          :class="{ active: payMethod === 'balance', disabled: !balanceSufficient }"
+          @tap="selectPayMethod('balance')"
+        >
+          <view class="pay-method-icon pay-method-icon--balance">余</view>
+          <view class="pay-method-main">
+            <text>余额支付</text>
+            <text>{{ balanceOptionSub }}</text>
+          </view>
+          <view v-if="walletBalance === null && walletLoadFailed" class="pay-method-tag">余额加载失败</view>
+          <view v-else-if="walletBalance !== null && !balanceSufficient" class="pay-method-tag">余额不足</view>
+          <view v-else class="pay-method-check" :class="{ checked: payMethod === 'balance' }">✓</view>
         </view>
       </view>
       <view class="virtual-notice">
         <text></text>
         <text>{{ payNotice }}</text>
       </view>
-      <button class="pay-button" :disabled="paying || cancelling || !canStartPayment" @tap="payByWechat">
-        {{ paying ? '正在拉起虚拟支付...' : `微信虚拟支付 ¥${orderAmount}` }}
+      <button class="pay-button" :disabled="paying || cancelling || !canStartPayment" @tap="handlePay">
+        {{ payButtonText }}
       </button>
       <button v-if="isRenewal" class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelRenewalOrder">
         {{ cancelling ? '正在取消续单...' : '取消本次续单' }}
@@ -228,7 +252,8 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
-import { createMiniProgramPayment } from '@/api/pay'
+import { closeVirtualPayment, createMiniProgramPayment } from '@/api/pay'
+import { getWalletOverview, payOrderWithBalance } from '@/api/wallet'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { relaunch, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
@@ -253,6 +278,10 @@ const loading = ref(true)
 const loadError = ref('')
 const paying = ref(false)
 const cancelling = ref(false)
+const payMethod = ref<'wechat' | 'balance'>('wechat')
+const walletBalance = ref<string | null>(null)
+// 仅在"从未成功加载过余额"时为 true；已有已知余额时拉取失败保留旧值。
+const walletLoadFailed = ref(false)
 const payError = ref<PayErrorState | null>(null)
 const paymentConfirming = ref(false)
 const confirmationRefreshing = ref(false)
@@ -322,6 +351,15 @@ const allPlayersRated = computed(() => {
 const selectedUnratedPlayerIds = computed(() => Object.keys(ratings.value)
   .map(Number)
   .filter(playerId => ratings.value[playerId] > 0 && !existingRatings.value[playerId]))
+const balanceSufficient = computed(() => walletBalance.value !== null && Number(walletBalance.value) >= Number(orderAmount.value))
+const balanceOptionSub = computed(() => {
+  if (walletBalance.value !== null) return `当前余额 ¥${money(walletBalance.value)}`
+  return walletLoadFailed.value ? '余额加载失败，点击重试' : '余额加载中...'
+})
+const payButtonText = computed(() => {
+  if (paying.value) return payMethod.value === 'balance' ? '正在余额支付...' : '正在拉起虚拟支付...'
+  return payMethod.value === 'balance' ? `余额支付 ¥${orderAmount.value}` : `微信虚拟支付 ¥${orderAmount.value}`
+})
 const payNotice = computed(() => isRenewal.value
   ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。请在倒计时结束前完成付款，成功后会自动合并到原订单。`
   : '当前陪玩阵容仅保留10分钟。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
@@ -563,12 +601,14 @@ async function payByWechat() {
   }
   payError.value = null
   paying.value = true
+  let currentPaymentNo = ''
   try {
     const loginResult: any = await new Promise((resolve, reject) => {
       uni.login({ provider: 'weixin', success: resolve, fail: reject })
     })
     if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
     const payParams = await createMiniProgramPayment(orderNo.value, loginResult.code)
+    currentPaymentNo = payParams.payment_no || ''
     await requestWechatVirtualPayment(payParams)
     await fetchOrder()
     if (!isPaid.value) {
@@ -588,6 +628,13 @@ async function payByWechat() {
         toast('微信付款已完成，订单正在确认，请勿重复支付')
       }
     } else if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
+      // 用户主动取消收银台：fire-and-forget 关闭滞留的 'paying' 支付单，释放余额支付通道。
+      // 失败不阻断（迟到支付由后端兜底防护），仅记录日志。
+      if (currentPaymentNo) {
+        closeVirtualPayment(currentPaymentNo).catch((closeError) => {
+          console.warn('[payment] 取消支付后关闭虚拟支付单失败', currentPaymentNo, closeError)
+        })
+      }
       toast('已取消支付')
     } else {
       payError.value = classifyPayError(error)
@@ -597,6 +644,83 @@ async function payByWechat() {
   } finally {
     paying.value = false
   }
+}
+
+async function loadWalletBalance() {
+  try {
+    const overview = await getWalletOverview()
+    walletBalance.value = overview.balance
+    walletLoadFailed.value = false
+  } catch {
+    // 拉取失败时保留已知余额，不清空；从未加载成功时标记失败（选项置灰并标注）。
+    walletLoadFailed.value = walletBalance.value === null
+  }
+  // 只在拿到真实余额且确认不足时才切回微信支付，并明确提示；加载失败不静默翻转已选方式。
+  if (payMethod.value === 'balance' && walletBalance.value !== null && !balanceSufficient.value) {
+    payMethod.value = 'wechat'
+    toast('钱包余额不足，已切换为微信支付')
+  }
+}
+
+function selectPayMethod(method: 'wechat' | 'balance') {
+  if (paying.value) return
+  if (method === 'balance' && !balanceSufficient.value) {
+    if (walletBalance.value === null && walletLoadFailed.value) {
+      toast('余额加载失败，正在重试')
+      void loadWalletBalance()
+    } else if (walletBalance.value === null) {
+      toast('余额信息加载中，请稍候')
+    } else {
+      toast('余额不足，请先充值或使用微信支付')
+    }
+    return
+  }
+  payMethod.value = method
+}
+
+async function payByBalance() {
+  if (!orderNo.value || paying.value || cancelling.value || paymentConfirming.value) return
+  if (!canStartPayment.value) {
+    await fetchOrder()
+    toast(serverConfirming.value ? '支付窗口已结束，系统正在核验微信结果' : '当前订单已不能继续支付')
+    return
+  }
+  if (!balanceSufficient.value) {
+    payMethod.value = 'wechat'
+    toast('余额不足，请先充值或使用微信支付')
+    return
+  }
+  const ok = await confirm(`确认使用钱包余额支付 ¥${orderAmount.value} 吗？支付后余额立即扣减。`, '余额支付')
+  if (!ok) return
+  payError.value = null
+  paying.value = true
+  try {
+    const result = await payOrderWithBalance(orderNo.value)
+    walletBalance.value = result.balance
+    await fetchOrder()
+    if (!isPaid.value) {
+      // 镜像微信路径的兜底：扣款已成功但订单刷新失败或状态未同步时，进入确认轮询而非直接报成功。
+      enterConfirmationPending(result.payment_no || '')
+      toast('余额已扣款，订单状态正在确认，请稍候')
+      return
+    }
+    success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
+  } catch (error) {
+    // 后端拒绝时原文展示 detail（如"存在进行中的微信支付..."），便于用户理解如何处理。
+    toast(getErrorMessage(error, '余额支付失败，请稍后重试'))
+    void loadWalletBalance()
+    await fetchOrder()
+  } finally {
+    paying.value = false
+  }
+}
+
+function handlePay() {
+  if (payMethod.value === 'balance') {
+    void payByBalance()
+    return
+  }
+  void payByWechat()
 }
 
 async function cancelMainOrder() {
@@ -684,6 +808,7 @@ onLoad((query) => {
 })
 onShow(async () => {
   startClock()
+  void loadWalletBalance()
   await fetchOrder()
   if (shouldPollPaymentStatus.value) scheduleConfirmationRefresh()
 })

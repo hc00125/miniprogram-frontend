@@ -53,6 +53,20 @@
 .virtual-head view:last-child text:first-child { font-size: 30rpx; font-weight: 900; }
 .virtual-head view:last-child text:last-child { margin-top: 6rpx; color: #7d877a; font-size: 22rpx; }
 .wechat-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #16954d); }
+.pay-methods { margin-top: 22rpx; display: flex; flex-direction: column; gap: 14rpx; }
+.pay-method { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; border-radius: 22rpx; background: #f7faf4; border: 3rpx solid rgba(39,61,42,.08); }
+.pay-method.active { background: #eef8f1; border-color: #1f7c4b; }
+.pay-method.disabled { opacity: .62; }
+.pay-method-icon { width: 62rpx; height: 62rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 18rpx; color: #fff; font-size: 26rpx; font-weight: 900; }
+.pay-method-icon--wechat { background: linear-gradient(135deg, #2fbd68, #16954d); }
+.pay-method-icon--balance { background: linear-gradient(135deg, #d8a144, #a87520); }
+.pay-method-main { flex: 1; min-width: 0; }
+.pay-method-main text { display: block; }
+.pay-method-main text:first-child { font-size: 27rpx; font-weight: 900; }
+.pay-method-main text:last-child { margin-top: 5rpx; color: #7d877a; font-size: 21rpx; }
+.pay-method-check { width: 40rpx; height: 40rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: transparent; font-size: 24rpx; font-weight: 900; background: #e4e9e1; }
+.pay-method-check.checked { color: #fff; background: #1f7c4b; }
+.pay-method-tag { flex-shrink: 0; padding: 7rpx 14rpx; border-radius: 999rpx; color: #a13d35; font-size: 20rpx; font-weight: 900; background: #fff0ed; }
 .virtual-notice { display: flex; gap: 12rpx; margin-top: 22rpx; padding: 18rpx; border-radius: 18rpx; color: #78643a; font-size: 22rpx; line-height: 1.5; background: #fff8e8; }
 .virtual-notice text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 11rpx; border-radius: 50%; background: #d8a144; }
 .virtual-notice text:last-child { flex: 1; }
