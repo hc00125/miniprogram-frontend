@@ -38,7 +38,7 @@
           <view class="banner">
             <text>TOUCHI CLUB · {{ activeGameName }}</text>
             <strong>{{ activeCategoryName }}</strong>
-            <small>统一服务标准 · 官方虚拟支付 · 订单全程留痕</small>
+            <small>统一服务标准 · 钻石标价结算 · 订单全程留痕</small>
           </view>
           <view v-if="loading" class="state">加载商品中...</view>
           <view v-else-if="!games.length" class="state">暂无已启用的游戏服务</view>
@@ -47,7 +47,7 @@
           <view v-else class="grid">
             <view v-for="product in filteredProducts" :key="product.id" class="card" @tap="openDetail(product.id)">
               <ProductCover :image="productImage(product)" :title="product.name" :summary="product.description || '平台保障 · 快速匹配 · 服务留痕'" :badge="productBadge(product)" :sold-text="soldText(product)" :theme="productTheme(product)" />
-              <view class="info"><text class="desc">{{ product.description || '精选套餐，平台保障，快速匹配陪玩' }}</text><view class="bottom"><view class="price"><text v-if="product.specs?.length">起</text><b>¥{{ money(productPrice(product)) }}</b><text>{{ product.product_type === 'guarantee' ? '/单' : '/时' }}</text></view><button @tap.stop="openDetail(product.id)">查看</button></view></view>
+              <view class="info"><text class="desc">{{ product.description || '精选套餐，平台保障，快速匹配陪玩' }}</text><view class="bottom"><view class="price"><text v-if="product.specs?.length">起</text><b>💎{{ diamondPrice(product) }}</b><text>{{ product.product_type === 'guarantee' ? '/单' : '/时' }}</text></view><button @tap.stop="openDetail(product.id)">查看</button></view></view>
             </view>
           </view>
         </view>
@@ -64,6 +64,7 @@ import { getPackages, type BossPackage } from '@/api/boss'
 import { getCatalogNavigation, type GameService } from '@/api/catalog'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import ProductCover from '@/components/ProductCover.vue'
+import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 
@@ -112,11 +113,15 @@ function selectGame(game: GameService) {
 
 function productImage(product: BossPackage) { const item = product as BossPackage & Record<string, any>; return item.cover_url || item.image_url || item.thumb_url || item.picture_url || '' }
 function productPrice(product: BossPackage) { const prices = (product.specs || []).map(item => Number(item.price || 0)).filter(value => value >= 0); return prices.length ? Math.min(...prices) : Number(product.base_price || 0) }
+function diamondPrice(product: BossPackage) {
+  const item = product as BossPackage & Record<string, any>
+  const explicit = item.min_price_diamonds ?? item.base_price_diamonds
+  return formatDiamonds(diamondsFrom(explicit, productPrice(product)))
+}
 function soldCount(product: BossPackage) { const item = product as BossPackage & Record<string, any>; return Number(item.sold_count ?? item.sales_count ?? item.sales ?? 0) }
 function soldText(product: BossPackage) { const value = soldCount(product); return value ? `已售${value}` : '新品' }
 function productBadge(product: BossPackage) { if (product.product_type === 'guarantee') return '保底单'; if (product.product_type === 'fun') return '趣味单'; if (product.product_type === 'special') return '特色单'; return product.group_name || '推荐套餐' }
 function productTheme(product: BossPackage) { if (product.product_type === 'guarantee') return 'gold'; if (product.product_type === 'fun') return 'rose'; if (product.product_type === 'special') return 'blue'; return 'green' }
-function money(value: number) { return Number.isInteger(value) ? String(value) : Number(value || 0).toFixed(2) }
 function openDetail(id: number) { go('/pages/shop/detail/index', { packageId: id }) }
 
 function normalizeSelection() {
