@@ -93,7 +93,8 @@
         <view class="record-head">
           <view>
             <text class="record-title">{{ item.package_name || '陪玩服务' }}</text>
-            <text class="record-no">{{ item.order_no }}</text>
+            <text class="record-no">老板：{{ item.boss_name || '未设置昵称' }}</text>
+            <text class="record-no">订单：{{ item.order_no }}</text>
           </view>
           <text class="status-chip" :class="earningStatusClass(item.status_text)">{{ item.status_text }}</text>
         </view>
