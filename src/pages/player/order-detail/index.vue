@@ -17,6 +17,7 @@
         <button class="tiny-link" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
       </view>
       <view class="club-card__bd">
+        <view v-if="orderInfo.boss_name" class="info-row"><text>老板</text><text>{{ orderInfo.boss_name }}</text></view>
         <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name }}</text></view>
         <view v-if="orderInfo.addon_name" class="info-row"><text>附加项</text><text>{{ orderInfo.addon_name }}</text></view>
         <view v-if="orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text class="copyable" @tap="copyText(orderInfo.game_id)">{{ orderInfo.game_id }}</text></view>
