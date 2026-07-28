@@ -1,107 +1,41 @@
 <template>
   <view class="progress-page">
-    <view class="status-bar" :class="{ 'status-bar--replacement': replacementActive }">
-      <view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打', danger: replacementActive }"></view>
-      <view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSub }}</text></view>
-      <text class="live-tag">{{ orderInfo?.status || '加载中' }}</text>
-    </view>
+    <view class="status-bar" :class="{ 'status-bar--replacement': replacementActive }"><view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打', danger: replacementActive }"></view><view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSub }}</text></view><text class="live-tag">{{ orderInfo?.status || '加载中' }}</text></view>
 
-    <view class="hero-card">
-      <text class="hero-eyebrow">SERVICE PROGRESS</text>
-      <text class="hero-title">{{ heroTitle }}</text>
-      <view class="timer-card" :class="{ 'timer-card--replacement': replacementActive }">
-        <text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text>
-        <text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text>
-        <text>{{ durationStatus }}</text>
-      </view>
-      <view class="hero-meta">
-        <view><text>订单号</text><text>{{ orderNo || '加载中' }}</text></view>
-        <view><text>开始时间</text><text>{{ startTimeText }}</text></view>
-      </view>
-    </view>
+    <view class="hero-card"><text class="hero-eyebrow">SERVICE PROGRESS</text><text class="hero-title">{{ heroTitle }}</text><view class="timer-card" :class="{ 'timer-card--replacement': replacementActive }"><text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text><text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text><text>{{ durationStatus }}</text></view><view class="hero-meta"><view><text>订单号</text><text>{{ orderNo || '加载中' }}</text></view><view><text>开始时间</text><text>{{ startTimeText }}</text></view></view></view>
 
-    <view v-if="orderInfo?.paid" class="amount-card">
-      <view><text>累计已支付</text><text><text class="amount-currency">¥</text>{{ totalPaidAmount }}</text><text>主订单 ¥{{ paidAmount }} · 续单 ¥{{ renewalPaidAmount }}</text></view>
-      <view class="shield">盾</view>
-    </view>
+    <view v-if="orderInfo?.paid" class="amount-card"><view><text>累计已支付钻石</text><text><text class="amount-currency">💎</text>{{ diamond(totalPaidDiamonds) }}</text><text>主订单 💎{{ diamond(paidDiamonds) }} · 续单 💎{{ diamond(renewalPaidDiamonds) }}</text></view><view class="shield">钻</view></view>
 
     <OrderReplacementCard :order-no="orderNo" :replacement="orderInfo?.replacement" @updated="checkOrder" />
 
     <view v-if="orderInfo && canShowRenewal" class="card renewal-card">
-      <view class="card-head">
-        <view><text class="card-title">继续续单</text><text class="card-sub">保持原陪玩阵容、商品规格和 KOOK 房间</text></view>
-        <text class="renewal-count">已续 {{ orderInfo.renewal_count || 0 }} 次</text>
-      </view>
-      <view class="renewal-summary">
-        <view><text>原服务</text><text>{{ originalHoursText }}</text></view>
-        <view><text>已续时长</text><text>{{ renewalHoursText }}</text></view>
-        <view><text>累计时长</text><text>{{ totalHoursText }}</text></view>
-      </view>
-      <view v-if="orderInfo.pending_renewal_order_no" class="pending-renewal">
-        <view><text>存在待支付续单</text><text>{{ orderInfo.pending_renewal_order_no }}</text></view>
-        <button class="continue-pay-btn" @tap="continueRenewalPayment">继续支付</button>
-      </view>
+      <view class="card-head"><view><text class="card-title">继续续单</text><text class="card-sub">保持原陪玩阵容、商品规格和 KOOK 房间</text></view><text class="renewal-count">已续 {{ orderInfo.renewal_count || 0 }} 次</text></view>
+      <view class="renewal-summary"><view><text>原服务</text><text>{{ originalHoursText }}</text></view><view><text>已续时长</text><text>{{ renewalHoursText }}</text></view><view><text>累计时长</text><text>{{ totalHoursText }}</text></view></view>
+      <view v-if="orderInfo.pending_renewal_order_no" class="pending-renewal"><view><text>存在待支付续单</text><text>{{ orderInfo.pending_renewal_order_no }}</text></view><button class="continue-pay-btn" @tap="continueRenewalPayment">继续支付</button></view>
       <template v-else>
         <text class="renewal-label">选择续单份数</text>
-        <view class="unit-options">
-          <view v-for="unit in renewalOptions" :key="unit" class="unit-option" :class="{ active: renewalUnits === unit }" @tap="renewalUnits = unit"><text>{{ unit }}份</text><text>+{{ formatHours(baseHours * unit) }}</text></view>
-        </view>
-        <view class="renewal-price-row">
-          <view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view>
-          <view><text>续单金额</text><text>¥{{ renewalAmount }}</text></view>
-        </view>
-        <button class="renewal-btn" :disabled="renewing || !orderInfo.can_renew" @tap="handleRenewal">{{ renewing ? '正在创建续单...' : `立即续单 ¥${renewalAmount}` }}</button>
-        <text class="renewal-tip">{{ orderInfo.can_renew ? '续单会生成独立支付订单，付款成功后时长自动计入本订单。' : '当前订单暂不能创建新续单，请刷新状态或先处理待支付续单。' }}</text>
+        <view class="unit-options"><view v-for="unit in renewalOptions" :key="unit" class="unit-option" :class="{ active: renewalUnits === unit }" @tap="renewalUnits = unit"><text>{{ unit }}份</text><text>+{{ formatHours(baseHours * unit) }}</text></view></view>
+        <view class="renewal-price-row"><view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view><view><text>续单钻石</text><text>💎{{ diamond(renewalDiamonds) }}</text></view></view>
+        <button class="renewal-btn" :disabled="renewing || !orderInfo.can_renew" @tap="handleRenewal">{{ renewing ? '正在创建续单...' : `立即续单 💎${diamond(renewalDiamonds)}` }}</button>
+        <text class="renewal-tip">{{ orderInfo.can_renew ? '续单会生成独立支付订单，可使用已有钻石或微信即时支付；成功后时长自动计入本订单。' : '当前订单暂不能创建新续单，请刷新状态或先处理待支付续单。' }}</text>
       </template>
-      <view v-if="paidRenewals.length" class="renewal-history">
-        <text class="renewal-history-title">续单记录</text>
-        <view v-for="item in paidRenewals" :key="item.order_no" class="renewal-history-row"><text>第{{ item.renewal_index }}次 · +{{ formatHours(Number(item.booked_hours || 0)) }}</text><text>¥{{ Number(item.total_amount || 0).toFixed(2) }} · {{ item.status }}</text></view>
-      </view>
+      <view v-if="paidRenewals.length" class="renewal-history"><text class="renewal-history-title">续单记录</text><view v-for="item in paidRenewals" :key="item.order_no" class="renewal-history-row"><text>第{{ item.renewal_index }}次 · +{{ formatHours(Number(item.booked_hours || 0)) }}</text><text>💎{{ renewalItemDiamonds(item) }} · {{ item.status }}</text></view></view>
     </view>
 
     <view v-if="orderInfo" class="card">
-      <view class="card-head">
-        <view><text class="card-title">服务阵容与入房状态</text><text class="card-sub">陪玩接单后需在10分钟内进入老板房间并确认</text></view>
-        <button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
-      </view>
-      <scroll-view scroll-x class="player-track" show-scrollbar="false">
-        <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
-          <image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" />
-          <view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view>
-          <view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text class="entry-text" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text></view>
-        </view>
-        <view v-for="slot in missingSlots" :key="`missing-${slot}`" class="player-card player-card--missing"><view class="player-avatar player-avatar--empty">+</view><view class="player-main"><text>补位中</text><text>{{ replacementActive ? '等待新陪玩' : '等待接单' }}</text></view></view>
-      </scroll-view>
+      <view class="card-head"><view><text class="card-title">服务阵容与入房状态</text><text class="card-sub">陪玩接单后需在10分钟内进入老板房间并确认</text></view><button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button></view>
+      <scroll-view scroll-x class="player-track" show-scrollbar="false"><view v-for="player in orderInfo.players" :key="player.id" class="player-card"><image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" /><view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view><view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text class="entry-text" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text></view></view><view v-for="slot in missingSlots" :key="`missing-${slot}`" class="player-card player-card--missing"><view class="player-avatar player-avatar--empty">+</view><view class="player-main"><text>补位中</text><text>{{ replacementActive ? '等待新陪玩' : '等待接单' }}</text></view></view></scroll-view>
       <view v-if="overduePlayers.length" class="entry-alert"><text>{{ overduePlayers.length }}位陪玩存在入房超时记录</text><text>该记录由管理员结合实际情况核实。</text></view>
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
       <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">房间号和游戏ID分开显示</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
-      <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view>
-      <view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view>
-      <view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view>
-      <view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view>
-      <view class="info-row"><text>原预订时长</text><text>{{ originalHoursText }}</text></view>
-      <view class="info-row"><text>累计服务时长</text><text>{{ totalHoursText }}</text></view>
-      <view class="info-row"><text>主订单金额</text><text>¥{{ paidAmount }}</text></view>
+      <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view><view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view><view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view><view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view><view class="info-row"><text>原预订时长</text><text>{{ originalHoursText }}</text></view><view class="info-row"><text>累计服务时长</text><text>{{ totalHoursText }}</text></view><view class="info-row"><text>主订单钻石</text><text>💎{{ diamond(paidDiamonds) }}</text></view>
     </view>
 
-    <view v-if="orderInfo" class="card flow-card">
-      <text class="card-title standalone-title">订单流程</text>
-      <view class="flow-list">
-        <view class="flow-item done"><text>✓</text><view><text>1. 派单</text><text>订单已发布到抢单大厅</text></view></view>
-        <view class="flow-item" :class="stepClass('接单')"><text>{{ stepIcon('接单', '2') }}</text><view><text>2. 接单</text><text>{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }} 位陪玩已就位</text></view></view>
-        <view class="flow-item" :class="stepClass('付款')"><text>{{ stepIcon('付款', '3') }}</text><view><text>3. 付款</text><text>{{ orderInfo.paid ? `已支付 ¥${paidAmount}` : '等待老板付款' }}</text></view></view>
-        <view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ replacementActive ? '陪玩退出，正在处理补位' : orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view>
-        <view class="flow-item" :class="stepClass('完成')"><text>{{ stepIcon('完成', '5') }}</text><view><text>5. 完成</text><text>{{ orderInfo.status === '已完成' ? '服务已完成' : '服务结束后完成订单' }}</text></view></view>
-      </view>
-    </view>
+    <view v-if="orderInfo" class="card flow-card"><text class="card-title standalone-title">订单流程</text><view class="flow-list"><view class="flow-item done"><text>✓</text><view><text>1. 派单</text><text>订单已发布到抢单大厅</text></view></view><view class="flow-item" :class="stepClass('接单')"><text>{{ stepIcon('接单', '2') }}</text><view><text>2. 接单</text><text>{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }} 位陪玩已就位</text></view></view><view class="flow-item" :class="stepClass('付款')"><text>{{ stepIcon('付款', '3') }}</text><view><text>3. 钻石支付</text><text>{{ orderInfo.paid ? `已支付 💎${diamond(paidDiamonds)}` : '等待老板付款' }}</text></view></view><view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ replacementActive ? '陪玩退出，正在处理补位' : orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view><view class="flow-item" :class="stepClass('完成')"><text>{{ stepIcon('完成', '5') }}</text><view><text>5. 完成</text><text>{{ orderInfo.status === '已完成' ? '服务已完成' : '服务结束后完成订单' }}</text></view></view></view></view>
 
-    <view class="footer-actions">
-      <button class="ghost-btn" @tap="goMain('home')">返回首页</button>
-      <button class="primary-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button>
-      <button v-if="orderInfo?.status === '待支付'" class="primary-btn wide" @tap="goPayment">去付款 ¥{{ paidAmount }}</button>
-    </view>
+    <view class="footer-actions"><button class="ghost-btn" @tap="goMain('home')">返回首页</button><button class="primary-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button><button v-if="orderInfo?.status === '待支付'" class="primary-btn wide" @tap="goPayment">去支付 💎{{ diamond(paidDiamonds) }}</button></view>
   </view>
 </template>
 
@@ -110,6 +44,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import OrderReplacementCard from '@/components/OrderReplacementCard.vue'
 import { createRenewal, getOrder } from '@/api/boss'
+import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { formatDateTime as formatDateTimeValue, formatDuration } from '@/utils/format'
 import { replace, relaunch } from '@/utils/nav'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -129,10 +64,10 @@ const replacementActive = computed(() => Boolean(orderInfo.value?.replacement?.a
 const missingSlots = computed(() => Array.from({ length: Math.max(0, Number(orderInfo.value?.required_players || 0) - Number(orderInfo.value?.players?.length || 0)) }, (_, index) => index))
 const startTimeText = computed(() => formatOrderTime(orderInfo.value?.start_time))
 const baseHours = computed(() => Math.max(.5, Number(orderInfo.value?.booked_hours || 1)))
-const paidAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
-const renewalPaidAmount = computed(() => Number(orderInfo.value?.renewal_paid_amount || 0).toFixed(2))
-const totalPaidAmount = computed(() => (Number(paidAmount.value) + Number(renewalPaidAmount.value)).toFixed(2))
-const renewalAmount = computed(() => (Number(paidAmount.value) * renewalUnits.value).toFixed(2))
+const paidDiamonds = computed(() => orderInfo.value ? diamondsFrom(orderInfo.value.total_amount_diamonds ?? orderInfo.value.total_price_per_hour_diamonds, orderInfo.value.total_amount || orderInfo.value.total_price_per_hour || 0) : 0)
+const renewalPaidDiamonds = computed(() => orderInfo.value ? diamondsFrom(orderInfo.value.renewal_paid_amount_diamonds, orderInfo.value.renewal_paid_amount || 0) : 0)
+const totalPaidDiamonds = computed(() => paidDiamonds.value + renewalPaidDiamonds.value)
+const renewalDiamonds = computed(() => paidDiamonds.value * renewalUnits.value)
 const originalHoursText = computed(() => formatHours(Number(orderInfo.value?.booked_hours || 0)))
 const renewalHoursText = computed(() => formatHours(Number(orderInfo.value?.renewal_booked_hours || 0)))
 const totalHoursText = computed(() => formatHours(Number(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0)))
@@ -144,6 +79,8 @@ const statusSub = computed(() => replacementActive.value ? (orderInfo.value?.rep
 const heroTitle = computed(() => replacementActive.value ? '原订单保留，等待补齐阵容' : orderInfo.value?.status === '待开打' ? '队伍已就位，准备开打' : '服务进行中')
 const durationStatus = computed(() => replacementActive.value ? '补位处理中' : orderInfo.value?.status === '待开打' ? '已付款 · 等待陪玩操作' : orderInfo.value?.is_paused ? '已暂停' : orderInfo.value?.timer_started_at ? '服务中' : '等待开始')
 
+function diamond(value: unknown) { try { return formatDiamonds(value ?? 0) } catch { return '--' } }
+function renewalItemDiamonds(item: any) { try { return formatDiamonds(diamondsFrom(item.total_amount_diamonds, item.total_amount || 0)) } catch { return '--' } }
 function formatOrderTime(value?: string) { return value ? formatDateTimeValue(value) : '待确认' }
 function formatHours(value: number) { const hours = Number(value || 0); return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时` }
 function playerRoomText(player: any) { const status = player.room_join_status || 'pending'; if (status === 'confirmed') return '已进入房间'; if (status === 'late_confirmed') return '超时后已进入'; if (status === 'overdue') return '进入房间已超时'; if (status === 'waived') return '管理员已免除'; if (!player.room_join_deadline) return '等待进入房间'; const seconds = Math.max(0, Math.floor((new Date(player.room_join_deadline).getTime() - now.value) / 1000)); return seconds ? `入房 ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` : '进入房间已超时' }
@@ -152,22 +89,9 @@ function stepRank(status: string) { return ({ '待接单': 1, '待支付': 2, '�
 function targetRank(step: string) { return ({ '接单': 2, '付款': 3, '开打': 4, '完成': 5 } as Record<string, number>)[step] || 0 }
 function stepClass(step: string) { const current = stepRank(orderInfo.value?.status); const target = targetRank(step); if (current > target || (step === '完成' && current === 5)) return 'done'; if (current === target || (step === '接单' && current === 1)) return 'active'; return '' }
 function stepIcon(step: string, fallback: string) { return stepClass(step) === 'done' ? '✓' : fallback }
-
-async function checkOrder() {
-  if (!orderNo.value) return false
-  try {
-    const res = await getOrder(orderNo.value)
-    orderInfo.value = res
-    updateDuration()
-    if (res.status === '待支付') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
-    else if (res.status === '待接单' && res.replacement?.active) { stopTimers(); replace('/pages/boss/waiting/index', { orderNo: orderNo.value }) }
-    else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
-    else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') }
-    return true
-  } catch (error) { toast(getErrorMessage(error, '订单刷新失败')); return false }
-}
+async function checkOrder() { if (!orderNo.value) return false; try { const res = await getOrder(orderNo.value); orderInfo.value = res; updateDuration(); if (res.status === '待支付') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) } else if (res.status === '待接单' && res.replacement?.active) { stopTimers(); replace('/pages/boss/waiting/index', { orderNo: orderNo.value }) } else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) } else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') } return true } catch (error) { toast(getErrorMessage(error, '订单刷新失败')); return false } }
 async function handleManualRefresh() { if (refreshing.value) return; refreshing.value = true; try { if (await checkOrder()) success('刷新成功') } finally { refreshing.value = false } }
-async function handleRenewal() { if (!orderInfo.value?.can_renew || renewing.value || replacementActive.value) return; if (!(await confirm(`确认续单${renewalUnits.value}份？\n增加${formatHours(baseHours.value * renewalUnits.value)}，需支付¥${renewalAmount.value}`, '确认续单'))) return; renewing.value = true; try { const result = await createRenewal(orderNo.value, renewalUnits.value); stopTimers(); success(result.created ? '续单已创建' : '已有待支付续单'); replace('/pages/boss/payment/index', { orderNo: result.order_no }) } catch (error) { toast(getErrorMessage(error, '续单创建失败')) } finally { renewing.value = false } }
+async function handleRenewal() { if (!orderInfo.value?.can_renew || renewing.value || replacementActive.value) return; if (!(await confirm(`确认续单${renewalUnits.value}份？\n增加${formatHours(baseHours.value * renewalUnits.value)}，需支付💎${diamond(renewalDiamonds.value)}`, '确认续单'))) return; renewing.value = true; try { const result = await createRenewal(orderNo.value, renewalUnits.value); stopTimers(); success(result.created ? '续单已创建' : '已有待支付续单'); replace('/pages/boss/payment/index', { orderNo: result.order_no }) } catch (error) { toast(getErrorMessage(error, '续单创建失败')) } finally { renewing.value = false } }
 function continueRenewalPayment() { const no = orderInfo.value?.pending_renewal_order_no; if (!no) return; stopTimers(); replace('/pages/boss/payment/index', { orderNo: no }) }
 function copyRoom() { const room = orderInfo.value?.kook_room_number; if (room) uni.setClipboardData({ data: room, success: () => success('KOOK房间号已复制') }) }
 function goPayment() { replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
