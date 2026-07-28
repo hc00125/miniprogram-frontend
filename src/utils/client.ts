@@ -1,4 +1,5 @@
 import { getClientProfileApi, getPlayerApplyStatusApi, submitPlayerApplicationApi } from '@/api/client'
+import { diamondsFrom } from '@/utils/diamonds'
 
 export type PlayerApplyStatus = 'none' | 'pending' | 'approved' | 'rejected'
 
@@ -7,6 +8,7 @@ export interface VipTierInfo {
   code: string
   name: string
   min_consumption: string
+  min_growth_diamonds?: number
   benefits: string[]
   feature_codes: string[]
   badge_color: string
@@ -25,11 +27,21 @@ export interface VipPrivateKookRoom {
 
 export interface VipSnapshot {
   cumulative_consumption: string
+  growth_diamonds?: number
   current_tier: VipTierInfo | null
   next_tier: VipTierInfo | null
   remaining_to_next: string
+  remaining_growth_diamonds?: number
+  diamonds_per_yuan?: number
   progress_percent: number
   private_kook_room?: VipPrivateKookRoom
+}
+
+export interface ClientWalletSnapshot {
+  balance?: string
+  balance_yuan?: string
+  balance_diamonds: number
+  diamonds_per_yuan?: number
 }
 
 export interface ClientProfile {
@@ -45,7 +57,9 @@ export interface ClientProfile {
   role?: string
   player_status: PlayerApplyStatus
   cumulative_consumption?: string | number
+  cumulative_consumption_diamonds?: number
   vip?: VipSnapshot | null
+  wallet?: ClientWalletSnapshot | null
   application?: PlayerApplication | null
   player?: {
     id: number
@@ -110,10 +124,22 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
   const vip = profile.vip
     ? {
         ...profile.vip,
+        growth_diamonds: diamondsFrom(
+          profile.vip.growth_diamonds,
+          profile.vip.cumulative_consumption || profile.cumulative_consumption || 0
+        ),
+        remaining_growth_diamonds: diamondsFrom(
+          profile.vip.remaining_growth_diamonds,
+          profile.vip.remaining_to_next || 0
+        ),
         progress_percent: Math.max(0, Math.min(100, Number(profile.vip.progress_percent || 0))),
         current_tier: profile.vip.current_tier
           ? {
               ...profile.vip.current_tier,
+              min_growth_diamonds: diamondsFrom(
+                profile.vip.current_tier.min_growth_diamonds,
+                profile.vip.current_tier.min_consumption || 0
+              ),
               benefits: profile.vip.current_tier.benefits || [],
               feature_codes: profile.vip.current_tier.feature_codes || []
             }
@@ -121,6 +147,10 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
         next_tier: profile.vip.next_tier
           ? {
               ...profile.vip.next_tier,
+              min_growth_diamonds: diamondsFrom(
+                profile.vip.next_tier.min_growth_diamonds,
+                profile.vip.next_tier.min_consumption || 0
+              ),
               benefits: profile.vip.next_tier.benefits || [],
               feature_codes: profile.vip.next_tier.feature_codes || []
             }
@@ -134,13 +164,27 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
           : undefined
       }
     : null
+  const wallet = profile.wallet
+    ? {
+        ...profile.wallet,
+        balance_diamonds: diamondsFrom(
+          profile.wallet.balance_diamonds,
+          profile.wallet.balance_yuan || profile.wallet.balance || 0
+        )
+      }
+    : null
   return {
     ...profile,
     nickname_customized: Boolean(profile.nickname_customized),
     avatarUrl,
     avatar_url: avatarUrl,
     cumulative_consumption: profile.cumulative_consumption ?? vip?.cumulative_consumption ?? 0,
+    cumulative_consumption_diamonds: diamondsFrom(
+      profile.cumulative_consumption_diamonds ?? vip?.growth_diamonds,
+      profile.cumulative_consumption ?? vip?.cumulative_consumption ?? 0
+    ),
     vip,
+    wallet,
     player: profile.player || null,
     application: profile.application || null
   }
@@ -166,7 +210,9 @@ export function ensureClientProfile() {
     avatar_url: '',
     player_status: 'none',
     cumulative_consumption: 0,
-    vip: null
+    cumulative_consumption_diamonds: 0,
+    vip: null,
+    wallet: null
   }
   saveClientProfile(guest)
   return guest
