@@ -11,11 +11,11 @@
 
     <view v-if="orderInfo" class="amount-card">
       <text class="amount-label">{{ amountCardLabel }}</text>
-      <view class="amount-row"><text>¥</text><text>{{ amountCardValue }}</text></view>
+      <view class="amount-row"><text>💎</text><text>{{ diamond(amountCardValue) }}</text></view>
       <text v-if="showRenewalSummary" class="amount-breakdown">
-        主订单 ¥{{ mainOrderAmount }} · 续单 ¥{{ renewalPaidAmount }}
+        主订单 💎{{ diamond(mainOrderAmount) }} · 续单 💎{{ diamond(renewalPaidAmount) }}
       </text>
-      <view class="secure-tip"><text>盾</text><text>微信官方小程序虚拟支付</text></view>
+      <view class="secure-tip"><text>钻</text><text>平台统一钻石标价 · 人民币1元对应10钻石</text></view>
     </view>
 
     <view v-if="showPaymentWindow" class="card virtual-pay-card">
@@ -61,16 +61,16 @@
 
       <template v-if="isRenewal">
         <view v-if="orderInfo.booked_hours" class="info-row"><text>新增时长</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
-        <view class="info-row total-row"><text>续单金额</text><text>¥{{ orderAmount }}</text></view>
+        <view class="info-row total-row"><text>续单钻石</text><text>💎{{ diamond(orderAmount) }}</text></view>
       </template>
       <template v-else>
         <view v-if="orderInfo.booked_hours" class="info-row"><text>{{ showRenewalSummary ? '原预订时长' : '预订时长' }}</text><text>{{ originalBookedHours }}</text></view>
         <view v-if="showRenewalSummary" class="info-row"><text>续单时长</text><text>{{ renewalBookedHours }}</text></view>
         <view v-if="showRenewalSummary" class="info-row emphasis-row"><text>累计购买时长</text><text>{{ totalBookedHours }}</text></view>
         <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
-        <view v-if="showRenewalSummary" class="info-row"><text>主订单金额</text><text>¥{{ mainOrderAmount }}</text></view>
-        <view v-if="showRenewalSummary" class="info-row"><text>续单金额</text><text>¥{{ renewalPaidAmount }}</text></view>
-        <view class="info-row total-row"><text>{{ showRenewalSummary ? '累计金额' : '订单总额' }}</text><text>¥{{ amountCardValue }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>主订单钻石</text><text>💎{{ diamond(mainOrderAmount) }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>续单钻石</text><text>💎{{ diamond(renewalPaidAmount) }}</text></view>
+        <view class="info-row total-row"><text>{{ showRenewalSummary ? '累计钻石' : '订单钻石' }}</text><text>💎{{ diamond(amountCardValue) }}</text></view>
       </template>
     </view>
 
@@ -83,7 +83,7 @@
         </view>
         <view class="renewal-record-grid">
           <view><text>新增时长</text><text>{{ formatHours(item.booked_hours) }}</text></view>
-          <view><text>支付金额</text><text>¥{{ money(item.total_amount) }}</text></view>
+          <view><text>支付钻石</text><text>💎{{ diamond(diamondsFrom(item.total_amount_diamonds, item.total_amount)) }}</text></view>
           <view><text>支付时间</text><text>{{ formatRenewalTime(item.payment_confirmed_at || item.created_at) }}</text></view>
         </view>
         <view class="renewal-order-no" @tap="copyText(item.order_no)">
@@ -132,7 +132,7 @@
       </view>
       <view class="virtual-notice">
         <text></text>
-        <text>微信收银台已经返回成功。系统会持续向服务器核验支付状态，确认期间不会再次拉起支付。</text>
+        <text>微信收银台已经返回成功。本次购买的等额钻石将直接用于当前订单，不会重复计入可用钻石余额。</text>
       </view>
       <button class="pay-button" :disabled="confirmationRefreshing" @tap="refreshPaymentStatus(false)">
         {{ confirmationRefreshing ? '正在同步订单状态...' : '刷新订单状态' }}
@@ -143,7 +143,7 @@
     <view v-if="timeoutCancelled" class="card completed-card">
       <view class="completed-icon">!</view>
       <text class="completed-title">订单已超时取消</text>
-      <text class="completed-sub">超过10分钟未完成支付，当前陪玩阵容已经释放。本次不会扣款。</text>
+      <text class="completed-sub">超过10分钟未完成支付，当前陪玩阵容已经释放。本次不会扣除钻石。</text>
       <button class="progress-button" @tap="goReorder">重新下单</button>
     </view>
 
@@ -170,15 +170,15 @@
         <view class="wechat-icon">付</view>
         <view>
           <text>选择支付方式</text>
-          <text>{{ isRenewal ? '续单独立付款 · 成功后自动合并时长' : '阵容已就位 · 请在保留期内付款' }}</text>
+          <text>{{ isRenewal ? '续单使用钻石结算 · 成功后自动合并时长' : '平台服务统一以钻石标价和结算' }}</text>
         </view>
       </view>
       <view class="pay-methods">
         <view class="pay-method" :class="{ active: payMethod === 'wechat' }" @tap="selectPayMethod('wechat')">
           <view class="pay-method-icon pay-method-icon--wechat">微</view>
           <view class="pay-method-main">
-            <text>微信虚拟支付</text>
-            <text>微信官方小程序虚拟支付</text>
+            <text>微信即时支付</text>
+            <text>购买本单所需💎{{ diamond(orderAmount) }}并立即用于订单</text>
           </view>
           <view class="pay-method-check" :class="{ checked: payMethod === 'wechat' }">✓</view>
         </view>
@@ -187,13 +187,13 @@
           :class="{ active: payMethod === 'balance', disabled: !balanceSufficient }"
           @tap="selectPayMethod('balance')"
         >
-          <view class="pay-method-icon pay-method-icon--balance">余</view>
+          <view class="pay-method-icon pay-method-icon--balance">钻</view>
           <view class="pay-method-main">
-            <text>余额支付</text>
+            <text>可用钻石支付</text>
             <text>{{ balanceOptionSub }}</text>
           </view>
           <view v-if="walletBalance === null && walletLoadFailed" class="pay-method-tag">余额加载失败</view>
-          <view v-else-if="walletBalance !== null && !balanceSufficient" class="pay-method-tag">余额不足</view>
+          <view v-else-if="walletBalance !== null && !balanceSufficient" class="pay-method-tag">还差💎{{ diamond(balanceShortfall) }}</view>
           <view v-else class="pay-method-check" :class="{ checked: payMethod === 'balance' }">✓</view>
         </view>
       </view>
@@ -210,7 +210,7 @@
       <button v-else class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelMainOrder">
         {{ cancelling ? '正在取消订单...' : '取消订单' }}
       </button>
-      <text class="pay-help">未支付订单可以取消；支付成功后需联系客服按退款流程处理。</text>
+      <text class="pay-help">微信即时支付和已有钻石支付均保留；未支付订单可取消，支付成功后按原渠道退款规则处理。</text>
     </view>
 
     <view v-if="isPaid" class="card completed-card">
@@ -254,6 +254,7 @@ import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
 import { closeVirtualPayment, createMiniProgramPayment } from '@/api/pay'
 import { getWalletOverview, payOrderWithBalance } from '@/api/wallet'
+import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { relaunch, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
@@ -279,8 +280,7 @@ const loadError = ref('')
 const paying = ref(false)
 const cancelling = ref(false)
 const payMethod = ref<'wechat' | 'balance'>('wechat')
-const walletBalance = ref<string | null>(null)
-// 仅在"从未成功加载过余额"时为 true；已有已知余额时拉取失败保留旧值。
+const walletBalance = ref<number | null>(null)
 const walletLoadFailed = ref(false)
 const payError = ref<PayErrorState | null>(null)
 const paymentConfirming = ref(false)
@@ -328,18 +328,27 @@ const showPayPanel = computed(() => Boolean(canStartPayment.value && !paymentCon
 const shouldPollPaymentStatus = computed(() => paymentConfirming.value || serverConfirming.value)
 const showProgressButton = computed(() => isRenewal.value ? isPaid.value : ['待开打', '进行中'].includes(orderInfo.value?.status))
 const serviceOrderNo = computed(() => isRenewal.value ? orderInfo.value?.parent_order_no : orderNo.value)
-const orderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
-const mainOrderAmount = computed(() => money(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0))
-const renewalPaidAmount = computed(() => money(isRenewal.value ? 0 : orderInfo.value?.renewal_paid_amount || 0))
+const orderAmount = computed(() => diamondsFrom(
+  orderInfo.value?.total_amount_diamonds ?? orderInfo.value?.diamond_amount,
+  orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0
+))
+const mainOrderAmount = computed(() => diamondsFrom(
+  orderInfo.value?.total_amount_diamonds,
+  orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0
+))
+const renewalPaidAmount = computed(() => isRenewal.value ? 0 : diamondsFrom(
+  orderInfo.value?.renewal_paid_amount_diamonds,
+  orderInfo.value?.renewal_paid_amount || 0
+))
 const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid && item.status === '已完成'))
-const showRenewalSummary = computed(() => !isRenewal.value && Number(orderInfo.value?.renewal_paid_amount || 0) > 0)
-const cumulativePaidAmount = computed(() => money(Number(mainOrderAmount.value) + Number(renewalPaidAmount.value)))
+const showRenewalSummary = computed(() => renewalPaidAmount.value > 0)
+const cumulativePaidAmount = computed(() => mainOrderAmount.value + renewalPaidAmount.value)
 const amountCardValue = computed(() => isRenewal.value ? orderAmount.value : (isPaid.value ? cumulativePaidAmount.value : orderAmount.value))
 const amountCardLabel = computed(() => {
   if (paymentConfirming.value || serverConfirming.value) return '微信支付核验中'
-  if (!isPaid.value) return '待支付金额'
-  if (showRenewalSummary.value) return '累计已支付'
-  return '已支付金额'
+  if (!isPaid.value) return '待支付钻石'
+  if (showRenewalSummary.value) return '累计已支付钻石'
+  return '已支付钻石'
 })
 const originalBookedHours = computed(() => formatHours(orderInfo.value?.booked_hours || 0))
 const renewalBookedHours = computed(() => formatHours(orderInfo.value?.renewal_booked_hours || 0))
@@ -351,18 +360,26 @@ const allPlayersRated = computed(() => {
 const selectedUnratedPlayerIds = computed(() => Object.keys(ratings.value)
   .map(Number)
   .filter(playerId => ratings.value[playerId] > 0 && !existingRatings.value[playerId]))
-const balanceSufficient = computed(() => walletBalance.value !== null && Number(walletBalance.value) >= Number(orderAmount.value))
+const balanceSufficient = computed(() => walletBalance.value !== null && walletBalance.value >= orderAmount.value)
+const balanceShortfall = computed(() => Math.max(0, orderAmount.value - Number(walletBalance.value || 0)))
 const balanceOptionSub = computed(() => {
-  if (walletBalance.value !== null) return `当前余额 ¥${money(walletBalance.value)}`
-  return walletLoadFailed.value ? '余额加载失败，点击重试' : '余额加载中...'
+  if (walletBalance.value !== null) return `当前可用 💎${diamond(walletBalance.value)} · 支付后 💎${diamond(Math.max(0, walletBalance.value - orderAmount.value))}`
+  return walletLoadFailed.value ? '钻石余额加载失败，点击重试' : '钻石余额加载中...'
 })
 const payButtonText = computed(() => {
-  if (paying.value) return payMethod.value === 'balance' ? '正在余额支付...' : '正在拉起虚拟支付...'
-  return payMethod.value === 'balance' ? `余额支付 ¥${orderAmount.value}` : `微信虚拟支付 ¥${orderAmount.value}`
+  if (paying.value) return payMethod.value === 'balance' ? '正在扣除可用钻石...' : '正在拉起微信支付...'
+  return payMethod.value === 'balance'
+    ? `使用 💎${diamond(orderAmount.value)} 支付`
+    : `微信即时支付 💎${diamond(orderAmount.value)}`
 })
-const payNotice = computed(() => isRenewal.value
-  ? `本次续单增加${formatHours(orderInfo.value?.booked_hours || 0)}。请在倒计时结束前完成付款，成功后会自动合并到原订单。`
-  : '当前陪玩阵容仅保留10分钟。付款成功后订单进入“待开打”；付款前仍可取消并释放当前服务阵容。')
+const payNotice = computed(() => {
+  if (payMethod.value === 'balance') {
+    return isRenewal.value
+      ? `本次续单将从可用钻石扣除💎${diamond(orderAmount.value)}，成功后自动合并到原订单。`
+      : `将从可用钻石扣除💎${diamond(orderAmount.value)}；付款成功后订单进入“待开打”。`
+  }
+  return `微信支付用于购买本单所需的💎${diamond(orderAmount.value)}并立即消费，不会重复增加可用钻石余额。`
+})
 const paymentWindowSubtitle = computed(() => serverConfirming.value
   ? '支付入口已关闭 · 阵容暂不释放'
   : `请在 ${paymentCountdownText.value} 内完成付款`)
@@ -407,11 +424,15 @@ const paidCardSub = computed(() => {
   if (isCompleted.value && showRenewalSummary.value) return `服务已完成，本单累计购买${totalBookedHours.value}，可以对陪玩进行评价`
   if (isCompleted.value) return '服务已完成，可以对陪玩进行评价'
   if (orderInfo.value?.status === '进行中') return '陪玩已开打，订单正在计时'
-  return '微信服务器已确认付款，请等待陪玩填写房间号并开打'
+  return '支付已确认，请等待陪玩填写房间号并开打'
 })
 
-function money(value: number | string | null | undefined) {
-  return Number(value || 0).toFixed(2)
+function diamond(value: unknown) {
+  try {
+    return formatDiamonds(value ?? 0)
+  } catch {
+    return '--'
+  }
 }
 
 function formatHours(value: number) {
@@ -495,18 +516,18 @@ function extractCode(error: any) {
 }
 
 function classifyPayError(error: any): PayErrorState {
-  const detail = getErrorMessage(error, '虚拟支付失败，请稍后重试')
+  const detail = getErrorMessage(error, '支付失败，请稍后重试')
   const code = extractCode(error)
   const text = `${detail} ${error?.errMsg || ''}`.toLowerCase()
 
   if (/10分钟|支付窗口|核验微信/.test(text)) return { title: '支付窗口已结束', detail, action: '系统正在核验微信结果，请勿再次付款，稍后刷新订单状态。', code }
   if (/未绑定|绑定微信虚拟支付道具|product/.test(text)) return { title: '商品暂不可支付', detail, action: '请联系管理员为当前商品规格绑定正确的微信虚拟道具。', code }
-  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '订单金额校验未通过', detail, action: '请确认订单仅包含一个固定价格规格，且没有额外加价或动态计费。', code }
+  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '订单钻石校验未通过', detail, action: '请联系管理员核对商品人民币等值金额与整数钻石价格。', code }
   if (/openid|登录态|session|重新登录|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入订单支付页。', code }
   if (/appkey|offer|配置|configuration/.test(text)) return { title: '支付配置异常', detail, action: '请管理员检查AppKey、OfferID和虚拟支付环境配置。', code }
   if (/尚未审核|道具状态|15010|15011|15013/.test(text)) return { title: '微信道具暂不可用', detail, action: '请确认虚拟道具已发布，并使用正确的小程序版本和支付环境。', code }
   if (Number(error?.statusCode) >= 500 || /内部错误|请求失败（500）/.test(text)) return { title: '支付服务暂时异常', detail, action: '请稍后重试；如持续出现，请把错误编号提供给管理员查询服务器日志。', code }
-  return { title: '虚拟支付未完成', detail, action: '请检查网络后重试；若微信已扣款，请不要重复支付，先刷新订单状态。', code }
+  return { title: '支付未完成', detail, action: '请检查网络后重试；若微信已扣款，请不要重复支付，先刷新订单状态。', code }
 }
 
 function clearConfirmationTimer() {
@@ -628,8 +649,6 @@ async function payByWechat() {
         toast('微信付款已完成，订单正在确认，请勿重复支付')
       }
     } else if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
-      // 用户主动取消收银台：fire-and-forget 关闭滞留的 'paying' 支付单，释放余额支付通道。
-      // 失败不阻断（迟到支付由后端兜底防护），仅记录日志。
       if (currentPaymentNo) {
         closeVirtualPayment(currentPaymentNo).catch((closeError) => {
           console.warn('[payment] 取消支付后关闭虚拟支付单失败', currentPaymentNo, closeError)
@@ -649,16 +668,14 @@ async function payByWechat() {
 async function loadWalletBalance() {
   try {
     const overview = await getWalletOverview()
-    walletBalance.value = overview.balance
+    walletBalance.value = overview.balance_diamonds
     walletLoadFailed.value = false
   } catch {
-    // 拉取失败时保留已知余额，不清空；从未加载成功时标记失败（选项置灰并标注）。
     walletLoadFailed.value = walletBalance.value === null
   }
-  // 只在拿到真实余额且确认不足时才切回微信支付，并明确提示；加载失败不静默翻转已选方式。
   if (payMethod.value === 'balance' && walletBalance.value !== null && !balanceSufficient.value) {
     payMethod.value = 'wechat'
-    toast('钱包余额不足，已切换为微信支付')
+    toast('可用钻石不足，已切换为微信即时支付')
   }
 }
 
@@ -666,12 +683,12 @@ function selectPayMethod(method: 'wechat' | 'balance') {
   if (paying.value) return
   if (method === 'balance' && !balanceSufficient.value) {
     if (walletBalance.value === null && walletLoadFailed.value) {
-      toast('余额加载失败，正在重试')
+      toast('钻石余额加载失败，正在重试')
       void loadWalletBalance()
     } else if (walletBalance.value === null) {
-      toast('余额信息加载中，请稍候')
+      toast('钻石余额加载中，请稍候')
     } else {
-      toast('余额不足，请先充值或使用微信支付')
+      toast(`可用钻石不足，还差💎${diamond(balanceShortfall.value)}；可先充值或使用微信即时支付`)
     }
     return
   }
@@ -687,27 +704,25 @@ async function payByBalance() {
   }
   if (!balanceSufficient.value) {
     payMethod.value = 'wechat'
-    toast('余额不足，请先充值或使用微信支付')
+    toast('可用钻石不足，请先充值或使用微信即时支付')
     return
   }
-  const ok = await confirm(`确认使用钱包余额支付 ¥${orderAmount.value} 吗？支付后余额立即扣减。`, '余额支付')
+  const ok = await confirm(`确认使用💎${diamond(orderAmount.value)}支付吗？支付后可用钻石立即扣减。`, '钻石支付')
   if (!ok) return
   payError.value = null
   paying.value = true
   try {
     const result = await payOrderWithBalance(orderNo.value)
-    walletBalance.value = result.balance
+    walletBalance.value = result.balance_diamonds
     await fetchOrder()
     if (!isPaid.value) {
-      // 镜像微信路径的兜底：扣款已成功但订单刷新失败或状态未同步时，进入确认轮询而非直接报成功。
       enterConfirmationPending(result.payment_no || '')
-      toast('余额已扣款，订单状态正在确认，请稍候')
+      toast('钻石已扣除，订单状态正在确认，请稍候')
       return
     }
     success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
   } catch (error) {
-    // 后端拒绝时原文展示 detail（如"存在进行中的微信支付..."），便于用户理解如何处理。
-    toast(getErrorMessage(error, '余额支付失败，请稍后重试'))
+    toast(getErrorMessage(error, '钻石支付失败，请稍后重试'))
     void loadWalletBalance()
     await fetchOrder()
   } finally {
@@ -727,7 +742,7 @@ async function cancelMainOrder() {
   if (isRenewal.value || isPaid.value || !showPayPanel.value || cancelling.value) return
   const acceptedCount = Number(orderInfo.value?.players?.length || 0)
   const acceptedText = acceptedCount ? `当前已有${acceptedCount}位陪玩接单。` : ''
-  const message = `${acceptedText}取消后订单不会扣款，当前阵容会立即释放。确定取消吗？`
+  const message = `${acceptedText}取消后订单不会扣除钻石，当前阵容会立即释放。确定取消吗？`
   if (!(await confirm(message, '取消订单'))) return
 
   cancelling.value = true
@@ -744,7 +759,7 @@ async function cancelMainOrder() {
 
 async function cancelRenewalOrder() {
   if (!isRenewal.value || isPaid.value || cancelling.value || !canStartPayment.value) return
-  if (!(await confirm('取消后本次续单不会增加服务时长，确定取消吗？', '取消续单'))) return
+  if (!(await confirm('取消后本次续单不会增加服务时长，也不会扣除钻石，确定取消吗？', '取消续单'))) return
   cancelling.value = true
   try {
     await cancelOrder(orderNo.value)
