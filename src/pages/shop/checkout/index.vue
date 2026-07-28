@@ -5,7 +5,7 @@
         <view class="head"><text class="title">购物车结算</text><text class="pill">{{ cartOrderCount }}单</text></view>
         <view v-for="item in cartItems" :key="item.id" class="row player">
           <view class="grow"><text>{{ item.package_name }} · {{ item.spec_display_name || item.spec_name || '默认规格' }}</text><text class="muted">{{ isHourlyItem(item) ? `服务时长 ${itemHours(item)}小时` : '按单购买' }}</text></view>
-          <text class="price">¥{{ money(itemAmount(item)) }}</text>
+          <text class="price">💎{{ diamondAmount(itemAmount(item)) }}</text>
         </view>
       </view>
 
@@ -14,7 +14,7 @@
         <view class="grow">
           <view class="head"><text class="title">{{ product.name }}</text><text class="pill">{{ isTargetedPlayerProduct ? '指定服务' : `需${requiredPlayers}人` }}</text></view>
           <text class="sub">{{ selectedSpec?.name || product.description || '精选陪玩服务' }}</text>
-          <text class="price">¥{{ money(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text>
+          <text class="price">💎{{ diamondAmount(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text>
         </view>
       </view>
 
@@ -24,10 +24,10 @@
       </view>
 
       <view v-if="!isCartCheckout && product && allSpecs.length" class="card">
-        <view class="head"><view><text class="title">选择规格</text><text class="sub">服务规格由平台统一配置，价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
+        <view class="head"><view><text class="title">选择规格</text><text class="sub">服务规格由平台统一配置，钻石价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
         <view class="specs">
           <view v-for="spec in allSpecs" :key="spec.id" class="spec" :class="{ active: selectedSpec?.id === spec.id }" @tap="chooseSpec(spec)">
-            <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><text class="spec-price">¥{{ money(Number(spec.price)) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
+            <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><text class="spec-price">💎{{ specDiamonds(spec) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
           </view>
         </view>
       </view>
@@ -47,11 +47,11 @@
       </view>
 
       <view v-if="hasData" class="card amounts">
-        <text class="title">费用明细</text>
+        <text class="title">钻石明细</text>
         <view v-if="selectedSpec && !isCartCheckout" class="row amount"><text>{{ isTargetedPlayerProduct ? '指定服务规格' : '基础规格' }}</text><text>{{ selectedSpec.name }}</text></view>
-        <view v-if="!isCartCheckout && hourlyCurrent" class="row amount"><text>单小时费用 × {{ effectiveHours }}小时</text><text>¥{{ money(basePrice) }} × {{ effectiveHours }}</text></view>
-        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个订单合计</text><text>¥{{ money(totalAmount) }}</text></view>
-        <view class="row total"><text>预计总额</text><text>¥{{ money(totalAmount) }}</text></view>
+        <view v-if="!isCartCheckout && hourlyCurrent" class="row amount"><text>每小时钻石 × {{ effectiveHours }}小时</text><text>💎{{ diamondAmount(basePrice) }} × {{ effectiveHours }}</text></view>
+        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个订单合计</text><text>💎{{ diamondAmount(totalAmount) }}</text></view>
+        <view class="row total"><text>预计总钻石</text><text>💎{{ diamondAmount(totalAmount) }}</text></view>
       </view>
 
       <view v-if="!hasData" class="empty">{{ loading ? '商品加载中...' : '商品不存在或购物车已变化' }}</view>
@@ -59,7 +59,7 @@
     </view>
 
     <view v-if="hasData && !fieldEditing" class="bottom">
-      <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : isTargetedPlayerProduct ? '支付成功后立即通知陪玩师' : hourlyCurrent ? `${effectiveHours}小时服务` : '预计总额' }}</text><text class="price">¥{{ money(totalAmount) }}</text></view>
+      <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : isTargetedPlayerProduct ? '支付成功后立即通知陪玩师' : hourlyCurrent ? `${effectiveHours}小时服务` : '预计总钻石' }}</text><text class="price">💎{{ diamondAmount(totalAmount) }}</text></view>
       <button class="submit" :disabled="submitting || Boolean(blockReason)" @tap="submit">{{ submitting ? '提交中...' : isTargetedPlayerProduct ? '确认指定并支付' : isCartCheckout ? `发布${cartOrderCount}个订单` : '立即下单' }}</button>
     </view>
   </view>
@@ -72,6 +72,7 @@ import { createOrder, getMyBossOrders, getPackages, getPlayerServiceProducts, ty
 import { createCartOrderBatch } from '@/api/orderBatch'
 import { createSharedListingOrder } from '@/api/serviceListings'
 import { getClientProfile, syncClientProfile, type ClientProfile } from '@/utils/client'
+import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain, replace } from '@/utils/nav'
 import { isHourlyService, MAX_SERVICE_HOURS, normalizeServiceHours } from '@/utils/serviceBilling'
@@ -117,14 +118,22 @@ const blockReason = computed(() => {
 const readyText = computed(() => {
   if (isCartCheckout.value) return `共${cartItems.value.length}项商品，每项生成1个订单；陪玩商品数量代表服务时长。`
   if (isTargetedPlayerProduct.value) return `本单仅邀请${product.value?.owner_player_name || '该陪玩师'}；支付成功后发送微信通知，拒绝或超时将自动退款。`
-  return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，${hourlyCurrent.value ? `${effectiveHours.value}小时` : '按单'}合计¥${money(totalAmount.value)}。` : '可使用微信官方虚拟支付。'
+  return selectedSpec.value ? `已选择“${selectedSpec.value.name}”，${hourlyCurrent.value ? `${effectiveHours.value}小时` : '按单'}合计💎${diamondAmount(totalAmount.value)}。` : '可使用已有钻石或微信即时支付。'
 })
 
 function quantity(value: unknown) { return normalizeServiceHours(value) }
 function isHourlyItem(item: ShopCartItem) { return isHourlyService(item) }
 function itemHours(item: ShopCartItem) { return isHourlyItem(item) ? quantity(item.quantity) : 1 }
 function itemAmount(item: ShopCartItem) { return Number(item.price || 0) * itemHours(item) }
-function money(value: number) { return Number.isInteger(Number(value)) ? `${Number(value)}` : Number(value || 0).toFixed(2) }
+function diamondAmount(yuanValue: number | string) {
+  try { return formatDiamonds(diamondsFrom(undefined, yuanValue)) }
+  catch { return '--' }
+}
+function specDiamonds(spec: BossPackageSpec) {
+  const value = spec as BossPackageSpec & Record<string, any>
+  try { return formatDiamonds(diamondsFrom(value.price_diamonds, spec.price)) }
+  catch { return '--' }
+}
 function bossOpenid(profile: ClientProfile | null = getClientProfile()) { return profile?.openid || profile?.open_id || profile?.wechat_openid || '' }
 async function ensureOpenid() { const local = bossOpenid(); if (local) return local; try { return bossOpenid(await syncClientProfile()) } catch { return '' } }
 function handleFieldFocus() { if (fieldBlurTimer) clearTimeout(fieldBlurTimer); fieldBlurTimer = null; fieldEditing.value = true }
@@ -143,7 +152,7 @@ async function fetchProduct() {
   } catch (error) { toast(getErrorMessage(error, '商品加载失败')) } finally { loading.value = false }
 }
 async function fetchCart() { loading.value = true; try { const ids = new Set(cartItemIds.value); cartItems.value = (await getShopCart()).filter(item => ids.has(String(item.id))) } catch (error) { toast(getErrorMessage(error, '购物车加载失败')) } finally { loading.value = false } }
-function note() { const lines: string[] = []; if (hourlyCurrent.value) lines.push(`预订时长：${effectiveHours.value}小时`); if (selectedSpec.value) lines.push(`规格：${selectedSpec.value.name}，预计总价：¥${money(totalAmount.value)}`); if (form.note.trim()) lines.push(form.note.trim()); return lines.join('\n') || null }
+function note() { const lines: string[] = []; if (hourlyCurrent.value) lines.push(`预订时长：${effectiveHours.value}小时`); if (selectedSpec.value) lines.push(`规格：${selectedSpec.value.name}，预计总价：💎${diamondAmount(totalAmount.value)}`); if (form.note.trim()) lines.push(form.note.trim()); return lines.join('\n') || null }
 function showUnfinished(orders: BossOrderListItem[]) { uni.showModal({ title: '无法下单', content: `您有未完成的订单：\n${orders.slice(0, 5).map(item => `${item.order_no}（${item.status}）`).join('\n')}`, showCancel: false }) }
 
 async function submit() {
