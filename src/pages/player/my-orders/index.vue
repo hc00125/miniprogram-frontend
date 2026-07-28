@@ -67,6 +67,7 @@
               <text class="order-no">{{ order.order_no }}</text>
               <text class="club-status" :class="statusClass(order.status)">{{ order.status }}</text>
             </view>
+            <view class="info-row"><text>老板</text><text>{{ order.boss_name || '未设置昵称' }}</text></view>
             <view class="info-row"><text>套餐</text><text>{{ order.package_name }}</text></view>
             <view v-if="order.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ order.game_id }}</text></view>
             <view class="info-row"><text>价格</text><text class="amount">¥{{ order.total_amount || order.total_price_per_hour }}</text></view>
