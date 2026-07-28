@@ -3,26 +3,26 @@
     <view class="hero-card">
       <view class="hero-top">
         <view>
-          <text class="eyebrow">CLIENT WALLET</text>
-          <text class="hero-title">我的钱包</text>
-          <text class="hero-sub">余额可直接支付陪玩订单，充值实时到账</text>
+          <text class="eyebrow">DIAMOND WALLET</text>
+          <text class="hero-title">我的钻石</text>
+          <text class="hero-sub">可用钻石可直接支付平台商品与服务</text>
         </view>
         <button class="refresh-btn" @tap="reloadAll">刷新</button>
       </view>
       <view class="balance-block">
-        <text>钱包余额</text>
-        <view v-if="!overviewUnavailable"><text class="currency">¥</text><text>{{ money(overview?.balance) }}</text></view>
+        <text>可用钻石</text>
+        <view v-if="!overviewUnavailable"><text class="currency">💎</text><text>{{ diamonds(overview?.balance_diamonds) }}</text></view>
         <view v-else class="balance-error" @tap="reloadAll"><text>加载失败 · 点击重试</text></view>
-        <button class="recharge-btn" @tap="goRecharge">立即充值</button>
+        <button class="recharge-btn" @tap="goRecharge">充值钻石</button>
       </view>
       <view class="total-grid">
-        <view><text>{{ overviewUnavailable ? '--' : `¥${money(overview?.recharged_total)}` }}</text><text>累计充值</text></view>
-        <view><text>{{ overviewUnavailable ? '--' : `¥${money(overview?.spent_total)}` }}</text><text>累计消费</text></view>
+        <view><text>{{ overviewUnavailable ? '--' : `💎${diamonds(overview?.recharged_total_diamonds)}` }}</text><text>累计充值钻石</text></view>
+        <view><text>{{ overviewUnavailable ? '--' : `💎${diamonds(overview?.spent_total_diamonds)}` }}</text><text>累计钻石支付</text></view>
       </view>
     </view>
 
     <view class="section-head">
-      <text>交易明细</text>
+      <text>钻石明细</text>
       <text v-if="totalCount">共{{ totalCount }}笔</text>
     </view>
 
@@ -39,19 +39,19 @@
             </view>
             <view class="record-line sub">
               <text class="record-time">{{ dateTime(item.created_at) }}</text>
-              <text class="record-balance">余额 ¥{{ money(item.balance_after) }}</text>
+              <text class="record-balance">余额 💎{{ diamonds(item.balance_after_diamonds) }}</text>
             </view>
             <text v-if="item.note" class="record-note">{{ item.note }}</text>
           </view>
         </view>
       </view>
 
-      <view v-if="!loading && !transactions.length" class="empty-card">暂无交易记录，充值或消费后会在这里展示。</view>
+      <view v-if="!loading && !transactions.length" class="empty-card">暂无钻石记录，充值或消费后会在这里展示。</view>
       <view v-if="loadingMore" class="list-foot">正在加载更多...</view>
       <view v-else-if="!loading && transactions.length && !hasMore" class="list-foot">已显示全部交易记录</view>
     </view>
 
-    <view v-if="loading" class="loading-state">钱包数据加载中...</view>
+    <view v-if="loading" class="loading-state">钻石钱包加载中...</view>
   </view>
 </template>
 
@@ -64,16 +64,17 @@ import {
   type WalletOverview,
   type WalletTransactionItem
 } from '@/api/wallet'
+import { formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go } from '@/utils/nav'
 
 const PAGE_SIZE = 20
 
 const ENTRY_TYPE_TEXT: Record<string, string> = {
-  recharge: '充值',
+  recharge: '充值到账',
   order_payment: '订单支付',
-  refund_in: '退款入账',
-  admin_adjust: '人工调整'
+  refund_in: '订单退款',
+  admin_adjust: '平台调整'
 }
 
 const overview = ref<WalletOverview | null>(null)
@@ -85,11 +86,15 @@ const loading = ref(true)
 const loadingMore = ref(false)
 
 const hasMore = computed(() => transactions.value.length < totalCount.value)
-/** overview 拉取失败且从未成功加载：余额区展示"加载失败/点击重试"而非 ¥0.00。 */
+/** overview 拉取失败且从未成功加载：余额区展示“加载失败/点击重试”而不是0钻石。 */
 const overviewUnavailable = computed(() => overviewLoadFailed.value && !overview.value)
 
-function money(value: number | string | null | undefined) {
-  return Number(value || 0).toFixed(2)
+function diamonds(value: unknown) {
+  try {
+    return formatDiamonds(value ?? 0)
+  } catch {
+    return '--'
+  }
 }
 
 function entryTypeText(type: string) {
@@ -97,12 +102,12 @@ function entryTypeText(type: string) {
 }
 
 function isIncome(item: WalletTransactionItem) {
-  return Number(item.amount || 0) > 0
+  return Number(item.amount_diamonds || 0) > 0
 }
 
 function amountText(item: WalletTransactionItem) {
-  const value = Number(item.amount || 0)
-  return `${value > 0 ? '+' : ''}${value.toFixed(2)}`
+  const value = Number(item.amount_diamonds || 0)
+  return `${value > 0 ? '+' : ''}💎${diamonds(Math.abs(value))}`
 }
 
 function dateTime(value?: string | null) {
@@ -127,7 +132,6 @@ async function reloadAll() {
       overview.value = overviewResult.value
       overviewLoadFailed.value = false
     } else {
-      // 保留已知余额不清空；从未加载成功时余额区展示重试入口。
       overviewLoadFailed.value = true
     }
     if (transactionResult.status === 'fulfilled') {
@@ -135,7 +139,7 @@ async function reloadAll() {
       totalCount.value = Number(transactionResult.value.count || 0)
       page.value = 1
     } else {
-      toast(getErrorMessage(transactionResult.reason, '钱包数据加载失败'))
+      toast(getErrorMessage(transactionResult.reason, '钻石钱包加载失败'))
     }
   } finally {
     loading.value = false
@@ -148,17 +152,15 @@ async function loadMore() {
   try {
     const nextPage = page.value + 1
     const result = await getWalletTransactions(nextPage, PAGE_SIZE)
-    // 新流水会推移分页 offset，追加页可能包含已展示的记录：按 id 去重，避免重复 key 与重复展示。
     const rawResults = result.results || []
     const existingIds = new Set(transactions.value.map(item => item.id))
     const freshResults = rawResults.filter(item => !existingIds.has(item.id))
     transactions.value = [...transactions.value, ...freshResults]
     totalCount.value = Number(result.count || 0)
     page.value = nextPage
-    // 服务器已无更多数据但本地条数因去重少于 count 时，收敛 hasMore，避免触底后反复空拉。
     if (!rawResults.length) totalCount.value = transactions.value.length
   } catch (error) {
-    toast(getErrorMessage(error, '加载更多交易记录失败'))
+    toast(getErrorMessage(error, '加载更多钻石记录失败'))
   } finally {
     loadingMore.value = false
   }
@@ -189,7 +191,7 @@ onReachBottom(() => {
 .balance-block > view { display: flex; align-items: baseline; gap: 10rpx; margin-top: 8rpx; }
 .balance-block > view text:last-child { font-size: 64rpx; line-height: 1; font-weight: 900; }
 .balance-block > view.balance-error text:last-child { font-size: 30rpx; line-height: 1.4; font-weight: 900; color: rgba(255,255,255,.88); text-decoration: underline; }
-.currency { font-size: 26rpx; font-weight: 900; }
+.currency { font-size: 30rpx; font-weight: 900; }
 .recharge-btn { width: 100%; height: 80rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #1f7c4b; font-size: 27rpx; font-weight: 900; background: #fff; }
 .total-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 18rpx; }
 .total-grid view { padding: 18rpx 12rpx; border-radius: 20rpx; text-align: center; background: rgba(255,255,255,.10); }
