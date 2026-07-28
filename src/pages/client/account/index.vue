@@ -31,13 +31,13 @@
           <text class="vip-eyebrow">TOUCHI VIP</text>
           <text class="vip-title">{{ vipName }}</text>
         </view>
-        <text class="vip-spend">累计钻石 💎{{ diamond(cumulativeConsumption) }}</text>
+        <text class="vip-spend">成长钻石 💎{{ diamond(growthDiamonds) }}</text>
       </view>
       <view class="vip-progress-track">
         <view class="vip-progress-bar" :style="{ width: `${vipProgress}%` }"></view>
       </view>
       <view class="vip-progress-text">
-        <text v-if="nextVipName">距离{{ nextVipName }}还差 💎{{ diamond(vipRemaining) }}</text>
+        <text v-if="nextVipName">距离{{ nextVipName }}还差 💎{{ diamond(vipRemainingDiamonds) }}</text>
         <text v-else>已达到当前最高头衔</text>
         <text>{{ vipProgress }}%</text>
       </view>
@@ -49,14 +49,14 @@
     <view class="club-card wallet-entry-card" @tap="goWallet">
       <view class="wallet-entry-head">
         <view>
-          <text class="wallet-entry-eyebrow">钱包余额</text>
-          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>¥</text><text>{{ walletBalance }}</text></view>
+          <text class="wallet-entry-eyebrow">可用钻石</text>
+          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>💎</text><text>{{ walletBalance }}</text></view>
           <view v-else class="wallet-entry-balance wallet-entry-balance--error" @tap.stop="retryWalletOverview"><text>加载失败 · 点击重试</text></view>
         </view>
-        <view class="wallet-entry-recharge" @tap.stop="goRecharge">充值</view>
+        <view class="wallet-entry-recharge" @tap.stop="goRecharge">充值钻石</view>
       </view>
       <view class="wallet-entry-foot">
-        <text>余额可直接支付陪玩订单</text>
+        <text>可用钻石可直接支付平台商品与服务</text>
         <text>查看明细 ›</text>
       </view>
     </view>
@@ -77,7 +77,7 @@
             <text class="vip-room-number">{{ vipKookRoomNumber }}</text>
             <view class="vip-room-copy" @tap="copyVipKookRoom">复制</view>
           </view>
-          <text v-else class="vip-room-threshold">解锁条件：累计达到 💎20,000</text>
+          <text v-else class="vip-room-threshold">解锁条件：成长钻石达到 💎20,000</text>
         </view>
       </view>
     </view>
@@ -134,6 +134,7 @@ import { computed, ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi } from '@/api/client'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import { getClientProfile, normalizeAvatarUrl, saveClientProfile, shouldUploadAvatarUrl, syncClientProfile, type ClientProfile } from '@/utils/client'
+import { formatDiamonds } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { clearPlayerAuth } from '@/utils/storage'
@@ -150,7 +151,6 @@ const initialized = ref(false)
 const privacyDialogVisible = ref(false)
 const privacyContractName = ref('《用户隐私保护指引》')
 const walletOverview = ref<WalletOverview | null>(null)
-// 仅在"从未成功加载过钱包余额"时展示失败态；已有已知余额时拉取失败保留旧值。
 const walletLoadFailed = ref(false)
 
 const statusText = computed(() => {
@@ -161,11 +161,15 @@ const statusText = computed(() => {
   return '普通用户'
 })
 const displayInitial = computed(() => (draftNickname.value.trim().slice(0, 1) || '微'))
-const cumulativeConsumption = computed(() => Number(profile.value?.vip?.cumulative_consumption ?? profile.value?.cumulative_consumption ?? 0))
+const growthDiamonds = computed(() => Number(
+  profile.value?.vip?.growth_diamonds
+  ?? profile.value?.cumulative_consumption_diamonds
+  ?? 0
+))
 const vipName = computed(() => profile.value?.vip?.current_tier?.name || '鼠鼠')
 const vipTheme = computed(() => profile.value?.vip?.current_tier?.badge_color || 'mouse')
 const vipProgress = computed(() => Math.max(0, Math.min(100, Number(profile.value?.vip?.progress_percent || 0))))
-const vipRemaining = computed(() => Number(profile.value?.vip?.remaining_to_next || 0))
+const vipRemainingDiamonds = computed(() => Number(profile.value?.vip?.remaining_growth_diamonds || 0))
 const nextVipName = computed(() => profile.value?.vip?.next_tier?.name || '')
 const vipBenefits = computed(() => profile.value?.vip?.current_tier?.benefits || [])
 const vipKookRoom = computed(() => profile.value?.vip?.private_kook_room)
@@ -183,17 +187,16 @@ const vipKookRoomDescription = computed(() => {
   if (status === 'active') return '后续创建的新订单会自动使用该专属房间。'
   if (status === 'pending_configuration') return '权益已解锁，等待平台超管填写专属房间号。'
   if (status === 'disabled') return '房间记录已保留，当前暂不应用到新订单。'
-  return '累计钻石达到20,000后解锁，由平台超管统一配置。'
+  return '成长钻石达到20,000后解锁，由平台超管统一配置。'
 })
 
-const walletBalance = computed(() => Number(walletOverview.value?.balance || 0).toFixed(2))
+const walletBalance = computed(() => diamond(walletOverview.value?.balance_diamonds || 0))
 
 async function loadWalletOverview() {
   try {
     walletOverview.value = await getWalletOverview()
     walletLoadFailed.value = false
   } catch {
-    // 保留已知余额不清空；从未加载成功时钱包卡展示"加载失败/点击重试"而非 ¥0.00。
     walletLoadFailed.value = walletOverview.value === null
   }
 }
@@ -210,12 +213,12 @@ function goRecharge() {
   go('/pages/client/recharge/index')
 }
 
-function diamond(value: number) {
-  const converted = Math.round(Number(value || 0) * 100) / 10
-  const fixed = converted.toFixed(1)
-  const [integer, decimal] = fixed.split('.')
-  const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return decimal === '0' ? formatted : `${formatted}.${decimal}`
+function diamond(value: unknown) {
+  try {
+    return formatDiamonds(value ?? 0)
+  } catch {
+    return '--'
+  }
 }
 
 function copyVipKookRoom() {
@@ -311,7 +314,6 @@ function handleAvatarTap() {
       },
       fail: (error: any) => {
         console.error('[account-avatar] getPrivacySetting failed', error)
-        // 隐私状态读取失败时仍调用媒体选择器，由官方接口返回可见错误，避免点击无反馈。
         openAvatarPicker()
       }
     })
@@ -369,9 +371,7 @@ async function handleLogout() {
 }
 
 onShow(async () => {
-  // 钱包余额每次回到本页都刷新（从充值/钱包页返回时保持最新）。
   void loadWalletOverview()
-  // 从相册、相机或隐私政策页返回时也会再次触发 onShow；只在首次进入时同步资料，避免覆盖刚选中的临时头像。
   if (initialized.value || avatarDirty.value) return
   initialized.value = true
   await loadAccount()
@@ -392,7 +392,6 @@ onShow(async () => {
 .identity-name { color: #172116; font-size: 44rpx; font-weight: 900; word-break: break-all; }
 .identity-meta { margin-top: 12rpx; display: inline-flex; padding: 8rpx 18rpx; border-radius: 999rpx; background: rgba(47,155,99,.10); color: #1f7c4b; font-size: 23rpx; }
 .identity-tip { margin-top: 16rpx; color: #687665; font-size: 22rpx; }
-
 .vip-card { margin: 22rpx 0; padding: 28rpx; border-radius: 30rpx; color: #fff; background: linear-gradient(135deg,#173426,#1f7c4b); box-shadow: 0 18rpx 40rpx rgba(23,52,38,.16); }
 .vip-card--mouse { background: linear-gradient(135deg,#59655b,#26372d); }
 .vip-card--bronze { color: #fff8eb; background: linear-gradient(135deg,#8b5a2b,#c68b52); }
@@ -416,7 +415,6 @@ onShow(async () => {
 .vip-progress-text { margin-top: 14rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 22rpx; opacity: .82; }
 .vip-benefits { margin-top: 18rpx; display: flex; flex-wrap: wrap; gap: 10rpx; }
 .vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; background: rgba(255,255,255,.12); }
-
 .wallet-entry-card { margin-bottom: 24rpx; padding: 28rpx; }
 .wallet-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
 .wallet-entry-eyebrow { display: block; color: #a87520; font-size: 21rpx; font-weight: 900; }
@@ -428,7 +426,6 @@ onShow(async () => {
 .wallet-entry-foot { margin-top: 20rpx; padding-top: 18rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-top: 1rpx solid rgba(39,61,42,.07); font-size: 22rpx; }
 .wallet-entry-foot text:first-child { color: #687665; }
 .wallet-entry-foot text:last-child { color: #1f7c4b; font-weight: 900; }
-
 .vip-room-card { margin-top: 0; padding: 28rpx; }
 .vip-room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
 .vip-room-head text { display: block; }
@@ -446,7 +443,6 @@ onShow(async () => {
 .vip-room-number { color: #172116; font-size: 29rpx; font-weight: 900; word-break: break-all; }
 .vip-room-copy { flex-shrink: 0; padding: 8rpx 14rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; background: #e8f7ec; }
 .vip-room-threshold { display: block; margin-top: 10rpx; color: #a87520; font-size: 22rpx; font-weight: 900; }
-
 .form-card { margin-top: 24rpx; }
 .form-head { align-items: flex-start; }
 .helper { color: #687665; font-size: 22rpx; }
@@ -458,7 +454,6 @@ onShow(async () => {
 .save-btn, .ghost-btn { width: 100%; }
 .ghost-btn { height: 80rpx; margin-top: 14rpx; border-radius: 22rpx; color: #687665; font-size: 27rpx; font-weight: 900; background: #f7faf4; }
 .save-btn::after, .ghost-btn::after, .avatar-shell::after { border: none; }
-
 .privacy-mask { position: fixed; z-index: 9999; left: 0; right: 0; top: 0; bottom: 0; padding: 32rpx; display: flex; align-items: center; justify-content: center; box-sizing: border-box; background: rgba(13,25,17,.56); }
 .privacy-dialog { width: 100%; padding: 34rpx 30rpx 28rpx; box-sizing: border-box; border-radius: 30rpx; background: #fff; box-shadow: 0 24rpx 70rpx rgba(13,25,17,.22); }
 .privacy-title { display: block; color: #172116; font-size: 34rpx; font-weight: 900; text-align: center; }
