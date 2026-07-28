@@ -25,6 +25,7 @@ export interface EarningsOverview {
 export interface PlayerEarningItem {
   id: number
   order_no: string
+  boss_name?: string | null
   package_name: string
   gross_amount: number
   commission_rate: number
