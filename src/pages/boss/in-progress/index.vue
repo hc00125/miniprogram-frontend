@@ -1,7 +1,7 @@
 <template>
   <view class="progress-page">
-    <view class="status-bar">
-      <view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打' }"></view>
+    <view class="status-bar" :class="{ 'status-bar--replacement': replacementActive }">
+      <view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打', danger: replacementActive }"></view>
       <view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSub }}</text></view>
       <text class="live-tag">{{ orderInfo?.status || '加载中' }}</text>
     </view>
@@ -9,7 +9,7 @@
     <view class="hero-card">
       <text class="hero-eyebrow">SERVICE PROGRESS</text>
       <text class="hero-title">{{ heroTitle }}</text>
-      <view class="timer-card">
+      <view class="timer-card" :class="{ 'timer-card--replacement': replacementActive }">
         <text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text>
         <text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text>
         <text>{{ durationStatus }}</text>
@@ -24,6 +24,8 @@
       <view><text>累计已支付</text><text><text class="amount-currency">¥</text>{{ totalPaidAmount }}</text><text>主订单 ¥{{ paidAmount }} · 续单 ¥{{ renewalPaidAmount }}</text></view>
       <view class="shield">盾</view>
     </view>
+
+    <OrderReplacementCard :order-no="orderNo" :replacement="orderInfo?.replacement" @updated="checkOrder" />
 
     <view v-if="orderInfo && canShowRenewal" class="card renewal-card">
       <view class="card-head">
@@ -42,9 +44,7 @@
       <template v-else>
         <text class="renewal-label">选择续单份数</text>
         <view class="unit-options">
-          <view v-for="unit in renewalOptions" :key="unit" class="unit-option" :class="{ active: renewalUnits === unit }" @tap="renewalUnits = unit">
-            <text>{{ unit }}份</text><text>+{{ formatHours(baseHours * unit) }}</text>
-          </view>
+          <view v-for="unit in renewalOptions" :key="unit" class="unit-option" :class="{ active: renewalUnits === unit }" @tap="renewalUnits = unit"><text>{{ unit }}份</text><text>+{{ formatHours(baseHours * unit) }}</text></view>
         </view>
         <view class="renewal-price-row">
           <view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view>
@@ -68,17 +68,11 @@
         <view v-for="player in orderInfo.players" :key="player.id" class="player-card">
           <image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" />
           <view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view>
-          <view class="player-main">
-            <text>{{ player.name }}</text>
-            <text>{{ player.type_name || '陪玩' }}</text>
-            <text class="entry-text" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text>
-          </view>
+          <view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text class="entry-text" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text></view>
         </view>
+        <view v-for="slot in missingSlots" :key="`missing-${slot}`" class="player-card player-card--missing"><view class="player-avatar player-avatar--empty">+</view><view class="player-main"><text>补位中</text><text>{{ replacementActive ? '等待新陪玩' : '等待接单' }}</text></view></view>
       </scroll-view>
-      <view v-if="overduePlayers.length" class="entry-alert">
-        <text>{{ overduePlayers.length }}位陪玩存在入房超时记录</text>
-        <text>该记录仅供管理员核实，不会自动扣款或处罚。</text>
-      </view>
+      <view v-if="overduePlayers.length" class="entry-alert"><text>{{ overduePlayers.length }}位陪玩存在入房超时记录</text><text>该记录由管理员结合实际情况核实。</text></view>
     </view>
 
     <view v-if="orderInfo" class="card detail-card">
@@ -98,7 +92,7 @@
         <view class="flow-item done"><text>✓</text><view><text>1. 派单</text><text>订单已发布到抢单大厅</text></view></view>
         <view class="flow-item" :class="stepClass('接单')"><text>{{ stepIcon('接单', '2') }}</text><view><text>2. 接单</text><text>{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }} 位陪玩已就位</text></view></view>
         <view class="flow-item" :class="stepClass('付款')"><text>{{ stepIcon('付款', '3') }}</text><view><text>3. 付款</text><text>{{ orderInfo.paid ? `已支付 ¥${paidAmount}` : '等待老板付款' }}</text></view></view>
-        <view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view>
+        <view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ replacementActive ? '陪玩退出，正在处理补位' : orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view>
         <view class="flow-item" :class="stepClass('完成')"><text>{{ stepIcon('完成', '5') }}</text><view><text>5. 完成</text><text>{{ orderInfo.status === '已完成' ? '服务已完成' : '服务结束后完成订单' }}</text></view></view>
       </view>
     </view>
@@ -114,6 +108,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import OrderReplacementCard from '@/components/OrderReplacementCard.vue'
 import { createRenewal, getOrder } from '@/api/boss'
 import { formatDateTime as formatDateTimeValue, formatDuration } from '@/utils/format'
 import { replace, relaunch } from '@/utils/nav'
@@ -130,6 +125,8 @@ const renewalOptions = [1, 2, 3]
 let orderTimer: ReturnType<typeof setInterval> | null = null
 let durationTimer: ReturnType<typeof setInterval> | null = null
 
+const replacementActive = computed(() => Boolean(orderInfo.value?.replacement?.active))
+const missingSlots = computed(() => Array.from({ length: Math.max(0, Number(orderInfo.value?.required_players || 0) - Number(orderInfo.value?.players?.length || 0)) }, (_, index) => index))
 const startTimeText = computed(() => formatOrderTime(orderInfo.value?.start_time))
 const baseHours = computed(() => Math.max(.5, Number(orderInfo.value?.booked_hours || 1)))
 const paidAmount = computed(() => Number(orderInfo.value?.total_amount || orderInfo.value?.total_price_per_hour || 0).toFixed(2))
@@ -141,65 +138,36 @@ const renewalHoursText = computed(() => formatHours(Number(orderInfo.value?.rene
 const totalHoursText = computed(() => formatHours(Number(orderInfo.value?.total_booked_hours ?? orderInfo.value?.booked_hours ?? 0)))
 const paidRenewals = computed(() => (orderInfo.value?.renewals || []).filter((item: any) => item.paid))
 const overduePlayers = computed(() => (orderInfo.value?.players || []).filter((item: any) => ['overdue', 'late_confirmed'].includes(item.room_join_status)))
-const canShowRenewal = computed(() => ['待开打', '进行中'].includes(orderInfo.value?.status) && orderInfo.value?.order_type !== 'renewal')
-const statusTitle = computed(() => orderInfo.value?.status === '待开打' ? '付款完成，等待开打' : '服务正在进行中')
-const statusSub = computed(() => orderInfo.value?.status === '待开打' ? '陪玩填写房间号并确认开打后开始计时' : '请保持游戏内在线，订单状态会自动刷新')
-const heroTitle = computed(() => orderInfo.value?.status === '待开打' ? '队伍已就位，准备开打' : '服务进行中')
-const durationStatus = computed(() => orderInfo.value?.status === '待开打' ? '已付款 · 等待陪玩操作' : orderInfo.value?.is_paused ? '已暂停' : orderInfo.value?.timer_started_at ? '服务中' : '等待开始')
+const canShowRenewal = computed(() => !replacementActive.value && ['待开打', '进行中'].includes(orderInfo.value?.status) && orderInfo.value?.order_type !== 'renewal')
+const statusTitle = computed(() => replacementActive.value ? '陪玩已退出，正在处理' : orderInfo.value?.status === '待开打' ? '付款完成，等待开打' : '服务正在进行中')
+const statusSub = computed(() => replacementActive.value ? (orderInfo.value?.replacement?.mode === 'targeted' ? '请重新指定或选择转为公开补位' : '空缺名额已进入抢单大厅') : orderInfo.value?.status === '待开打' ? '陪玩填写房间号并确认开打后开始计时' : '请保持游戏内在线，订单状态会自动刷新')
+const heroTitle = computed(() => replacementActive.value ? '原订单保留，等待补齐阵容' : orderInfo.value?.status === '待开打' ? '队伍已就位，准备开打' : '服务进行中')
+const durationStatus = computed(() => replacementActive.value ? '补位处理中' : orderInfo.value?.status === '待开打' ? '已付款 · 等待陪玩操作' : orderInfo.value?.is_paused ? '已暂停' : orderInfo.value?.timer_started_at ? '服务中' : '等待开始')
 
 function formatOrderTime(value?: string) { return value ? formatDateTimeValue(value) : '待确认' }
 function formatHours(value: number) { const hours = Number(value || 0); return Number.isInteger(hours) ? `${hours}小时` : `${hours.toFixed(1)}小时` }
-function playerRoomText(player: any) {
-  const status = player.room_join_status || 'pending'
-  if (status === 'confirmed') return '已进入房间'
-  if (status === 'late_confirmed') return '超时后已进入'
-  if (status === 'overdue') return '进入房间已超时'
-  if (status === 'waived') return '管理员已免除'
-  if (!player.room_join_deadline) return '等待进入房间'
-  const seconds = Math.max(0, Math.floor((new Date(player.room_join_deadline).getTime() - now.value) / 1000))
-  return seconds ? `入房 ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` : '进入房间已超时'
-}
-function updateDuration() {
-  now.value = Date.now()
-  if (!orderInfo.value?.timer_started_at) { duration.value = orderInfo.value?.status === '待开打' ? '等待开打' : '00:00:00'; return }
-  const start = new Date(orderInfo.value.timer_started_at).getTime()
-  const end = orderInfo.value.end_time ? new Date(orderInfo.value.end_time).getTime() : orderInfo.value.is_paused && orderInfo.value.last_paused_at ? new Date(orderInfo.value.last_paused_at).getTime() : now.value
-  duration.value = formatDuration(Math.max(0, Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0)))
-}
+function playerRoomText(player: any) { const status = player.room_join_status || 'pending'; if (status === 'confirmed') return '已进入房间'; if (status === 'late_confirmed') return '超时后已进入'; if (status === 'overdue') return '进入房间已超时'; if (status === 'waived') return '管理员已免除'; if (!player.room_join_deadline) return '等待进入房间'; const seconds = Math.max(0, Math.floor((new Date(player.room_join_deadline).getTime() - now.value) / 1000)); return seconds ? `入房 ${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` : '进入房间已超时' }
+function updateDuration() { now.value = Date.now(); if (!orderInfo.value?.timer_started_at) { duration.value = orderInfo.value?.status === '待开打' ? '等待开打' : '00:00:00'; return }; const start = new Date(orderInfo.value.timer_started_at).getTime(); const end = orderInfo.value.end_time ? new Date(orderInfo.value.end_time).getTime() : orderInfo.value.is_paused && orderInfo.value.last_paused_at ? new Date(orderInfo.value.last_paused_at).getTime() : now.value; duration.value = formatDuration(Math.max(0, Math.floor((end - start) / 1000) - (orderInfo.value.paused_duration || 0))) }
 function stepRank(status: string) { return ({ '待接单': 1, '待支付': 2, '待开打': 3, '进行中': 4, '已完成': 5 } as Record<string, number>)[status] || 0 }
 function targetRank(step: string) { return ({ '接单': 2, '付款': 3, '开打': 4, '完成': 5 } as Record<string, number>)[step] || 0 }
 function stepClass(step: string) { const current = stepRank(orderInfo.value?.status); const target = targetRank(step); if (current > target || (step === '完成' && current === 5)) return 'done'; if (current === target || (step === '接单' && current === 1)) return 'active'; return '' }
 function stepIcon(step: string, fallback: string) { return stepClass(step) === 'done' ? '✓' : fallback }
+
 async function checkOrder() {
   if (!orderNo.value) return false
   try {
-    const res = await getOrder(orderNo.value); orderInfo.value = res; updateDuration()
+    const res = await getOrder(orderNo.value)
+    orderInfo.value = res
+    updateDuration()
     if (res.status === '待支付') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
+    else if (res.status === '待接单' && res.replacement?.active) { stopTimers(); replace('/pages/boss/waiting/index', { orderNo: orderNo.value }) }
     else if (res.status === '已完成') { stopTimers(); replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
     else if (res.status === '已取消') { stopTimers(); toast('订单已取消'); goMain('home') }
     return true
-  } catch (error) {
-    toast(getErrorMessage(error, '订单刷新失败'))
-    return false
-  }
+  } catch (error) { toast(getErrorMessage(error, '订单刷新失败')); return false }
 }
-async function handleManualRefresh() {
-  if (refreshing.value) return
-  refreshing.value = true
-  try {
-    if (await checkOrder()) success('刷新成功')
-  } finally {
-    refreshing.value = false
-  }
-}
-async function handleRenewal() {
-  if (!orderInfo.value?.can_renew || renewing.value) return
-  if (!(await confirm(`确认续单${renewalUnits.value}份？\n增加${formatHours(baseHours.value * renewalUnits.value)}，需支付¥${renewalAmount.value}`, '确认续单'))) return
-  renewing.value = true
-  try { const result = await createRenewal(orderNo.value, renewalUnits.value); stopTimers(); success(result.created ? '续单已创建' : '已有待支付续单'); replace('/pages/boss/payment/index', { orderNo: result.order_no }) }
-  catch (error) { toast(getErrorMessage(error, '续单创建失败')) }
-  finally { renewing.value = false }
-}
+async function handleManualRefresh() { if (refreshing.value) return; refreshing.value = true; try { if (await checkOrder()) success('刷新成功') } finally { refreshing.value = false } }
+async function handleRenewal() { if (!orderInfo.value?.can_renew || renewing.value || replacementActive.value) return; if (!(await confirm(`确认续单${renewalUnits.value}份？\n增加${formatHours(baseHours.value * renewalUnits.value)}，需支付¥${renewalAmount.value}`, '确认续单'))) return; renewing.value = true; try { const result = await createRenewal(orderNo.value, renewalUnits.value); stopTimers(); success(result.created ? '续单已创建' : '已有待支付续单'); replace('/pages/boss/payment/index', { orderNo: result.order_no }) } catch (error) { toast(getErrorMessage(error, '续单创建失败')) } finally { renewing.value = false } }
 function continueRenewalPayment() { const no = orderInfo.value?.pending_renewal_order_no; if (!no) return; stopTimers(); replace('/pages/boss/payment/index', { orderNo: no }) }
 function copyRoom() { const room = orderInfo.value?.kook_room_number; if (room) uni.setClipboardData({ data: room, success: () => success('KOOK房间号已复制') }) }
 function goPayment() { replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
@@ -211,20 +179,13 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 </script>
 
 <style lang="scss" scoped>
-.progress-page { min-height: 100vh; padding: 20rpx 24rpx 220rpx; box-sizing: border-box; color: #172116; background: radial-gradient(ellipse at 12% 0%,rgba(216,161,68,.10),transparent 36%),radial-gradient(ellipse at 88% 14%,rgba(47,155,99,.10),transparent 32%),linear-gradient(180deg,#fbf7ef,#f7f3ea 48%,#fffaf2); }
-.status-bar { display: flex; align-items: center; gap: 14rpx; padding: 18rpx 22rpx; border-radius: 22rpx; border: 1rpx solid rgba(47,155,99,.18); background: rgba(246,252,247,.95); }
-.live-dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: #ef5b5b; box-shadow: 0 0 0 8rpx rgba(239,91,91,.12); }
-.live-dot.waiting { background: #d8a144; box-shadow: 0 0 0 8rpx rgba(216,161,68,.12); }
-.status-copy { flex: 1; }.status-copy text,.hero-eyebrow,.hero-title { display: block; }.status-copy text:first-child { font-size: 25rpx; font-weight: 900; }.status-copy text:last-child { margin-top: 4rpx; color: #7d877a; font-size: 20rpx; }
-.live-tag { padding: 7rpx 14rpx; border-radius: 999rpx; color: #c43232; font-size: 20rpx; font-weight: 900; background: rgba(239,91,91,.10); }
-.hero-card,.card { margin-top: 22rpx; border-radius: 28rpx; background: rgba(255,255,255,.96); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 36rpx rgba(39,61,42,.06); }.hero-card { padding: 32rpx 28rpx; background: linear-gradient(135deg,#f1f7f1,#fffaf0); }.hero-eyebrow { color:#1f7c4b;font-size:21rpx;font-weight:900; }.hero-title { margin-top:10rpx;font-size:40rpx;font-weight:900; }
-.timer-card { margin-top:24rpx;padding:26rpx;border-radius:24rpx;text-align:center;color:#fff;background:linear-gradient(135deg,#5fb78a,#1f7c4b); }.timer-card text { display:block; }.timer-card text:first-child { color:rgba(255,255,255,.75);font-size:21rpx; }.timer-card text:nth-child(2) { margin-top:6rpx;font-family:monospace;font-size:52rpx;font-weight:900; }.timer-card text:last-child { margin-top:6rpx;font-size:21rpx;font-weight:800; }
-.hero-meta { display:grid;grid-template-columns:1fr 1fr;gap:14rpx;margin-top:18rpx; }.hero-meta view { padding:16rpx;border-radius:18rpx;background:rgba(255,255,255,.72); }.hero-meta text { display:block; }.hero-meta text:first-child { color:#879083;font-size:20rpx; }.hero-meta text:last-child { margin-top:5rpx;font-size:23rpx;font-weight:900;word-break:break-all; }
+.progress-page { min-height:100vh;padding:20rpx 24rpx 220rpx;box-sizing:border-box;color:#172116;background:radial-gradient(ellipse at 12% 0%,rgba(216,161,68,.10),transparent 36%),radial-gradient(ellipse at 88% 14%,rgba(47,155,99,.10),transparent 32%),linear-gradient(180deg,#fbf7ef,#f7f3ea 48%,#fffaf2); }
+.status-bar { display:flex;align-items:center;gap:14rpx;padding:18rpx 22rpx;border-radius:22rpx;border:1rpx solid rgba(47,155,99,.18);background:rgba(246,252,247,.95); }.status-bar--replacement { border-color:rgba(200,61,61,.2);background:#fff5f5; }.live-dot { width:16rpx;height:16rpx;border-radius:50%;background:#ef5b5b;box-shadow:0 0 0 8rpx rgba(239,91,91,.12); }.live-dot.waiting { background:#d8a144;box-shadow:0 0 0 8rpx rgba(216,161,68,.12); }.live-dot.danger { background:#c83d3d;box-shadow:0 0 0 8rpx rgba(200,61,61,.12); }.status-copy { flex:1; }.status-copy text,.hero-eyebrow,.hero-title { display:block; }.status-copy text:first-child { font-size:25rpx;font-weight:900; }.status-copy text:last-child { margin-top:4rpx;color:#7d877a;font-size:20rpx; }.live-tag { padding:7rpx 14rpx;border-radius:999rpx;color:#c43232;font-size:20rpx;font-weight:900;background:rgba(239,91,91,.10); }
+.hero-card,.card { margin-top:22rpx;border-radius:28rpx;background:rgba(255,255,255,.96);border:1rpx solid rgba(39,61,42,.08);box-shadow:0 14rpx 36rpx rgba(39,61,42,.06); }.hero-card { padding:32rpx 28rpx;background:linear-gradient(135deg,#f1f7f1,#fffaf0); }.hero-eyebrow { color:#1f7c4b;font-size:21rpx;font-weight:900; }.hero-title { margin-top:10rpx;font-size:40rpx;font-weight:900; }.timer-card { margin-top:24rpx;padding:26rpx;border-radius:24rpx;text-align:center;color:#fff;background:linear-gradient(135deg,#5fb78a,#1f7c4b); }.timer-card--replacement { background:linear-gradient(135deg,#d46b6b,#9f2e2e); }.timer-card text { display:block; }.timer-card text:first-child,.timer-card text:last-child { color:rgba(255,255,255,.78);font-size:21rpx; }.timer-card text:nth-child(2) { margin-top:6rpx;font-family:monospace;font-size:52rpx;font-weight:900; }.hero-meta { display:grid;grid-template-columns:1fr 1fr;gap:14rpx;margin-top:18rpx; }.hero-meta view { padding:16rpx;border-radius:18rpx;background:rgba(255,255,255,.72); }.hero-meta text { display:block; }.hero-meta text:first-child { color:#879083;font-size:20rpx; }.hero-meta text:last-child { margin-top:5rpx;font-size:23rpx;font-weight:900;word-break:break-all; }
 .amount-card { margin-top:22rpx;padding:28rpx;display:flex;align-items:center;justify-content:space-between;border-radius:28rpx;color:#fff;background:linear-gradient(135deg,#173426,#1f7c4b 62%,#45ae72); }.amount-card view:first-child text { display:block; }.amount-card view:first-child text:first-child,.amount-card view:first-child text:last-child { color:rgba(255,255,255,.72);font-size:21rpx; }.amount-card view:first-child text:nth-child(2) { margin-top:5rpx;font-size:54rpx;font-weight:900; }.amount-currency { display:inline!important;margin-right:4rpx;font-size:28rpx!important; }.shield { width:70rpx;height:70rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(255,255,255,.15);font-weight:900; }
 .card { padding:26rpx; }.card-head { display:flex;align-items:flex-start;justify-content:space-between;gap:20rpx;margin-bottom:20rpx; }.card-head>view { flex:1;min-width:0; }.card-title,.card-sub { display:block; }.card-title { font-size:30rpx;font-weight:900; }.standalone-title { margin-bottom:20rpx; }.card-sub { margin-top:6rpx;color:#879083;font-size:21rpx;line-height:1.45; }.order-status,.renewal-count { padding:7rpx 14rpx;border-radius:999rpx;color:#1f7c4b;font-size:21rpx;font-weight:900;background:#eef8f1; }.mini-btn { min-width:104rpx;height:58rpx;margin:0;padding:0 18rpx;border-radius:999rpx;color:#1f7c4b;font-size:22rpx;font-weight:900;background:#eef8f1; }.mini-btn::after,.renewal-btn::after,.continue-pay-btn::after,.footer-actions button::after { border:none; }
-.renewal-card { border-color:rgba(216,161,68,.18);background:linear-gradient(180deg,#fffdf8,#fff); }.renewal-count { color:#9a6a16;background:#fff3d4; }.renewal-summary { display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx; }.renewal-summary view,.unit-option { padding:18rpx 8rpx;border-radius:18rpx;text-align:center;background:#f7faf4; }.renewal-summary text,.unit-option text { display:block; }.renewal-summary text:first-child,.unit-option text:last-child { color:#879083;font-size:20rpx; }.renewal-summary text:last-child,.unit-option text:first-child { margin-top:5rpx;font-size:25rpx;font-weight:900; }.renewal-label { display:block;margin-top:22rpx;color:#687665;font-size:23rpx;font-weight:800; }.unit-options { display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:12rpx; }.unit-option.active { color:#1f7c4b;border:1rpx solid rgba(47,155,99,.28);background:#eef8f1; }.renewal-price-row { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx; }.renewal-price-row view { display:flex;justify-content:space-between;padding:16rpx;border-radius:16rpx;background:#fff8e8;font-size:22rpx; }.renewal-price-row text:last-child { color:#a87520;font-weight:900; }.renewal-btn { width:100%;height:82rpx;margin-top:18rpx;border-radius:999rpx;color:#fff;font-size:27rpx;font-weight:900;background:linear-gradient(135deg,#d8a144,#a87520); }.renewal-btn[disabled] { opacity:.55; }.renewal-tip { display:block;margin-top:12rpx;color:#879083;font-size:21rpx;text-align:center;line-height:1.5; }.pending-renewal { display:flex;align-items:center;gap:16rpx;margin-top:18rpx;padding:18rpx;border-radius:18rpx;background:#fff5df; }.pending-renewal view { flex:1; }.pending-renewal text { display:block; }.continue-pay-btn { min-width:150rpx;height:66rpx;margin:0;border-radius:999rpx;color:#fff;background:#a87520; }.renewal-history { margin-top:22rpx;padding-top:18rpx;border-top:1rpx solid rgba(39,61,42,.08); }.renewal-history-title { font-weight:900; }.renewal-history-row { min-height:58rpx;display:flex;justify-content:space-between;align-items:center;color:#687665;font-size:21rpx;border-bottom:1rpx solid rgba(39,61,42,.06); }.renewal-history-row text:last-child { color:#1f7c4b;font-weight:800; }
-.player-track { white-space:nowrap; }.player-card { width:310rpx;display:inline-flex;align-items:center;gap:14rpx;margin-right:14rpx;padding:18rpx;border-radius:22rpx;background:#f7faf4;box-sizing:border-box;vertical-align:top; }.player-avatar { width:70rpx;height:70rpx;flex-shrink:0;border-radius:50%; }.player-avatar--empty { display:flex;align-items:center;justify-content:center;color:#fff;font-size:28rpx;font-weight:900;background:#2f9b63; }.player-main { flex:1;min-width:0; }.player-main text { display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }.player-main text:first-child { font-size:24rpx;font-weight:900; }.player-main text:nth-child(2) { margin-top:4rpx;color:#1f7c4b;font-size:20rpx; }.entry-text { margin-top:6rpx!important;padding:5rpx 9rpx;border-radius:999rpx;color:#a87520!important;background:#fff3d4;font-size:18rpx!important;font-weight:900; }.entry-confirmed,.entry-waived { color:#1f7c4b!important;background:#e5f6e9; }.entry-overdue,.entry-late_confirmed { color:#9c3d32!important;background:#fff0ed; }.entry-alert { margin-top:18rpx;padding:16rpx;border-radius:16rpx;color:#8f4d35;background:#fff2ec; }.entry-alert text { display:block; }.entry-alert text:first-child { font-size:23rpx;font-weight:900; }.entry-alert text:last-child { margin-top:6rpx;font-size:20rpx; }
-.info-row { min-height:68rpx;display:flex;align-items:center;justify-content:space-between;gap:24rpx;border-bottom:1rpx solid rgba(39,61,42,.07);font-size:25rpx; }.info-row>text:first-child { flex-shrink:0;color:#7d877a; }.info-row>text:last-child { flex:1;text-align:right;font-weight:800;word-break:break-all; }.kook-row>text:last-child { color:#1f7c4b; }
-.flow-list { display:flex;flex-direction:column;gap:16rpx; }.flow-item { display:flex;align-items:center;gap:14rpx;color:#9aa197; }.flow-item>text { width:50rpx;height:50rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%;color:#fff;font-weight:900;background:#c8cec6; }.flow-item view text { display:block; }.flow-item view text:first-child { color:#687665;font-size:24rpx;font-weight:900; }.flow-item view text:last-child { margin-top:4rpx;font-size:20rpx; }.flow-item.done>text { background:#2f9b63; }.flow-item.active>text { background:#d8a144; }
-.footer-actions { position:fixed;left:24rpx;right:24rpx;bottom:calc(24rpx + env(safe-area-inset-bottom));z-index:20;display:grid;grid-template-columns:repeat(2,1fr);gap:14rpx; }.footer-actions button { height:82rpx;margin:0;border-radius:999rpx;font-size:25rpx;font-weight:900; }.footer-actions .wide { grid-column:1/-1; }.ghost-btn { color:#1f7c4b;background:#fff;border:1rpx solid rgba(47,155,99,.18); }.primary-btn { color:#fff;background:linear-gradient(135deg,#5fc68a,#1f7c4b); }
+.renewal-card { border-color:rgba(216,161,68,.18);background:linear-gradient(180deg,#fffdf8,#fff); }.renewal-summary,.unit-options { display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx; }.renewal-summary view,.unit-option { padding:18rpx 8rpx;border-radius:18rpx;text-align:center;background:#f7faf4; }.renewal-summary text,.unit-option text { display:block; }.renewal-summary text:first-child,.unit-option text:last-child { color:#879083;font-size:20rpx; }.renewal-summary text:last-child,.unit-option text:first-child { margin-top:5rpx;font-weight:900; }.renewal-label { display:block;margin-top:22rpx;color:#687665;font-size:23rpx;font-weight:800; }.unit-options { margin-top:12rpx; }.unit-option.active { color:#1f7c4b;border:1rpx solid rgba(47,155,99,.28);background:#eef8f1; }.renewal-price-row { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:16rpx; }.renewal-price-row view { display:flex;justify-content:space-between;padding:16rpx;border-radius:16rpx;background:#fff8e8;font-size:22rpx; }.renewal-btn { width:100%;margin-top:16rpx;border-radius:999rpx;color:#fff;background:#1f7c4b; }.renewal-tip { display:block;margin-top:10rpx;color:#879083;font-size:20rpx;text-align:center; }.pending-renewal { margin-top:16rpx;padding:18rpx;border-radius:18rpx;background:#fff5df; }.continue-pay-btn { margin-top:10rpx;border-radius:999rpx;color:#fff;background:#a87520; }.renewal-history { margin-top:18rpx; }.renewal-history-title { font-weight:900; }.renewal-history-row { display:flex;justify-content:space-between;margin-top:10rpx;font-size:21rpx; }
+.player-track { white-space:nowrap; }.player-card { width:250rpx;display:inline-flex;align-items:center;gap:12rpx;margin-right:12rpx;padding:16rpx;border-radius:20rpx;background:#f7faf4;vertical-align:top;box-sizing:border-box; }.player-card--missing { border:1rpx dashed rgba(200,61,61,.25);background:#fff7f7; }.player-avatar { width:70rpx;height:70rpx;flex-shrink:0;border-radius:50%; }.player-avatar--empty { display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;background:#2f9b63; }.player-main { min-width:0; }.player-main text { display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }.player-main text:first-child { font-weight:900; }.player-main text:nth-child(2) { margin-top:4rpx;color:#879083;font-size:20rpx; }.entry-text { margin-top:5rpx;color:#a87520;font-size:18rpx; }.entry-confirmed,.entry-waived { color:#1f7c4b; }.entry-overdue,.entry-late_confirmed { color:#b33434; }.entry-alert { margin-top:18rpx;padding:16rpx;border-radius:16rpx;color:#8f4d35;background:#fff2ec; }.entry-alert text { display:block; }.entry-alert text:first-child { font-weight:900; }.entry-alert text:last-child { margin-top:5rpx;font-size:20rpx; }
+.info-row { min-height:68rpx;display:flex;align-items:center;justify-content:space-between;gap:20rpx;border-bottom:1rpx solid rgba(39,61,42,.07);font-size:24rpx; }.info-row text:first-child { color:#7d877a; }.info-row text:last-child { flex:1;text-align:right;font-weight:800; }.kook-row text:last-child { color:#1f7c4b; }.flow-list { display:flex;flex-direction:column;gap:14rpx; }.flow-item { display:flex;align-items:center;gap:14rpx;color:#9aa097; }.flow-item>text { width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#eef1ec;font-weight:900; }.flow-item view text { display:block; }.flow-item view text:first-child { font-weight:900; }.flow-item view text:last-child { margin-top:4rpx;font-size:20rpx; }.flow-item.active,.flow-item.done { color:#1f7c4b; }.flow-item.active>text,.flow-item.done>text { color:#fff;background:#1f7c4b; }
+.footer-actions { position:fixed;left:24rpx;right:24rpx;bottom:calc(24rpx + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,1fr);gap:12rpx;z-index:20; }.footer-actions button { min-height:72rpx;border-radius:999rpx;font-size:24rpx;font-weight:900; }.ghost-btn { color:#687665;background:#fff; }.primary-btn { color:#fff;background:#1f7c4b; }.wide { grid-column:1 / -1; }
 </style>
