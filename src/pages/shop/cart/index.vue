@@ -25,7 +25,7 @@
             <text v-if="item.spec_display_name || item.spec_name" class="cart-spec">已选：{{ item.spec_display_name || item.spec_name }}</text>
             <text v-if="item.description" class="cart-desc">{{ item.description }}</text>
             <view class="cart-bottom">
-              <view class="cart-price"><text>¥</text><text>{{ formatMoney(item.price) }}</text><text class="price-unit">{{ isHourlyItem(item) ? '/小时' : '/单' }}</text></view>
+              <view class="cart-price"><text>💎</text><text>{{ diamondAmount(item.price) }}</text><text class="price-unit">{{ isHourlyItem(item) ? '/小时' : '/单' }}</text></view>
               <view v-if="isHourlyItem(item)" class="stepper" @tap.stop>
                 <button class="step-btn" :disabled="operating || itemHours(item) <= 1" @tap="adjustQuantity(item, -1)">−</button>
                 <text class="step-value">{{ itemHours(item) }}小时</text>
@@ -33,7 +33,7 @@
               </view>
               <text v-else class="single-unit">按单购买</text>
             </view>
-            <text class="item-total">小计 ¥{{ formatMoney(itemTotal(item)) }}</text>
+            <text class="item-total">小计 💎{{ diamondAmount(itemTotal(item)) }}</text>
           </view>
 
           <view class="card-actions" @tap.stop>
@@ -55,7 +55,7 @@
     <view v-if="items.length" class="bottom-bar">
       <view class="total-box">
         <text>{{ selectedItems.length ? `已选 ${selectedItems.length} 项，将生成 ${selectedOrderCount} 个订单` : '请选择需要结算的商品' }}</text>
-        <view><text>¥</text><text>{{ formatMoney(selectedTotalPrice) }}</text></view>
+        <view><text>💎</text><text>{{ diamondAmount(selectedTotalPrice) }}</text></view>
       </view>
       <button class="bottom-shop-btn" @tap="goShop">继续选购</button>
       <button class="checkout-btn" :disabled="!selectedItems.length || operating" @tap="checkoutSelected">结算所选</button>
@@ -68,6 +68,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { clearShopCart, getShopCart, removeShopCartItem, updateShopCartItemQuantity, type ShopCartItem } from '@/utils/shopCart'
 import { go, goMain } from '@/utils/nav'
+import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { isHourlyService, MAX_SERVICE_HOURS, normalizeServiceHours } from '@/utils/serviceBilling'
 
@@ -94,7 +95,10 @@ async function refreshCart() {
   finally { loading.value = false }
 }
 
-function formatMoney(value: number) { return Number.isInteger(Number(value)) ? `${Number(value)}` : Number(value || 0).toFixed(2) }
+function diamondAmount(yuanValue: number | string) {
+  try { return formatDiamonds(diamondsFrom(undefined, yuanValue)) }
+  catch { return '--' }
+}
 function isSelected(item: ShopCartItem) { return selectedIds.value.includes(itemKey(item)) }
 function toggleItem(item: ShopCartItem) { const key = itemKey(item); selectedIds.value = isSelected(item) ? selectedIds.value.filter(id => id !== key) : [...selectedIds.value, key] }
 function toggleSelectAll() { selectedIds.value = allSelected.value ? [] : items.value.map(itemKey) }
