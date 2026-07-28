@@ -25,6 +25,7 @@ export interface OrderReplacementState {
   cancelled_player_name?: string
   required_player_type_id?: number | null
   required_player_type_name?: string
+  current_designation_id?: number | null
   can_reassign?: boolean
   can_publish_public?: boolean
   can_request_cancel?: boolean
