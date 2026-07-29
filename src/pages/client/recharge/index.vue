@@ -2,31 +2,27 @@
   <view class="recharge-page">
     <view class="balance-card">
       <text class="balance-label">当前可用钻石</text>
-      <view v-if="overview || !overviewLoadFailed" class="balance-row"><text>💎</text><text>{{ balanceText }}</text></view>
-      <view v-else class="balance-row balance-row--error" @tap="retryOverview"><text>余额加载失败 · 点击重试</text></view>
-      <view class="secure-tip"><text>盾</text><text>微信官方小程序虚拟支付 · 钻石实时到账</text></view>
+      <view v-if="overview || !overviewLoadFailed" class="balance-row">
+        <text>💎</text><text>{{ diamonds(overview?.balance_diamonds || 0) }}</text>
+      </view>
+      <view v-else class="balance-row balance-row--error" @tap="loadData">
+        <text>余额加载失败 · 点击重试</text>
+      </view>
+      <text class="secure-tip">微信官方小程序虚拟支付 · 钻石实时到账</text>
     </view>
 
     <view v-if="rechargeConfirming" class="card confirming-card">
-      <view class="confirming-head">
-        <view class="confirming-icon">✓</view>
-        <view>
-          <text>微信付款已完成</text>
-          <text>钻石正在入账确认，请勿重复支付</text>
-        </view>
-      </view>
-      <view class="confirming-notice">
-        <text></text>
-        <text>微信收银台已经返回成功，系统会持续向服务器核验入账状态。确认到账前请不要再次发起充值。</text>
-      </view>
-      <button class="pay-button" :disabled="confirmationRefreshing" @tap="refreshPendingRecharge(false)">
-        {{ confirmationRefreshing ? '正在核验入账结果...' : '刷新入账状态' }}
+      <text class="section-title">微信付款确认中</text>
+      <text class="section-desc">系统正在向微信核验入账，请勿重复支付。</text>
+      <button class="primary-button" :disabled="confirmationRefreshing" @tap="refreshPendingRecharge(false)">
+        {{ confirmationRefreshing ? '正在核验...' : '刷新入账状态' }}
       </button>
-      <text class="pay-help">通常几十秒内即可到账；充值记录会保存在服务器，不依赖本机缓存。</text>
     </view>
 
-    <view class="card packages-card">
-      <view class="card-head"><text>选择钻石档位</text><text>人民币1元 = 10钻石</text></view>
+    <view class="card">
+      <view class="card-head">
+        <text>选择钻石档位</text><text>人民币1元 = 10钻石</text>
+      </view>
       <view v-if="packages.length" class="package-grid">
         <view
           v-for="item in packages"
@@ -35,55 +31,53 @@
           :class="{ active: selectedId === item.id }"
           @tap="selectedId = item.id"
         >
-          <view class="package-amount"><text>💎</text><text>{{ diamonds(item.diamonds) }}</text></view>
-          <text class="package-sub">实付 ¥{{ yuan(item.pay_amount_yuan || item.amount) }}</text>
+          <text class="package-diamonds">💎{{ diamonds(item.diamonds) }}</text>
+          <text class="package-yuan">实付 ¥{{ yuan(item.pay_amount_yuan || item.amount) }}</text>
         </view>
       </view>
-      <view v-else-if="!loading" class="empty-tip">暂无已启用的微信虚拟道具，请稍后再试或联系客服。</view>
+      <text v-else-if="!loading" class="empty-tip">暂无已启用的充值档位，请联系客服。</text>
     </view>
 
-    <view v-if="payError && !rechargeConfirming" class="pay-error-card">
-      <view class="pay-error-head">
-        <view class="error-icon">!</view>
-        <view class="error-main">
-          <text class="error-title">{{ payError.title }}</text>
-          <text class="error-detail">{{ payError.detail }}</text>
-        </view>
-      </view>
+    <view v-if="payError && !rechargeConfirming" class="error-card">
+      <text class="error-title">{{ payError.title }}</text>
+      <text class="error-detail">{{ payError.detail }}</text>
       <view v-if="payError.code" class="error-code" @tap="copyErrorInfo">
         <text>错误编号</text><text>{{ payError.code }} · 复制</text>
       </view>
       <text class="error-action">{{ payError.action }}</text>
     </view>
 
-    <view class="card notice-card">
+    <view class="card rules-card">
       <view class="card-head"><text>钻石规则</text><text>固定比例</text></view>
-      <view class="notice-line"><text></text><text>人民币1元固定兑换10钻石；充值到账钻石均为整数，不产生小数钻石。</text></view>
-      <view class="notice-line"><text></text><text>平台商品和服务以钻石标价。已有钻石可直接支付，也可以在订单页使用微信即时支付。</text></view>
-      <view class="notice-line"><text></text><text>充值钻石不支持提现；订单退款将按原支付方式和平台退款规则处理。</text></view>
-      <view class="notice-line"><text></text><text>如遇微信已扣款但钻石未到账，请勿重复充值，系统会继续对账，也可联系客服。</text></view>
+      <text>• 人民币1元固定兑换10钻石，到账钻石均为整数。</text>
+      <text>• 已有钻石可直接消费，也可以在订单页使用微信即时支付。</text>
+      <text>• 微信已扣款但钻石未到账时请勿重复充值，先刷新入账状态。</text>
     </view>
 
     <view v-if="rechargeHistory.length" class="card history-card">
       <view class="card-head"><text>最近充值</text><text>服务器记录</text></view>
       <view v-for="item in rechargeHistory" :key="item.recharge_no" class="history-row">
-        <view>
+        <view class="history-main">
           <text class="history-diamonds">+💎{{ diamonds(item.diamonds) }}</text>
           <text class="history-time">{{ dateTime(item.created_at) }}</text>
         </view>
         <view class="history-right">
           <text>实付 ¥{{ yuan(item.pay_amount_yuan || item.amount) }}</text>
-          <text :class="`history-status history-status--${item.status}`">{{ rechargeStatusText(item.status) }}</text>
+          <text :class="`history-status history-status--${item.status}`">{{ rechargeStatusText(item) }}</text>
+          <view v-if="item.status === 'paying'" class="history-actions">
+            <button class="mini-button mini-button--continue" :disabled="actionRechargeNo === item.recharge_no" @tap.stop="continueRecharge(item)">
+              继续支付
+            </button>
+            <button class="mini-button mini-button--cancel" :disabled="actionRechargeNo === item.recharge_no" @tap.stop="cancelPendingRecharge(item)">
+              取消充值
+            </button>
+          </view>
         </view>
       </view>
     </view>
 
     <view class="pay-bar">
-      <button
-        class="pay-button"
-        :disabled="paying || mocking || rechargeConfirming || !selectedPackage"
-        @tap="payRecharge"
-      >
+      <button class="primary-button" :disabled="paying || rechargeConfirming || !selectedPackage" @tap="payRecharge">
         {{ payButtonText }}
       </button>
       <button v-if="isDev" class="mock-button" :disabled="paying || mocking || rechargeConfirming || !selectedPackage" @tap="mockRecharge">
@@ -99,6 +93,7 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import {
+  cancelRecharge,
   createRecharge,
   getRechargeOrders,
   getRechargePackages,
@@ -114,19 +109,11 @@ import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { back, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
-type PayErrorState = {
-  title: string
-  detail: string
-  action: string
-  code: string
-}
-
-type PendingRechargeState = {
-  rechargeNo: string
-  createdAt: number
-}
+type PayErrorState = { title: string; detail: string; action: string; code: string }
+type PendingRechargeState = { rechargeNo: string; createdAt: number }
 
 const RECHARGE_PENDING_STORAGE_KEY = 'wallet_recharge_pending'
+const RECHARGE_EXPIRE_MS = 10 * 60 * 1000
 
 const overview = ref<WalletOverview | null>(null)
 const overviewLoadFailed = ref(false)
@@ -140,12 +127,12 @@ const payError = ref<PayErrorState | null>(null)
 const rechargeConfirming = ref(false)
 const pendingRechargeNo = ref('')
 const confirmationRefreshing = ref(false)
+const actionRechargeNo = ref('')
 let confirmationTimer: ReturnType<typeof setTimeout> | null = null
 let pageAlive = true
 
 const isDev = Boolean(import.meta.env.DEV)
 const selectedPackage = computed(() => packages.value.find(item => item.id === selectedId.value) || null)
-const balanceText = computed(() => diamonds(overview.value?.balance_diamonds || 0))
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
@@ -154,27 +141,11 @@ const payButtonText = computed(() => {
 })
 
 function diamonds(value: unknown) {
-  try {
-    return formatDiamonds(value ?? 0)
-  } catch {
-    return '--'
-  }
+  try { return formatDiamonds(value ?? 0) } catch { return '--' }
 }
 
 function yuan(value: number | string | null | undefined) {
   return formatYuan(value)
-}
-
-function rechargeStatusText(status: string) {
-  const labels: Record<string, string> = {
-    created: '已创建',
-    paying: '支付中',
-    paid: '已付款',
-    credited: '已到账',
-    closed: '已关闭',
-    failed: '失败'
-  }
-  return labels[status] || status || '未知'
 }
 
 function dateTime(value?: string | null) {
@@ -184,44 +155,55 @@ function dateTime(value?: string | null) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+function isRechargeExpired(item: RechargeQueryResult) {
+  const deadline = item.expires_at
+    ? new Date(item.expires_at).getTime()
+    : new Date(item.created_at || 0).getTime() + RECHARGE_EXPIRE_MS
+  return Number.isFinite(deadline) && deadline > 0 && deadline <= Date.now()
+}
+
+function rechargeStatusText(item: RechargeQueryResult) {
+  if (item.status === 'paying' && isRechargeExpired(item)) return '支付超时'
+  const labels: Record<string, string> = {
+    created: '已创建', paying: '支付中', paid: '已付款', credited: '已到账', closed: '已关闭', failed: '失败'
+  }
+  return labels[item.status] || item.status || '未知'
+}
+
 function extractCode(error: any) {
-  return String(error?.error_id || error?.reference_id || error?.wechat_code || error?.errCode || error?.statusCode || '')
+  return String(error?.error_id || error?.reference_id || error?.wechat_code || error?.errCode || error?.code || error?.statusCode || '')
 }
 
 function classifyRechargeError(error: any): PayErrorState {
   const detail = getErrorMessage(error, '钻石充值失败，请稍后重试')
   const code = extractCode(error)
   const text = `${detail} ${error?.errMsg || ''}`.toLowerCase()
-
-  if (/未绑定|道具id|product/.test(text)) return { title: '钻石档位暂不可用', detail, action: '请联系管理员核对微信虚拟道具ID。', code }
-  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '充值金额校验未通过', detail, action: '请重新选择钻石档位；若持续出现请联系管理员核对微信道具价格。', code }
-  if (/openid|登录态|session|重新登录|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请返回个人中心重新登录微信账号，然后再次进入充值页面。', code }
-  if (/appkey|offer|配置|configuration/.test(text)) return { title: '支付配置异常', detail, action: '请管理员检查AppKey、OfferID和虚拟支付环境配置。', code }
-  if (/尚未审核|道具状态|15010|15011|15013/.test(text)) return { title: '微信道具暂不可用', detail, action: '请确认对应虚拟道具已经审核并上架，且当前支付环境正确。', code }
-  if (Number(error?.statusCode) >= 500 || /内部错误|请求失败（500）/.test(text)) return { title: '支付服务暂时异常', detail, action: '请稍后重试；如持续出现，请把错误编号提供给管理员查询服务器日志。', code }
-  return { title: '充值未完成', detail, action: '请检查网络后重试；若微信已扣款，请不要重复充值，先刷新入账状态。', code }
+  if (/40163|code\s*been\s*used|登录凭证/.test(text) || code === '40163') {
+    return { title: '微信登录凭证刷新失败', detail, action: '请关闭小程序后重新进入；系统不会重复扣款。', code }
+  }
+  if (/未绑定|道具id|product/.test(text)) return { title: '钻石档位暂不可用', detail, action: '请管理员核对微信虚拟道具ID。', code }
+  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '充值金额校验未通过', detail, action: '请管理员核对微信道具价格。', code }
+  if (/openid|session|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请关闭并重新进入小程序。', code }
+  if (Number(error?.statusCode) >= 500) return { title: '支付服务暂时异常', detail, action: '请稍后重试并保留错误编号。', code }
+  return { title: '充值未完成', detail, action: '若微信已扣款，请勿重复充值，先刷新入账状态。', code }
 }
 
 function copyErrorInfo() {
   if (!payError.value) return
-  const text = [
-    `错误：${payError.value.title}`,
-    `详情：${payError.value.detail}`,
-    payError.value.code ? `错误编号：${payError.value.code}` : ''
-  ].filter(Boolean).join('\n')
+  const text = [`错误：${payError.value.title}`, `详情：${payError.value.detail}`, payError.value.code ? `错误编号：${payError.value.code}` : ''].filter(Boolean).join('\n')
   uni.setClipboardData({ data: text, success: () => success('错误信息已复制') })
 }
 
 function clearConfirmationTimer() {
-  if (!confirmationTimer) return
-  clearTimeout(confirmationTimer)
+  if (confirmationTimer) clearTimeout(confirmationTimer)
   confirmationTimer = null
 }
 
 function scheduleConfirmationRefresh() {
   clearConfirmationTimer()
-  if (!pageAlive || !rechargeConfirming.value) return
-  confirmationTimer = setTimeout(() => { void refreshPendingRecharge(true) }, 2500)
+  if (pageAlive && rechargeConfirming.value) {
+    confirmationTimer = setTimeout(() => { void refreshPendingRecharge(true) }, 2500)
+  }
 }
 
 function enterConfirmationPending(rechargeNo: string) {
@@ -229,8 +211,8 @@ function enterConfirmationPending(rechargeNo: string) {
   rechargeConfirming.value = true
   pendingRechargeNo.value = rechargeNo
   payError.value = null
-  const pendingState: PendingRechargeState = { rechargeNo, createdAt: Date.now() }
-  uni.setStorageSync(RECHARGE_PENDING_STORAGE_KEY, pendingState)
+  const state: PendingRechargeState = { rechargeNo, createdAt: Date.now() }
+  uni.setStorageSync(RECHARGE_PENDING_STORAGE_KEY, state)
   scheduleConfirmationRefresh()
 }
 
@@ -243,18 +225,23 @@ function clearPendingRecharge() {
 
 function restorePendingRecharge() {
   const stored = uni.getStorageSync(RECHARGE_PENDING_STORAGE_KEY) as PendingRechargeState | ''
-  if (!stored || !stored.rechargeNo) return
+  if (!stored?.rechargeNo) return
   rechargeConfirming.value = true
   pendingRechargeNo.value = stored.rechargeNo
+}
+
+async function closeExpiredRechargeOrders(items: RechargeQueryResult[]) {
+  const stale = items.filter(item => item.status === 'paying' && isRechargeExpired(item))
+  if (!stale.length) return false
+  await Promise.allSettled(stale.map(item => cancelRecharge(item.recharge_no)))
+  return true
 }
 
 async function loadData() {
   loading.value = true
   try {
     const [overviewResult, packagesResult, historyResult] = await Promise.allSettled([
-      getWalletOverview(),
-      getRechargePackages(),
-      getRechargeOrders(1, 5)
+      getWalletOverview(), getRechargePackages(), getRechargeOrders(1, 8)
     ])
     if (overviewResult.status === 'fulfilled') {
       overview.value = overviewResult.value
@@ -265,28 +252,17 @@ async function loadData() {
     if (packagesResult.status === 'fulfilled') {
       packages.value = packagesResult.value.results || []
       if (selectedId.value === null && packages.value.length) selectedId.value = packages.value[0].id
-    } else {
-      toast(getErrorMessage(packagesResult.reason, '钻石档位加载失败'))
     }
     if (historyResult.status === 'fulfilled') {
-      rechargeHistory.value = historyResult.value.results || []
+      let results = historyResult.value.results || []
+      if (await closeExpiredRechargeOrders(results)) {
+        results = (await getRechargeOrders(1, 8)).results || []
+      }
+      rechargeHistory.value = results
     }
   } finally {
     loading.value = false
   }
-}
-
-async function refreshOverview() {
-  try {
-    overview.value = await getWalletOverview()
-    overviewLoadFailed.value = false
-  } catch {
-    overviewLoadFailed.value = overview.value === null
-  }
-}
-
-function retryOverview() {
-  void refreshOverview()
 }
 
 async function refreshPendingRecharge(silent = false) {
@@ -294,68 +270,46 @@ async function refreshPendingRecharge(silent = false) {
   confirmationRefreshing.value = true
   try {
     const result = await queryRecharge(pendingRechargeNo.value)
-    if (result?.status === 'credited') {
+    if (result.status === 'credited') {
       clearPendingRecharge()
       await loadData()
       success(`充值成功，💎${diamonds(result.diamonds)}已到账`)
       return
     }
-    if (result?.status === 'closed' || result?.status === 'failed') {
+    if (result.status === 'closed' || result.status === 'failed') {
       clearPendingRecharge()
       await loadData()
-      toast('本次充值未完成入账；若微信已扣款请联系客服处理')
+      toast('本次充值未完成')
       return
     }
-    if (!silent) toast(result?.status === 'paid' ? '已确认付款，钻石正在入账' : '充值仍在确认中，请勿重复支付')
+    if (!silent) toast(result.status === 'paid' ? '已确认付款，钻石正在入账' : '充值仍在确认中')
   } catch (error) {
-    if (!silent) toast(getErrorMessage(error, '充值状态查询失败，系统会继续确认'))
+    if (!silent) toast(getErrorMessage(error, '充值状态查询失败'))
   } finally {
     confirmationRefreshing.value = false
-    if (pageAlive && rechargeConfirming.value) scheduleConfirmationRefresh()
+    scheduleConfirmationRefresh()
   }
 }
 
-function goBackAfterSuccess() {
-  const pages = getCurrentPages()
-  if (pages.length > 1) {
-    back()
-    return
+function findPackageForHistory(item: RechargeQueryResult) {
+  if (item.recharge_product_id) {
+    const exact = packages.value.find(product => product.id === item.recharge_product_id)
+    if (exact) return exact
   }
-  replace('/pages/client/wallet/index')
+  const amount = Number(item.pay_amount_yuan || item.amount || 0)
+  return packages.value.find(product => Number(product.pay_amount_yuan || product.amount || 0) === amount) || null
 }
 
-async function runMockRechargeFlow(rechargeNo: string) {
-  const result = await mockRechargeSuccess(rechargeNo)
-  if (result?.status === 'credited' || result?.status === 'paid') {
-    await loadData()
-    success(`模拟充值成功，💎${diamonds(result.diamonds)}已到账`)
-  } else {
-    toast(`模拟充值状态：${result?.status || '未知'}`)
-  }
-}
-
-async function payRecharge() {
-  if (paying.value || mocking.value) return
-  if (rechargeConfirming.value) {
-    toast('上一笔充值正在确认入账，请稍候')
-    return
-  }
-  if (!selectedPackage.value) {
-    toast('请先选择钻石档位')
-    return
-  }
+async function startRecharge(product: RechargePackage) {
+  if (paying.value || rechargeConfirming.value) return
   payError.value = null
   paying.value = true
   let currentRechargeNo = ''
   try {
-    const loginResult: any = await new Promise((resolve, reject) => {
-      uni.login({ provider: 'weixin', success: resolve, fail: reject })
-    })
-    if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
-    const payParams = await createRecharge(selectedPackage.value.id, loginResult.code)
+    const payParams = await createRecharge(product.id)
     currentRechargeNo = payParams.recharge_no || payParams.payment_no || ''
     if (payParams.mock === true || !payParams.signData) {
-      const ok = await confirm('后端当前处于模拟支付模式，本次将模拟购买钻石，不产生真实扣款。是否继续？', '模拟支付')
+      const ok = await confirm('当前为模拟支付模式，不产生真实扣款。是否继续？', '模拟支付')
       if (ok) await runMockRechargeFlow(currentRechargeNo)
       return
     }
@@ -363,14 +317,15 @@ async function payRecharge() {
     clearPendingRecharge()
     await loadData()
     success(`充值成功，💎${diamonds(payParams.diamonds)}已到账`)
-    setTimeout(goBackAfterSuccess, 900)
+    setTimeout(() => getCurrentPages().length > 1 ? back() : replace('/pages/client/wallet/index'), 900)
   } catch (error: any) {
     const errCode = Number(error?.errCode)
     if (isVirtualPaymentConfirmationPending(error)) {
       enterConfirmationPending(String(error?.paymentNo || currentRechargeNo || ''))
-      toast('微信付款已完成，钻石正在入账，请勿重复支付')
+      toast('微信付款已完成，钻石正在入账')
     } else if (errCode === -2 || /cancel/i.test(String(error?.errMsg || ''))) {
-      toast('已取消支付')
+      await loadData()
+      toast('已取消微信收银台，可在充值记录中继续或取消')
     } else {
       payError.value = classifyRechargeError(error)
       toast(payError.value.title)
@@ -380,19 +335,47 @@ async function payRecharge() {
   }
 }
 
-async function mockRecharge() {
-  if (!isDev || paying.value || mocking.value || rechargeConfirming.value) return
-  if (!selectedPackage.value) {
-    toast('请先选择钻石档位')
-    return
+async function payRecharge() {
+  if (!selectedPackage.value) return toast('请先选择钻石档位')
+  await startRecharge(selectedPackage.value)
+}
+
+async function continueRecharge(item: RechargeQueryResult) {
+  const product = findPackageForHistory(item)
+  if (!product) return toast('对应充值档位已下架，请取消旧充值后重新选择')
+  selectedId.value = product.id
+  await startRecharge(product)
+}
+
+async function cancelPendingRecharge(item: RechargeQueryResult) {
+  const ok = await confirm('确认取消这笔未完成充值吗？微信已付款的订单不会被取消。', '取消充值')
+  if (!ok) return
+  actionRechargeNo.value = item.recharge_no
+  try {
+    const result = await cancelRecharge(item.recharge_no)
+    if (pendingRechargeNo.value === item.recharge_no) clearPendingRecharge()
+    await loadData()
+    result.status === 'closed' ? success('充值已取消') : toast(rechargeStatusText(result))
+  } catch (error) {
+    toast(getErrorMessage(error, '取消充值失败'))
+  } finally {
+    actionRechargeNo.value = ''
   }
+}
+
+async function runMockRechargeFlow(rechargeNo: string) {
+  const result = await mockRechargeSuccess(rechargeNo)
+  await loadData()
+  result.status === 'credited' || result.status === 'paid'
+    ? success(`模拟充值成功，💎${diamonds(result.diamonds)}已到账`)
+    : toast(`模拟充值状态：${result.status || '未知'}`)
+}
+
+async function mockRecharge() {
+  if (!isDev || !selectedPackage.value || mocking.value) return
   mocking.value = true
   try {
-    const loginResult: any = await new Promise((resolve, reject) => {
-      uni.login({ provider: 'weixin', success: resolve, fail: reject })
-    })
-    if (!loginResult?.code) throw new Error('微信登录态获取失败，请重新进入小程序')
-    const payParams = await createRecharge(selectedPackage.value.id, loginResult.code)
+    const payParams = await createRecharge(selectedPackage.value.id)
     await runMockRechargeFlow(payParams.recharge_no || payParams.payment_no || '')
   } catch (error) {
     toast(getErrorMessage(error, '模拟充值失败'))
@@ -401,82 +384,31 @@ async function mockRecharge() {
   }
 }
 
-onLoad(() => {
-  pageAlive = true
-  restorePendingRecharge()
-})
-onShow(async () => {
-  await loadData()
-  if (rechargeConfirming.value) void refreshPendingRecharge(true)
-})
-onUnload(() => {
-  pageAlive = false
-  clearConfirmationTimer()
-})
+onLoad(() => { pageAlive = true; restorePendingRecharge() })
+onShow(async () => { await loadData(); if (rechargeConfirming.value) void refreshPendingRecharge(true) })
+onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 </script>
 
 <style lang="scss" scoped>
-.recharge-page { min-height: 100vh; padding: 24rpx 24rpx calc(70rpx + env(safe-area-inset-bottom)); box-sizing: border-box; color: #172116; background: radial-gradient(circle at 10% 0%, rgba(47,155,99,.12), transparent 30%), radial-gradient(circle at 90% 12%, rgba(216,161,68,.12), transparent 28%), #f7f3ea; }
-.card, .balance-card, .pay-error-card { margin-bottom: 20rpx; border-radius: 28rpx; background: rgba(255,255,255,.96); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.card { padding: 26rpx; }
-.balance-card { padding: 36rpx 28rpx 30rpx; text-align: center; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
-.balance-label { color: rgba(255,255,255,.78); font-size: 24rpx; }
-.balance-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin-top: 12rpx; }
-.balance-row text:first-child { font-size: 38rpx; font-weight: 900; }
-.balance-row text:last-child { font-size: 76rpx; line-height: 1; font-weight: 900; }
-.balance-row--error text:first-child, .balance-row--error text:last-child { font-size: 30rpx; line-height: 1.4; font-weight: 900; color: rgba(255,255,255,.88); text-decoration: underline; }
-.secure-tip { display: inline-flex; align-items: center; gap: 10rpx; margin-top: 24rpx; padding: 10rpx 18rpx; border-radius: 999rpx; background: rgba(255,255,255,.12); font-size: 22rpx; }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-bottom: 18rpx; }
-.card-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.card-head text:last-child { color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
+.recharge-page { min-height: 100vh; padding: 24rpx 24rpx 70rpx; box-sizing: border-box; color: #172116; background: #f7f3ea; }
+.card, .balance-card, .error-card { margin-bottom: 20rpx; padding: 26rpx; border-radius: 28rpx; background: #fff; box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
+.balance-card { color: #fff; text-align: center; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
+.balance-label, .secure-tip { display: block; color: rgba(255,255,255,.78); font-size: 23rpx; }
+.balance-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin: 14rpx 0 22rpx; }
+.balance-row text:first-child { font-size: 36rpx; }.balance-row text:last-child { font-size: 72rpx; font-weight: 900; }
+.balance-row--error text { font-size: 28rpx !important; text-decoration: underline; }
+.card-head { display: flex; justify-content: space-between; gap: 16rpx; margin-bottom: 18rpx; }
+.card-head text:first-child, .section-title { font-size: 30rpx; font-weight: 900; }.card-head text:last-child { color: #1f7c4b; font-size: 22rpx; font-weight: 800; }
+.section-desc { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; }
 .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
-.package-item { padding: 26rpx 8rpx 22rpx; border-radius: 22rpx; text-align: center; background: #f7faf4; border: 3rpx solid rgba(39,61,42,.08); }
-.package-item.active { background: #eef8f1; border-color: #1f7c4b; box-shadow: 0 8rpx 20rpx rgba(31,124,75,.14); }
-.package-amount { display: flex; justify-content: center; align-items: baseline; gap: 4rpx; color: #172116; }
-.package-amount text:first-child { font-size: 24rpx; font-weight: 900; }
-.package-amount text:last-child { font-size: 39rpx; line-height: 1; font-weight: 900; }
-.package-item.active .package-amount { color: #1f7c4b; }
-.package-sub { display: block; margin-top: 10rpx; color: #879083; font-size: 20rpx; }
-.package-item.active .package-sub { color: #1f7c4b; }
-.empty-tip { padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
-.confirming-card { border-color: rgba(47,155,99,.18); }
-.confirming-head { display: flex; align-items: center; gap: 18rpx; }
-.confirming-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #16954d); }
-.confirming-head view:last-child text { display: block; }
-.confirming-head view:last-child text:first-child { font-size: 30rpx; font-weight: 900; }
-.confirming-head view:last-child text:last-child { margin-top: 6rpx; color: #7d877a; font-size: 22rpx; }
-.confirming-notice { display: flex; gap: 12rpx; margin-top: 22rpx; padding: 18rpx; border-radius: 18rpx; color: #78643a; font-size: 22rpx; line-height: 1.5; background: #fff8e8; }
-.confirming-notice text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 11rpx; border-radius: 50%; background: #d8a144; }
-.confirming-notice text:last-child { flex: 1; }
-.notice-card .card-head { margin-bottom: 10rpx; }
-.notice-line { display: flex; gap: 12rpx; padding: 8rpx 0; color: #687665; font-size: 22rpx; line-height: 1.55; }
-.notice-line text:first-child { width: 10rpx; height: 10rpx; flex-shrink: 0; margin-top: 12rpx; border-radius: 50%; background: #d8a144; }
-.notice-line text:last-child { flex: 1; }
-.history-card { padding-bottom: 10rpx; }
-.history-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 18rpx 0; border-top: 1rpx solid rgba(39,61,42,.07); }
-.history-row:first-of-type { border-top: 0; }
-.history-row text { display: block; }
-.history-diamonds { color: #1f7c4b; font-size: 27rpx; font-weight: 900; }
-.history-time { margin-top: 7rpx; color: #9aa197; font-size: 20rpx; }
-.history-right { text-align: right; color: #687665; font-size: 21rpx; }
-.history-status { margin-top: 7rpx; font-weight: 900; }
-.history-status--credited { color: #1f7c4b; }
-.history-status--failed, .history-status--closed { color: #a13d35; }
-.pay-error-card { padding: 24rpx; border-color: rgba(196,50,50,.17); background: #fff6f4; }
-.pay-error-head { display: flex; align-items: flex-start; gap: 16rpx; }
-.error-icon { width: 52rpx; height: 52rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 900; background: #c43232; }
-.error-main { flex: 1; min-width: 0; }
-.error-title, .error-detail, .error-action { display: block; }
-.error-title { color: #8f2929; font-size: 27rpx; font-weight: 900; }
-.error-detail { margin-top: 8rpx; color: #7c514d; font-size: 23rpx; line-height: 1.5; word-break: break-all; }
-.error-code { display: flex; justify-content: space-between; gap: 20rpx; margin-top: 18rpx; padding: 16rpx 18rpx; border-radius: 16rpx; color: #8f2929; font-size: 22rpx; background: rgba(196,50,50,.07); }
-.error-code text:last-child { flex: 1; text-align: right; font-weight: 900; word-break: break-all; }
-.error-action { margin-top: 14rpx; color: #7d645f; font-size: 22rpx; line-height: 1.5; }
-.pay-bar { margin-top: 8rpx; }
-.pay-button { width: 100%; min-height: 92rpx; margin-top: 22rpx; padding: 18rpx 24rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #fff; font-size: 28rpx; font-weight: 900; line-height: 1.35; background: linear-gradient(135deg, #2fbd68, #15934c); box-shadow: 0 12rpx 26rpx rgba(31,156,81,.22); }
-.pay-button::after, .mock-button::after { border: none; }
-.pay-button[disabled], .mock-button[disabled] { opacity: .62; }
-.mock-button { width: 100%; height: 76rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 25rpx; font-weight: 900; background: #fff6df; border: 1rpx solid rgba(168,117,32,.2); }
-.pay-help { display: block; margin-top: 14rpx; color: #9aa197; font-size: 21rpx; text-align: center; }
-.loading-state { padding: 50rpx 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
+.package-item { padding: 26rpx 8rpx 22rpx; border: 3rpx solid rgba(39,61,42,.08); border-radius: 22rpx; text-align: center; background: #f7faf4; }
+.package-item.active { border-color: #1f7c4b; background: #eef8f1; }.package-diamonds { display: block; font-size: 36rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #879083; font-size: 20rpx; }
+.rules-card > text { display: block; padding: 7rpx 0; color: #687665; font-size: 22rpx; line-height: 1.55; }
+.history-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 1rpx solid rgba(39,61,42,.07); }.history-row:first-of-type { border-top: 0; }
+.history-main text, .history-right > text { display: block; }.history-diamonds { color: #1f7c4b; font-size: 27rpx; font-weight: 900; }.history-time { margin-top: 7rpx; color: #9aa197; font-size: 20rpx; }
+.history-right { flex: 1; text-align: right; color: #687665; font-size: 21rpx; }.history-status { margin-top: 7rpx; font-weight: 900; }.history-status--credited { color: #1f7c4b; }.history-status--closed, .history-status--failed { color: #a13d35; }
+.history-actions { display: flex; justify-content: flex-end; gap: 10rpx; margin-top: 12rpx; }.mini-button { min-width: 116rpx; height: 54rpx; margin: 0; padding: 0 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 800; line-height: 54rpx; }.mini-button::after { border: none; }.mini-button--continue { color: #fff; background: #1f9c51; }.mini-button--cancel { color: #a13d35; background: #fff0ee; }
+.error-card { border: 1rpx solid rgba(196,50,50,.17); background: #fff6f4; }.error-title, .error-detail, .error-action { display: block; }.error-title { color: #8f2929; font-size: 28rpx; font-weight: 900; }.error-detail, .error-action { margin-top: 10rpx; color: #7c514d; font-size: 22rpx; line-height: 1.5; }.error-code { display: flex; justify-content: space-between; margin-top: 16rpx; padding: 15rpx; border-radius: 16rpx; color: #8f2929; background: rgba(196,50,50,.07); }
+.primary-button { width: 100%; min-height: 88rpx; margin-top: 20rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); }.primary-button::after, .mock-button::after { border: none; }.primary-button[disabled], .mock-button[disabled], .mini-button[disabled] { opacity: .55; }
+.mock-button { width: 100%; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 24rpx; background: #fff6df; }.empty-tip, .loading-state { display: block; padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 23rpx; }
 </style>
