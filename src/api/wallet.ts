@@ -35,6 +35,8 @@ export interface RechargeQueryResult {
   diamonds_per_yuan: number
   balance?: string
   balance_diamonds?: number
+  recharge_product_id?: number | null
+  expires_at?: string | null
   created_at?: string | null
   paid_at?: string | null
   credited_at?: string | null
@@ -87,7 +89,11 @@ function isWechatLoginCodeUsed(error: any) {
     || /(?:^|\D)40163(?:\D|$)|code\s*been\s*used/i.test(detail)
 }
 
-function getFreshWechatLoginCode() {
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+function requestWechatLoginCode() {
   return new Promise<string>((resolve, reject) => {
     uni.login({
       provider: 'weixin',
@@ -102,9 +108,21 @@ function getFreshWechatLoginCode() {
           detail: '微信登录凭证获取失败，请重新进入小程序后重试'
         })
       },
-      fail: (error) => reject(error)
+      fail: reject
     })
   })
+}
+
+async function getDistinctWechatLoginCode(previousCode = '') {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (attempt > 0) await wait(180 * attempt)
+    const code = await requestWechatLoginCode()
+    if (!previousCode || code !== previousCode) return code
+  }
+  throw {
+    code: 'WECHAT_LOGIN_CODE_NOT_REFRESHED',
+    detail: '微信未返回新的登录凭证，请关闭并重新进入小程序后重试'
+  }
 }
 
 function postRechargeCreate(rechargeProductId: number, code: string) {
@@ -123,32 +141,39 @@ export function getRechargePackages() {
 }
 
 /**
- * 创建充值单。wx.login 的 code 只能使用一次；若微信返回 40163，自动重新
- * 获取一个 code 并重试一次。只重试一次，避免配置异常时形成无限请求。
+ * 创建充值单。页面传入的旧 code 仅为兼容参数，不再直接使用。每次真正创建前
+ * 都重新调用 wx.login；遇到 40163 时获取一个与上次不同的 code 后重试，最多
+ * 三次后端请求，避免无限循环。
  */
-export async function createRecharge(rechargeProductId: number, code: string) {
-  try {
-    return await postRechargeCreate(rechargeProductId, code)
-  } catch (error) {
-    if (!isWechatLoginCodeUsed(error)) throw error
+export async function createRecharge(rechargeProductId: number, _legacyCode?: string) {
+  let previousCode = ''
+  let lastError: any = null
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = await getDistinctWechatLoginCode(previousCode)
+    previousCode = code
+    try {
+      return await postRechargeCreate(rechargeProductId, code)
+    } catch (error: any) {
+      lastError = error
+      if (!isWechatLoginCodeUsed(error)) throw error
+    }
   }
 
-  const freshCode = await getFreshWechatLoginCode()
-  try {
-    return await postRechargeCreate(rechargeProductId, freshCode)
-  } catch (error: any) {
-    if (!isWechatLoginCodeUsed(error)) throw error
-    throw {
-      ...error,
-      code: 'WECHAT_LOGIN_CODE_USED',
-      wechat_code: 40163,
-      detail: '微信登录凭证刷新后仍然失效，请关闭并重新进入小程序后重试'
-    }
+  throw {
+    ...(lastError || {}),
+    code: 'WECHAT_LOGIN_CODE_USED',
+    wechat_code: 40163,
+    detail: '微信连续返回已使用的登录凭证，请关闭并重新进入小程序后重试'
   }
 }
 
-export function queryRecharge(recharge_no: string) {
-  return api.post<RechargeQueryResult>(`/client/wallet/recharge/query/${recharge_no}`)
+export function queryRecharge(rechargeNo: string) {
+  return api.post<RechargeQueryResult>(`/client/wallet/recharge/query/${rechargeNo}`)
+}
+
+export function cancelRecharge(rechargeNo: string) {
+  return api.post<RechargeQueryResult>(`/client/wallet/recharge/cancel/${rechargeNo}`)
 }
 
 export function getRechargeOrders(page = 1, pageSize = 20) {
@@ -165,11 +190,11 @@ export function getWalletTransactions(page = 1, pageSize = 20) {
   })
 }
 
-export function payOrderWithBalance(order_no: string) {
-  return api.post<BalancePaymentResult>('/pay/balance/create', { order_no })
+export function payOrderWithBalance(orderNo: string) {
+  return api.post<BalancePaymentResult>('/pay/balance/create', { order_no: orderNo })
 }
 
 /** 仅开发环境可用（后端 ENABLE_MOCK_PAYMENT gate）。 */
-export function mockRechargeSuccess(recharge_no: string) {
-  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock/${recharge_no}/success`)
+export function mockRechargeSuccess(rechargeNo: string) {
+  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock/${rechargeNo}/success`)
 }
