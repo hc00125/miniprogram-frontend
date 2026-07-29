@@ -72,6 +72,48 @@ export interface BalancePaymentResult {
   diamonds_per_yuan: number
 }
 
+type RechargeCreateResult = MiniPaymentRequest & {
+  recharge_no: string
+  pay_amount_yuan: string
+  diamonds: number
+  diamonds_per_yuan: number
+}
+
+function isWechatLoginCodeUsed(error: any) {
+  const code = String(error?.wechat_code ?? error?.errCode ?? error?.code ?? '')
+  const detail = String(error?.detail ?? error?.errMsg ?? error?.message ?? '')
+  return code === '40163'
+    || code === 'WECHAT_LOGIN_CODE_USED'
+    || /(?:^|\D)40163(?:\D|$)|code\s*been\s*used/i.test(detail)
+}
+
+function getFreshWechatLoginCode() {
+  return new Promise<string>((resolve, reject) => {
+    uni.login({
+      provider: 'weixin',
+      success: (result: any) => {
+        const code = String(result?.code || '')
+        if (code) {
+          resolve(code)
+          return
+        }
+        reject({
+          code: 'WECHAT_LOGIN_CODE_MISSING',
+          detail: '微信登录凭证获取失败，请重新进入小程序后重试'
+        })
+      },
+      fail: (error) => reject(error)
+    })
+  })
+}
+
+function postRechargeCreate(rechargeProductId: number, code: string) {
+  return api.post<RechargeCreateResult>('/client/wallet/recharge/create', {
+    recharge_product_id: rechargeProductId,
+    code
+  })
+}
+
 export function getWalletOverview() {
   return api.get<WalletOverview>('/client/wallet/overview')
 }
@@ -80,13 +122,29 @@ export function getRechargePackages() {
   return api.get<{ diamonds_per_yuan: number; results: RechargePackage[] }>('/client/wallet/recharge/packages')
 }
 
-export function createRecharge(recharge_product_id: number, code: string) {
-  return api.post<MiniPaymentRequest & {
-    recharge_no: string
-    pay_amount_yuan: string
-    diamonds: number
-    diamonds_per_yuan: number
-  }>('/client/wallet/recharge/create', { recharge_product_id, code })
+/**
+ * 创建充值单。wx.login 的 code 只能使用一次；若微信返回 40163，自动重新
+ * 获取一个 code 并重试一次。只重试一次，避免配置异常时形成无限请求。
+ */
+export async function createRecharge(rechargeProductId: number, code: string) {
+  try {
+    return await postRechargeCreate(rechargeProductId, code)
+  } catch (error) {
+    if (!isWechatLoginCodeUsed(error)) throw error
+  }
+
+  const freshCode = await getFreshWechatLoginCode()
+  try {
+    return await postRechargeCreate(rechargeProductId, freshCode)
+  } catch (error: any) {
+    if (!isWechatLoginCodeUsed(error)) throw error
+    throw {
+      ...error,
+      code: 'WECHAT_LOGIN_CODE_USED',
+      wechat_code: 40163,
+      detail: '微信登录凭证刷新后仍然失效，请关闭并重新进入小程序后重试'
+    }
+  }
 }
 
 export function queryRecharge(recharge_no: string) {
