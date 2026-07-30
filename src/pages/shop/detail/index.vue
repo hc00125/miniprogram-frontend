@@ -46,6 +46,30 @@
         </view>
       </view>
 
+      <view v-if="hasMultiplePlayerProducts" class="detail-card player-service-switch-card">
+        <view class="player-service-switch-head">
+          <view>
+            <text class="player-service-switch-title">TA 的全部上架服务</text>
+            <text class="player-service-switch-subtitle">共{{ allProducts.length }}项，点击切换商品与规格</text>
+          </view>
+          <text class="player-service-switch-count">{{ activeProductIndex + 1 }}/{{ allProducts.length }}</text>
+        </view>
+        <scroll-view scroll-x class="player-service-scroll" :show-scrollbar="false">
+          <view class="player-service-list">
+            <view
+              v-for="item in allProducts"
+              :key="item.id"
+              class="player-service-chip"
+              :class="{ active: item.id === product.id }"
+              @tap="selectPlayerProduct(item)"
+            >
+              <text class="player-service-name">{{ item.name }}</text>
+              <text class="player-service-meta">{{ item.specs?.length || 0 }}个规格 · 💎{{ packageDiamonds(item) }}起</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
       <view class="detail-card option-card">
         <view class="option-row" @tap="openSpecPopup('buy')">
           <text class="option-label">选择</text>
@@ -81,7 +105,7 @@
         </view>
       </view>
 
-      <view v-if="recommendProducts.length" class="recommend-section">
+      <view v-if="recommendProducts.length && !hasMultiplePlayerProducts" class="recommend-section">
         <view class="graphic-title"><text></text><text>您或许会喜欢</text><text></text></view>
         <view class="recommend-grid">
           <view v-for="item in recommendProducts" :key="item.id" class="recommend-card" @tap="openProduct(item.id)">
@@ -120,6 +144,23 @@
           <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
         </view>
         <view class="spec-popup-body">
+          <view v-if="hasMultiplePlayerProducts" class="popup-product-group">
+            <view class="spec-popup-title-row"><text class="spec-popup-title">上架服务</text><text class="spec-popup-title-tip">先选择商品</text></view>
+            <scroll-view scroll-x class="popup-product-scroll" :show-scrollbar="false">
+              <view class="popup-product-list">
+                <view
+                  v-for="item in allProducts"
+                  :key="item.id"
+                  class="popup-product-chip"
+                  :class="{ active: item.id === product.id }"
+                  @tap="selectPlayerProduct(item)"
+                >
+                  <text>{{ item.name }}</text>
+                  <text>{{ item.specs?.length || 0 }}个规格 · 💎{{ packageDiamonds(item) }}起</text>
+                </view>
+              </view>
+            </scroll-view>
+          </view>
           <view v-if="specs.length">
             <view class="spec-popup-title-row"><text class="spec-popup-title">商品规格</text><text class="spec-popup-title-tip">钻石价格</text></view>
             <view class="spec-popup-grid">
@@ -173,6 +214,8 @@ const isGuaranteeProduct = computed(() => Boolean(product.value && (product.valu
 const hourlyService = computed(() => isHourlyService(product.value))
 const effectiveHours = computed(() => hourlyService.value ? normalizeServiceHours(selectedQuantity.value) : 1)
 const isPlayerServiceProduct = computed(() => product.value?.selling_mode === 'player_designated')
+const hasMultiplePlayerProducts = computed(() => Boolean(playerId.value && allProducts.value.length > 1))
+const activeProductIndex = computed(() => Math.max(0, allProducts.value.findIndex(item => item.id === product.value?.id)))
 const productPrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
 const selectedTotalPrice = computed(() => productPrice.value * effectiveHours.value)
 const originalPrice = computed(() => product.value ? getOriginalPrice(product.value) : 0)
@@ -201,12 +244,15 @@ function getProductPrice(item: BossPackage) { const value = item as BossPackage 
 function getOriginalPrice(item: BossPackage) { const value = item as BossPackage & Record<string, any>; const price = getDisplayPrice(item); return Math.max(price, Number(value.original_price ?? value.market_price ?? price)) }
 function getSoldCount(item: BossPackage) { const value = item as BossPackage & Record<string, any>; return Number(value.sold_count ?? value.sales_count ?? value.sales ?? value.order_count ?? 0) }
 function getSpecDisplayName(spec: BossPackageSpec) { const value = spec as BossPackageSpec & Record<string, any>; return String(value.short_name || value.display_name || spec.name || '').trim() }
+function sortedSpecs(item: BossPackage) { return [...(item.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id) - Number(b.id)) }
+function activateProduct(item: BossPackage) { product.value = item; packageId.value = item.id; selectedSpec.value = sortedSpecs(item)[0] || null; selectedQuantity.value = 1 }
+function selectPlayerProduct(item: BossPackage) { if (item.id === product.value?.id) return; activateProduct(item) }
 function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
 function adjustQuantity(delta: number) { const next = effectiveHours.value + delta; if (next < 1) return; if (next > MAX_SERVICE_HOURS) return toast(`单次最多选择${MAX_SERVICE_HOURS}小时`); selectedQuantity.value = next }
 function previewProductImage(url: string) { if (!url) return; uni.previewImage({ urls: previewImages.value.length ? previewImages.value : [url], current: url }) }
 async function refreshCartCount() { try { cartCount.value = await getShopCartCount() } catch { cartCount.value = 0 } }
-async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = playerId.value ? (await getPlayerServiceProducts(playerId.value)).products : await getPackages(); allProducts.value = list; product.value = list.find(item => item.id === packageId.value) || null; selectedSpec.value = product.value?.specs?.[0] || null; selectedQuantity.value = 1 } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
-function openProduct(nextPackageId: number) { go('/pages/shop/detail/index', { packageId: nextPackageId }) }
+async function fetchProduct() { if (!packageId.value) return; loading.value = true; try { const list = playerId.value ? (await getPlayerServiceProducts(playerId.value)).products : await getPackages(); allProducts.value = list; const requested = list.find(item => item.id === packageId.value); const fallback = playerId.value ? [...list].sort((a, b) => (b.specs?.length || 0) - (a.specs?.length || 0) || Number(a.sort_order || 0) - Number(b.sort_order || 0) || a.id - b.id)[0] : null; const next = requested || fallback || null; if (next) activateProduct(next); else product.value = null } catch (error) { toast(getErrorMessage(error, '商品详情加载失败')) } finally { loading.value = false } }
+function openProduct(nextPackageId: number) { const next = allProducts.value.find(item => item.id === nextPackageId); if (playerId.value && next) { activateProduct(next); return } go('/pages/shop/detail/index', { packageId: nextPackageId, playerId: playerId.value || '' }) }
 function openSpecPopup(action: 'cart' | 'buy' = 'buy') { if (!product.value) return; pendingAction.value = action; if (!hourlyService.value) selectedQuantity.value = 1; specPopupVisible.value = true }
 function closeSpecPopup() { specPopupVisible.value = false }
 function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') return void handleCartTap(); if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, playerId: playerId.value || product.value.owner_player_id || '', specId: selectedSpec.value?.id, quantity: effectiveHours.value }) }
