@@ -19,7 +19,7 @@
       <view class="detail-card product-card">
         <view class="price-line">
           <view class="price-wrap">
-            <text v-if="specs.length" class="price-prefix">起</text>
+            <text v-if="displaySpecCount" class="price-prefix">起</text>
             <text class="price-symbol">💎</text>
             <text class="price-value">{{ diamondFromYuan(productPrice) }}</text>
             <text class="price-unit">{{ hourlyService ? '/时' : '/单' }}</text>
@@ -37,7 +37,7 @@
         </view>
         <view v-if="isGuaranteeProduct" class="guarantee-overview">
           <view class="overview-item"><text>起步钻石</text><text>💎{{ diamondFromYuan(productPrice) }}</text></view>
-          <view class="overview-item"><text>规格档位</text><text>{{ specs.length || 9 }}档</text></view>
+          <view class="overview-item"><text>规格档位</text><text>{{ displaySpecCount || 9 }}档</text></view>
           <view class="overview-item"><text>计价方式</text><text>按单</text></view>
         </view>
         <view class="product-meta">
@@ -46,25 +46,25 @@
         </view>
       </view>
 
-      <view v-if="hasMultiplePlayerProducts" class="detail-card player-service-switch-card">
+      <view v-if="hasMultipleServiceGroups" class="detail-card player-service-switch-card">
         <view class="player-service-switch-head">
           <view>
-            <text class="player-service-switch-title">TA 的全部上架服务</text>
-            <text class="player-service-switch-subtitle">共{{ allProducts.length }}项，点击切换商品与规格</text>
+            <text class="player-service-switch-title">TA 的服务类型</text>
+            <text class="player-service-switch-subtitle">选择类型后，下方展示该类型全部规格</text>
           </view>
-          <text class="player-service-switch-count">{{ activeProductIndex + 1 }}/{{ allProducts.length }}</text>
+          <text class="player-service-switch-count">{{ activeServiceGroupName }}</text>
         </view>
         <scroll-view scroll-x class="player-service-scroll" :show-scrollbar="false">
           <view class="player-service-list">
             <view
-              v-for="item in allProducts"
-              :key="item.id"
+              v-for="group in playerServiceGroups"
+              :key="group.key"
               class="player-service-chip"
-              :class="{ active: item.id === product.id }"
-              @tap="selectPlayerProduct(item)"
+              :class="{ active: group.key === activeServiceGroup?.key }"
+              @tap="selectServiceGroup(group)"
             >
-              <text class="player-service-name">{{ item.name }}</text>
-              <text class="player-service-meta">{{ item.specs?.length || 0 }}个规格 · 💎{{ packageDiamonds(item) }}起</text>
+              <text class="player-service-name">{{ group.name }}</text>
+              <text class="player-service-meta">{{ group.options.length }}个规格</text>
             </view>
           </view>
         </scroll-view>
@@ -76,9 +76,9 @@
           <text class="option-value">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           <text class="option-arrow">›</text>
         </view>
-        <view v-if="specs.length" class="option-preview">
-          <view v-for="spec in previewSpecs" :key="spec.id" class="preview-chip">{{ getSpecDisplayName(spec) }} · 💎{{ specDiamonds(spec) }}</view>
-          <view class="preview-chip">共{{ specs.length }}个规格</view>
+        <view v-if="activeServiceOptions.length" class="option-preview">
+          <view v-for="option in previewServiceOptions" :key="serviceOptionKey(option)" class="preview-chip">{{ serviceOptionLabel(option) }} · 💎{{ specDiamonds(option.spec) }}</view>
+          <view class="preview-chip">共{{ activeServiceOptions.length }}个规格</view>
         </view>
       </view>
 
@@ -105,7 +105,7 @@
         </view>
       </view>
 
-      <view v-if="recommendProducts.length && !hasMultiplePlayerProducts" class="recommend-section">
+      <view v-if="recommendProducts.length && !isPlayerServiceProduct" class="recommend-section">
         <view class="graphic-title"><text></text><text>您或许会喜欢</text><text></text></view>
         <view class="recommend-grid">
           <view v-for="item in recommendProducts" :key="item.id" class="recommend-card" @tap="openProduct(item.id)">
@@ -144,27 +144,33 @@
           <view class="spec-popup-close" @tap="closeSpecPopup">×</view>
         </view>
         <view class="spec-popup-body">
-          <view v-if="hasMultiplePlayerProducts" class="popup-product-group">
-            <view class="spec-popup-title-row"><text class="spec-popup-title">上架服务</text><text class="spec-popup-title-tip">先选择商品</text></view>
+          <view v-if="hasMultipleServiceGroups" class="popup-product-group">
+            <view class="spec-popup-title-row"><text class="spec-popup-title">服务类型</text><text class="spec-popup-title-tip">先选择陪玩类型</text></view>
             <scroll-view scroll-x class="popup-product-scroll" :show-scrollbar="false">
               <view class="popup-product-list">
                 <view
-                  v-for="item in allProducts"
-                  :key="item.id"
+                  v-for="group in playerServiceGroups"
+                  :key="group.key"
                   class="popup-product-chip"
-                  :class="{ active: item.id === product.id }"
-                  @tap="selectPlayerProduct(item)"
+                  :class="{ active: group.key === activeServiceGroup?.key }"
+                  @tap="selectServiceGroup(group)"
                 >
-                  <text>{{ item.name }}</text>
-                  <text>{{ item.specs?.length || 0 }}个规格 · 💎{{ packageDiamonds(item) }}起</text>
+                  <text>{{ group.name }}</text>
+                  <text>{{ group.options.length }}个规格</text>
                 </view>
               </view>
             </scroll-view>
           </view>
-          <view v-if="specs.length">
-            <view class="spec-popup-title-row"><text class="spec-popup-title">商品规格</text><text class="spec-popup-title-tip">钻石价格</text></view>
+          <view v-if="activeServiceOptions.length">
+            <view class="spec-popup-title-row"><text class="spec-popup-title">商品规格</text><text class="spec-popup-title-tip">{{ activeServiceGroupName || '钻石价格' }}</text></view>
             <view class="spec-popup-grid">
-              <view v-for="spec in specs" :key="spec.id" class="spec-popup-chip" :class="{ active: selectedSpec?.id === spec.id }" @tap="selectSpec(spec)"><text>{{ getSpecDisplayName(spec) }} · 💎{{ specDiamonds(spec) }}</text></view>
+              <view
+                v-for="option in activeServiceOptions"
+                :key="serviceOptionKey(option)"
+                class="spec-popup-chip"
+                :class="{ active: option.product.id === product.id && selectedSpec?.id === option.spec.id }"
+                @tap="selectPlayerServiceOption(option)"
+              ><text>{{ serviceOptionLabel(option) }} · 💎{{ specDiamonds(option.spec) }}</text></view>
             </view>
           </view>
           <view v-if="hourlyService" class="quantity-row">
@@ -192,6 +198,9 @@ import { go, goMain } from '@/utils/nav'
 import { addShopCartItem, getShopCartCount } from '@/utils/shopCart'
 import { isHourlyService, MAX_SERVICE_HOURS, normalizeServiceHours } from '@/utils/serviceBilling'
 
+type PlayerServiceOption = { product: BossPackage; spec: BossPackageSpec; tierKey: string; tierName: string }
+type PlayerServiceGroup = { key: string; name: string; options: PlayerServiceOption[] }
+
 const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
 const packageId = ref<number | null>(null)
 const playerId = ref<number | null>(null)
@@ -204,8 +213,7 @@ const specPopupVisible = ref(false)
 const pendingAction = ref<'cart' | 'buy'>('buy')
 const cartCount = ref(0)
 
-const specs = computed(() => [...(product.value?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
-const previewSpecs = computed(() => specs.value.slice(0, 3))
+const specs = computed(() => sortedSpecs(product.value))
 const rawProductImage = computed(() => product.value ? getRawProductImage(product.value) : '')
 const specPopupImage = computed(() => rawProductImage.value || fallbackImage)
 const detailImages = computed(() => product.value?.detail_images?.length ? product.value.detail_images : (rawProductImage.value ? [rawProductImage.value] : []))
@@ -213,9 +221,41 @@ const previewImages = computed(() => Array.from(new Set([rawProductImage.value, 
 const isGuaranteeProduct = computed(() => Boolean(product.value && (product.value.product_type === 'guarantee' || product.value.name.includes('保底'))))
 const hourlyService = computed(() => isHourlyService(product.value))
 const effectiveHours = computed(() => hourlyService.value ? normalizeServiceHours(selectedQuantity.value) : 1)
-const isPlayerServiceProduct = computed(() => product.value?.selling_mode === 'player_designated')
-const hasMultiplePlayerProducts = computed(() => Boolean(playerId.value && allProducts.value.length > 1))
-const activeProductIndex = computed(() => Math.max(0, allProducts.value.findIndex(item => item.id === product.value?.id)))
+const isPlayerServiceProduct = computed(() => Boolean(playerId.value && product.value?.selling_mode === 'player_designated'))
+const allPlayerServiceOptions = computed<PlayerServiceOption[]>(() => {
+  if (!playerId.value) return []
+  return allProducts.value.flatMap(item => sortedSpecs(item).map(spec => {
+    const tierName = getServiceTierName(item, spec)
+    return { product: item, spec, tierName, tierKey: getServiceTierKey(item, spec, tierName) }
+  }))
+})
+const playerServiceGroups = computed<PlayerServiceGroup[]>(() => {
+  const groups = new Map<string, PlayerServiceGroup>()
+  allPlayerServiceOptions.value.forEach(option => {
+    const current = groups.get(option.tierKey)
+    if (current) current.options.push(option)
+    else groups.set(option.tierKey, { key: option.tierKey, name: option.tierName || '其他服务', options: [option] })
+  })
+  return Array.from(groups.values()).map(group => ({
+    ...group,
+    options: [...group.options].sort((a, b) => Number(a.product.sort_order || 0) - Number(b.product.sort_order || 0) || Number(a.spec.sort_order || 0) - Number(b.spec.sort_order || 0) || a.product.id - b.product.id),
+  }))
+})
+const activeServiceGroup = computed(() => {
+  if (!isPlayerServiceProduct.value || !product.value || !selectedSpec.value) return null
+  const tierName = getServiceTierName(product.value, selectedSpec.value)
+  const key = getServiceTierKey(product.value, selectedSpec.value, tierName)
+  return playerServiceGroups.value.find(group => group.key === key) || null
+})
+const activeServiceOptions = computed<PlayerServiceOption[]>(() => {
+  if (isPlayerServiceProduct.value) return activeServiceGroup.value?.options || []
+  if (!product.value) return []
+  return specs.value.map(spec => ({ product: product.value as BossPackage, spec, tierKey: 'product', tierName: '' }))
+})
+const previewServiceOptions = computed(() => activeServiceOptions.value.slice(0, 4))
+const displaySpecCount = computed(() => activeServiceOptions.value.length || specs.value.length)
+const hasMultipleServiceGroups = computed(() => isPlayerServiceProduct.value && playerServiceGroups.value.length > 1)
+const activeServiceGroupName = computed(() => activeServiceGroup.value?.name || '')
 const productPrice = computed(() => selectedSpec.value ? Number(selectedSpec.value.price || 0) : (product.value ? getDisplayPrice(product.value) : 0))
 const selectedTotalPrice = computed(() => productPrice.value * effectiveHours.value)
 const originalPrice = computed(() => product.value ? getOriginalPrice(product.value) : 0)
@@ -225,7 +265,7 @@ const wantCount = computed(() => Math.max(1, soldCount.value + 1))
 const heroTitle = computed(() => product.value?.name || 'VIP特惠')
 const heroSubtitle = computed(() => selectedSpec.value?.name || product.value?.description || '规格可选 · 快速开局')
 const heroNote = computed(() => '选择规格与服务时长后下单，支付页可使用已有钻石或微信即时支付')
-const productBadge = computed(() => isGuaranteeProduct.value ? '特色单' : product.value?.group_name || '推荐套餐')
+const productBadge = computed(() => activeServiceGroupName.value || (isGuaranteeProduct.value ? '特色单' : product.value?.group_name || '推荐套餐'))
 const productSummary = computed(() => product.value?.description || '精选套餐，平台保障，统一使用整数钻石标价。')
 const detailText = computed(() => product.value?.description || selectedSpec.value?.description || '选择规格和服务时长后确认下单')
 const guaranteeRules = computed(() => [selectedSpec.value?.guarantee_amount ? `当前选择：电视台保底 ${selectedSpec.value.guarantee_amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '钻石价格以后端配置为准'])
@@ -244,9 +284,34 @@ function getProductPrice(item: BossPackage) { const value = item as BossPackage 
 function getOriginalPrice(item: BossPackage) { const value = item as BossPackage & Record<string, any>; const price = getDisplayPrice(item); return Math.max(price, Number(value.original_price ?? value.market_price ?? price)) }
 function getSoldCount(item: BossPackage) { const value = item as BossPackage & Record<string, any>; return Number(value.sold_count ?? value.sales_count ?? value.sales ?? value.order_count ?? 0) }
 function getSpecDisplayName(spec: BossPackageSpec) { const value = spec as BossPackageSpec & Record<string, any>; return String(value.short_name || value.display_name || spec.name || '').trim() }
-function sortedSpecs(item: BossPackage) { return [...(item.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id) - Number(b.id)) }
-function activateProduct(item: BossPackage) { product.value = item; packageId.value = item.id; selectedSpec.value = sortedSpecs(item)[0] || null; selectedQuantity.value = 1 }
+function sortedSpecs(item: BossPackage | null) { return [...(item?.specs || [])].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || Number(a.id) - Number(b.id)) }
+function normalizeTierName(value: string) {
+  const name = String(value || '').trim()
+  if (!name) return ''
+  if (name.endsWith('陪')) return name
+  if (['技术', '娱乐', '明星', '女陪'].includes(name)) return name === '女陪' ? name : `${name}陪`
+  return name
+}
+function getServiceTierName(item: BossPackage, spec: BossPackageSpec) {
+  const raw = spec as BossPackageSpec & Record<string, any>
+  const explicit = normalizeTierName(String(raw.required_player_type_name || ''))
+  if (explicit) return explicit
+  const display = getSpecDisplayName(spec)
+  const tail = display.includes('+') ? display.split('+').pop() || '' : ''
+  const parsed = normalizeTierName(tail)
+  return parsed || normalizeTierName(String(item.owner_player_type_name || '')) || '其他服务'
+}
+function getServiceTierKey(item: BossPackage, spec: BossPackageSpec, tierName = getServiceTierName(item, spec)) {
+  const raw = spec as BossPackageSpec & Record<string, any>
+  const id = Number(raw.required_player_type_id || 0)
+  return id > 0 ? `type:${id}` : `name:${tierName}`
+}
+function serviceOptionKey(option: PlayerServiceOption) { return `${option.product.id}:${option.spec.id}` }
+function serviceOptionLabel(option: PlayerServiceOption) { return getSpecDisplayName(option.spec) || option.product.name }
+function activateProduct(item: BossPackage, preferredSpec?: BossPackageSpec | null) { product.value = item; packageId.value = item.id; selectedSpec.value = preferredSpec || sortedSpecs(item)[0] || null; selectedQuantity.value = 1 }
 function selectPlayerProduct(item: BossPackage) { if (item.id === product.value?.id) return; activateProduct(item) }
+function selectServiceGroup(group: PlayerServiceGroup) { const first = group.options[0]; if (first) selectPlayerServiceOption(first) }
+function selectPlayerServiceOption(option: PlayerServiceOption) { activateProduct(option.product, option.spec) }
 function selectSpec(spec: BossPackageSpec) { selectedSpec.value = spec }
 function adjustQuantity(delta: number) { const next = effectiveHours.value + delta; if (next < 1) return; if (next > MAX_SERVICE_HOURS) return toast(`单次最多选择${MAX_SERVICE_HOURS}小时`); selectedQuantity.value = next }
 function previewProductImage(url: string) { if (!url) return; uni.previewImage({ urls: previewImages.value.length ? previewImages.value : [url], current: url }) }
@@ -255,7 +320,7 @@ async function fetchProduct() { if (!packageId.value) return; loading.value = tr
 function openProduct(nextPackageId: number) { const next = allProducts.value.find(item => item.id === nextPackageId); if (playerId.value && next) { activateProduct(next); return } go('/pages/shop/detail/index', { packageId: nextPackageId, playerId: playerId.value || '' }) }
 function openSpecPopup(action: 'cart' | 'buy' = 'buy') { if (!product.value) return; pendingAction.value = action; if (!hourlyService.value) selectedQuantity.value = 1; specPopupVisible.value = true }
 function closeSpecPopup() { specPopupVisible.value = false }
-function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (specs.value.length && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') return void handleCartTap(); if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, playerId: playerId.value || product.value.owner_player_id || '', specId: selectedSpec.value?.id, quantity: effectiveHours.value }) }
+function confirmSpecAction(action?: 'cart' | 'buy') { const finalAction = action || pendingAction.value; if (displaySpecCount.value && !selectedSpec.value) return toast('请选择规格'); closeSpecPopup(); if (finalAction === 'cart') return void handleCartTap(); if (!product.value) return; go('/pages/shop/checkout/index', { packageId: product.value.id, playerId: playerId.value || product.value.owner_player_id || '', specId: selectedSpec.value?.id, quantity: effectiveHours.value }) }
 async function handleCartTap() { if (!product.value) return; if (isPlayerServiceProduct.value) return toast('陪玩师专属商品请直接指定下单'); try { await addShopCartItem({ product: product.value, spec: selectedSpec.value, spec_display_name: selectedSpec.value ? getSpecDisplayName(selectedSpec.value) : undefined, image_url: specPopupImage.value, price: productPrice.value, description: productSummary.value, quantity: effectiveHours.value }); await refreshCartCount(); success(hourlyService.value ? `已加入购物车 · ${effectiveHours.value}小时` : '已加入购物车') } catch (error) { toast(getErrorMessage(error, '加入购物车失败')) } }
 function openCart() { go('/pages/shop/cart/index') }
 function goHome() { goMain('home') }
