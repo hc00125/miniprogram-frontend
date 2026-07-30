@@ -1,0 +1,1 @@
+Temporary CI trigger for validating player service product switching. Do not merge.
