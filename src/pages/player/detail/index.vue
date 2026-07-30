@@ -85,7 +85,11 @@ async function openPlayerProduct() {
   openingProduct.value = true
   try {
     const result = await getPlayerServiceProducts(player.value.id)
-    const product = result.products?.[0]
+    const product = [...(result.products || [])].sort((a, b) =>
+      (b.specs?.length || 0) - (a.specs?.length || 0)
+      || Number(a.sort_order || 0) - Number(b.sort_order || 0)
+      || a.id - b.id
+    )[0]
     if (!product) return toast('TA 暂未上架服务，请稍后再试')
     go('/pages/shop/detail/index', { packageId: product.id, playerId: player.value.id })
   } catch (error) { toast(getErrorMessage(error, 'TA 的服务暂不可用')) } finally { openingProduct.value = false }
