@@ -5,7 +5,7 @@
         <view>
           <text class="eyebrow">PLAYER WALLET</text>
           <text class="hero-title">鱼干收益中心</text>
-          <text class="hero-sub">订单完成后进入{{ overview?.review_days || 8 }}天审核期，无异常即可提现</text>
+          <text class="hero-sub">订单完成后进入{{ overview?.review_days || 3 }}天审核期，无异常即可提现</text>
         </view>
         <button class="refresh-btn" @tap="loadAll">刷新</button>
       </view>
@@ -46,7 +46,7 @@
       <view class="card-head">
         <view>
           <text class="card-title">申请提现</text>
-          <text class="card-sub">财务审核后手动汇款，请确认收款信息准确</text>
+          <text class="card-sub">提现可随时申请，平台通常于每周一集中人工审核及处理</text>
         </view>
         <text class="available-chip">可提 {{ fish(overview?.available_balance) }} 鱼干</text>
       </view>
@@ -80,7 +80,7 @@
       <button class="withdraw-btn" :disabled="submitting || !canSubmit" @tap="submitWithdrawal">
         {{ submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请') }}
       </button>
-      <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(fishToYuan(minWithdrawalFishValue)) }}）；鱼干数量最多保留1位小数。</text>
+      <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(fishToYuan(minWithdrawalFishValue)) }}）；所有提现均由管理员人工审核，其他日期也可处理。</text>
     </view>
 
     <view class="tabs">
