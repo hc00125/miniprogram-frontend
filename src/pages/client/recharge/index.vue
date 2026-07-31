@@ -1,6 +1,10 @@
 <template>
   <view class="recharge-page">
     <view class="balance-card">
+      <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
+      <text class="recharge-title">钻石充值中心</text>
+      <text class="recharge-subtitle">选择档位后使用微信支付，钻石到账即可下单</text>
+      <view class="balance-divider"></view>
       <text class="balance-label">当前可用钻石</text>
       <view v-if="overview || !overviewLoadFailed" class="balance-row">
         <text>💎</text><text>{{ diamonds(overview?.balance_diamonds || 0) }}</text>
@@ -19,7 +23,7 @@
       </button>
     </view>
 
-    <view class="card">
+    <view class="card package-card">
       <view class="card-head">
         <text>选择钻石档位</text><text>人民币1元 = 10钻石</text>
       </view>
@@ -38,6 +42,15 @@
       <text v-else-if="!loading" class="empty-tip">暂无已启用的充值档位，请联系客服。</text>
     </view>
 
+    <view class="support-card" @tap="goCustomerService">
+      <view class="support-icon">客</view>
+      <view class="support-main">
+        <text class="support-title">无法充值请联系客服</text>
+        <text class="support-desc">微信已扣款但钻石未到账时，请勿重复充值。</text>
+      </view>
+      <text class="support-action">联系客服 ›</text>
+    </view>
+
     <view v-if="payError && !rechargeConfirming" class="error-card">
       <text class="error-title">{{ payError.title }}</text>
       <text class="error-detail">{{ payError.detail }}</text>
@@ -45,6 +58,7 @@
         <text>错误编号</text><text>{{ payError.code }} · 复制</text>
       </view>
       <text class="error-action">{{ payError.action }}</text>
+      <button class="error-support-button" @tap="goCustomerService">无法充值，联系客服</button>
     </view>
 
     <view class="card rules-card">
@@ -77,9 +91,10 @@
     </view>
 
     <view class="pay-bar">
-      <button class="primary-button" :disabled="paying || rechargeConfirming || !selectedPackage" @tap="payRecharge">
+      <button class="primary-button pay-button" :disabled="paying || rechargeConfirming || !selectedPackage" @tap="payRecharge">
         {{ payButtonText }}
       </button>
+      <text class="pay-support-link" @tap="goCustomerService">无法充值请联系客服</text>
       <button v-if="isDev" class="mock-button" :disabled="paying || mocking || rechargeConfirming || !selectedPackage" @tap="mockRecharge">
         {{ mocking ? '模拟充值中...' : '模拟充值成功（仅开发环境）' }}
       </button>
@@ -106,7 +121,7 @@ import {
 } from '@/api/wallet'
 import { formatDiamonds, formatYuan } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
-import { back, replace } from '@/utils/nav'
+import { back, go, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
 
 type PayErrorState = { title: string; detail: string; action: string; code: string }
@@ -137,7 +152,7 @@ const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
   if (!selectedPackage.value) return '请选择钻石档位'
-  return `支付 ¥${yuan(selectedPackage.value.pay_amount_yuan || selectedPackage.value.amount)} · 获得 💎${diamonds(selectedPackage.value.diamonds)}`
+  return `立即支付 ¥${yuan(selectedPackage.value.pay_amount_yuan || selectedPackage.value.amount)} · 获得 💎${diamonds(selectedPackage.value.diamonds)}`
 })
 
 function diamonds(value: unknown) {
@@ -146,6 +161,10 @@ function diamonds(value: unknown) {
 
 function yuan(value: number | string | null | undefined) {
   return formatYuan(value)
+}
+
+function goCustomerService() {
+  go('/pages/client/customer-service/index')
 }
 
 function dateTime(value?: string | null) {
@@ -390,25 +409,37 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 </script>
 
 <style lang="scss" scoped>
-.recharge-page { min-height: 100vh; padding: 24rpx 24rpx 70rpx; box-sizing: border-box; color: #172116; background: #f7f3ea; }
-.card, .balance-card, .error-card { margin-bottom: 20rpx; padding: 26rpx; border-radius: 28rpx; background: #fff; box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
+.recharge-page { min-height: 100vh; padding: 24rpx 24rpx 70rpx; box-sizing: border-box; color: #172116; background: radial-gradient(circle at 8% 0%, rgba(216,161,68,.14), transparent 30%), #f7f3ea; }
+.card, .balance-card, .error-card, .support-card { margin-bottom: 20rpx; padding: 26rpx; border-radius: 28rpx; background: #fff; box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
 .balance-card { color: #fff; text-align: center; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
-.balance-label, .secure-tip { display: block; color: rgba(255,255,255,.78); font-size: 23rpx; }
+.recharge-eyebrow, .recharge-title, .recharge-subtitle, .balance-label, .secure-tip { display: block; }
+.recharge-eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
+.recharge-title { margin-top: 8rpx; font-size: 42rpx; font-weight: 900; }
+.recharge-subtitle { margin-top: 8rpx; color: rgba(255,255,255,.78); font-size: 22rpx; line-height: 1.5; }
+.balance-divider { height: 1rpx; margin: 22rpx 0; background: rgba(255,255,255,.16); }
+.balance-label, .secure-tip { color: rgba(255,255,255,.78); font-size: 23rpx; }
 .balance-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin: 14rpx 0 22rpx; }
 .balance-row text:first-child { font-size: 36rpx; }.balance-row text:last-child { font-size: 72rpx; font-weight: 900; }
 .balance-row--error text { font-size: 28rpx !important; text-decoration: underline; }
+.package-card { border: 2rpx solid rgba(31,124,75,.08); }
 .card-head { display: flex; justify-content: space-between; gap: 16rpx; margin-bottom: 18rpx; }
 .card-head text:first-child, .section-title { font-size: 30rpx; font-weight: 900; }.card-head text:last-child { color: #1f7c4b; font-size: 22rpx; font-weight: 800; }
 .section-desc { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; }
 .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
-.package-item { padding: 26rpx 8rpx 22rpx; border: 3rpx solid rgba(39,61,42,.08); border-radius: 22rpx; text-align: center; background: #f7faf4; }
-.package-item.active { border-color: #1f7c4b; background: #eef8f1; }.package-diamonds { display: block; font-size: 36rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #879083; font-size: 20rpx; }
+.package-item { padding: 28rpx 8rpx 24rpx; border: 3rpx solid rgba(39,61,42,.08); border-radius: 22rpx; text-align: center; background: #f7faf4; }
+.package-item.active { border-color: #1f9c51; background: #e9f8ef; box-shadow: 0 8rpx 20rpx rgba(31,156,81,.12); }.package-diamonds { display: block; font-size: 36rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #687665; font-size: 21rpx; font-weight: 700; }
+.support-card { display: flex; align-items: center; gap: 16rpx; border: 2rpx solid rgba(216,161,68,.22); background: #fff8e7; }
+.support-icon { width: 64rpx; height: 64rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; color: #fff; font-size: 24rpx; font-weight: 900; background: #a87520; }
+.support-main { flex: 1; min-width: 0; }.support-title, .support-desc { display: block; }.support-title { color: #6f4c12; font-size: 27rpx; font-weight: 900; }.support-desc { margin-top: 5rpx; color: #8b7750; font-size: 20rpx; line-height: 1.45; }.support-action { flex-shrink: 0; color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
 .rules-card > text { display: block; padding: 7rpx 0; color: #687665; font-size: 22rpx; line-height: 1.55; }
 .history-row { display: flex; justify-content: space-between; gap: 20rpx; padding: 20rpx 0; border-top: 1rpx solid rgba(39,61,42,.07); }.history-row:first-of-type { border-top: 0; }
 .history-main text, .history-right > text { display: block; }.history-diamonds { color: #1f7c4b; font-size: 27rpx; font-weight: 900; }.history-time { margin-top: 7rpx; color: #9aa197; font-size: 20rpx; }
 .history-right { flex: 1; text-align: right; color: #687665; font-size: 21rpx; }.history-status { margin-top: 7rpx; font-weight: 900; }.history-status--credited { color: #1f7c4b; }.history-status--closed, .history-status--failed { color: #a13d35; }
 .history-actions { display: flex; justify-content: flex-end; gap: 10rpx; margin-top: 12rpx; }.mini-button { min-width: 116rpx; height: 54rpx; margin: 0; padding: 0 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 800; line-height: 54rpx; }.mini-button::after { border: none; }.mini-button--continue { color: #fff; background: #1f9c51; }.mini-button--cancel { color: #a13d35; background: #fff0ee; }
 .error-card { border: 1rpx solid rgba(196,50,50,.17); background: #fff6f4; }.error-title, .error-detail, .error-action { display: block; }.error-title { color: #8f2929; font-size: 28rpx; font-weight: 900; }.error-detail, .error-action { margin-top: 10rpx; color: #7c514d; font-size: 22rpx; line-height: 1.5; }.error-code { display: flex; justify-content: space-between; margin-top: 16rpx; padding: 15rpx; border-radius: 16rpx; color: #8f2929; background: rgba(196,50,50,.07); }
+.error-support-button { width: 100%; height: 68rpx; margin-top: 18rpx; border-radius: 999rpx; color: #8f2929; font-size: 23rpx; font-weight: 900; background: #ffe8e3; }.error-support-button::after { border: none; }
 .primary-button { width: 100%; min-height: 88rpx; margin-top: 20rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); }.primary-button::after, .mock-button::after { border: none; }.primary-button[disabled], .mock-button[disabled], .mini-button[disabled] { opacity: .55; }
+.pay-button { min-height: 96rpx; box-shadow: 0 12rpx 28rpx rgba(21,147,76,.22); }
+.pay-support-link { display: block; padding: 18rpx 0 2rpx; color: #a87520; text-align: center; font-size: 22rpx; font-weight: 900; text-decoration: underline; }
 .mock-button { width: 100%; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 24rpx; background: #fff6df; }.empty-tip, .loading-state { display: block; padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 23rpx; }
 </style>
