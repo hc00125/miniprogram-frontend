@@ -25,6 +25,25 @@
       </view>
     </view>
 
+    <view
+      v-if="accountRestriction.restricted"
+      class="account-restriction-card"
+      :class="`account-restriction-card--${accountRestriction.status}`"
+      @tap="showRestrictionDetails"
+    >
+      <view class="restriction-head">
+        <view class="restriction-icon">{{ accountRestriction.status === 'banned' ? '禁' : '停' }}</view>
+        <view class="restriction-main">
+          <text class="restriction-title">{{ accountRestriction.title }}</text>
+          <text v-if="accountRestriction.suspendedUntilText" class="restriction-until">暂停至：{{ accountRestriction.suspendedUntilText }}</text>
+        </view>
+        <text class="restriction-arrow">›</text>
+      </view>
+      <text v-if="accountRestriction.reason" class="restriction-reason">原因：{{ accountRestriction.reason }}</text>
+      <text class="restriction-tip">当前无法进行新的下单、接单、充值、支付或提现操作，历史记录与客服功能仍可使用。</text>
+      <button class="restriction-service-btn" @tap.stop="goCustomerService">联系客服</button>
+    </view>
+
     <view class="vip-card" :class="`vip-card--${vipTheme}`">
       <view class="vip-head">
         <view>
@@ -53,7 +72,11 @@
           <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>💎</text><text>{{ walletBalance }}</text></view>
           <view v-else class="wallet-entry-balance wallet-entry-balance--error" @tap.stop="retryWalletOverview"><text>加载失败 · 点击重试</text></view>
         </view>
-        <view class="wallet-entry-recharge" @tap.stop="goRecharge">充值钻石</view>
+        <view
+          class="wallet-entry-recharge"
+          :class="{ 'wallet-entry-recharge--disabled': accountRestriction.restricted }"
+          @tap.stop="goRecharge"
+        >{{ accountRestriction.restricted ? '账户受限' : '充值钻石' }}</view>
       </view>
       <view class="wallet-entry-foot">
         <text>可用钻石可直接支付平台商品与服务</text>
@@ -96,6 +119,10 @@
           <text class="field-label">当前身份</text>
           <text class="field-value">{{ statusText }}</text>
         </view>
+        <view class="field-group readonly">
+          <text class="field-label">账户状态</text>
+          <text class="field-value" :class="`field-value--${accountRestriction.status}`">{{ accountRestriction.statusText }}</text>
+        </view>
       </view>
     </view>
 
@@ -133,6 +160,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi } from '@/api/client'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
+import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { getClientProfile, normalizeAvatarUrl, saveClientProfile, shouldUploadAvatarUrl, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { formatDiamonds } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -153,6 +181,7 @@ const privacyContractName = ref('《用户隐私保护指引》')
 const walletOverview = ref<WalletOverview | null>(null)
 const walletLoadFailed = ref(false)
 
+const accountRestriction = computed(() => getAccountRestrictionView(profile.value))
 const statusText = computed(() => {
   const status = profile.value?.player_status || 'none'
   if (status === 'approved') return '已成为陪玩师'
@@ -210,7 +239,19 @@ function goWallet() {
 }
 
 function goRecharge() {
+  if (accountRestriction.value.restricted) {
+    void showAccountRestrictionModal(profile.value)
+    return
+  }
   go('/pages/client/recharge/index')
+}
+
+function goCustomerService() {
+  go('/pages/client/customer-service/index')
+}
+
+function showRestrictionDetails() {
+  void showAccountRestrictionModal(profile.value)
 }
 
 function diamond(value: unknown) {
@@ -392,6 +433,23 @@ onShow(async () => {
 .identity-name { color: #172116; font-size: 44rpx; font-weight: 900; word-break: break-all; }
 .identity-meta { margin-top: 12rpx; display: inline-flex; padding: 8rpx 18rpx; border-radius: 999rpx; background: rgba(47,155,99,.10); color: #1f7c4b; font-size: 23rpx; }
 .identity-tip { margin-top: 16rpx; color: #687665; font-size: 22rpx; }
+.account-restriction-card { margin-top: 22rpx; padding: 28rpx; border-radius: 28rpx; border: 1rpx solid rgba(179,120,22,.20); background: linear-gradient(135deg,#fff8e8,#fff0c9); box-shadow: 0 14rpx 34rpx rgba(130,83,12,.10); }
+.account-restriction-card--banned { border-color: rgba(177,61,53,.22); background: linear-gradient(135deg,#fff2ef,#ffe0dc); box-shadow: 0 14rpx 34rpx rgba(130,35,29,.10); }
+.restriction-head { display: flex; align-items: center; gap: 16rpx; }
+.restriction-icon { width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 20rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg,#d49b38,#a96c0e); }
+.account-restriction-card--banned .restriction-icon { background: linear-gradient(135deg,#d8645d,#9e302a); }
+.restriction-main { flex: 1; min-width: 0; }
+.restriction-title { display: block; color: #7c4d08; font-size: 32rpx; font-weight: 900; }
+.account-restriction-card--banned .restriction-title { color: #8f2e28; }
+.restriction-until { display: block; margin-top: 6rpx; color: #986916; font-size: 22rpx; }
+.restriction-arrow { color: #9d731f; font-size: 42rpx; font-weight: 900; }
+.restriction-reason { display: block; margin-top: 20rpx; color: #65440d; font-size: 24rpx; font-weight: 900; line-height: 1.55; }
+.account-restriction-card--banned .restriction-reason { color: #6f2a26; }
+.restriction-tip { display: block; margin-top: 12rpx; color: #776442; font-size: 22rpx; line-height: 1.65; }
+.account-restriction-card--banned .restriction-tip { color: #76504d; }
+.restriction-service-btn { width: 100%; height: 72rpx; margin-top: 20rpx; border-radius: 999rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg,#d49b38,#a96c0e); }
+.account-restriction-card--banned .restriction-service-btn { background: linear-gradient(135deg,#d8645d,#9e302a); }
+.restriction-service-btn::after { border: none; }
 .vip-card { margin: 22rpx 0; padding: 28rpx; border-radius: 30rpx; color: #fff; background: linear-gradient(135deg,#173426,#1f7c4b); box-shadow: 0 18rpx 40rpx rgba(23,52,38,.16); }
 .vip-card--mouse { background: linear-gradient(135deg,#59655b,#26372d); }
 .vip-card--bronze { color: #fff8eb; background: linear-gradient(135deg,#8b5a2b,#c68b52); }
@@ -423,6 +481,7 @@ onShow(async () => {
 .wallet-entry-balance text:last-child { font-size: 48rpx; line-height: 1; font-weight: 900; }
 .wallet-entry-balance--error text:first-child, .wallet-entry-balance--error text:last-child { font-size: 27rpx; line-height: 1.4; font-weight: 900; color: #a13d35; text-decoration: underline; }
 .wallet-entry-recharge { flex-shrink: 0; padding: 14rpx 34rpx; border-radius: 999rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: linear-gradient(135deg, #4fc083, #1f7c4b); box-shadow: 0 10rpx 22rpx rgba(31,124,75,.18); }
+.wallet-entry-recharge--disabled { color: #76504d; background: #f4d5d1; box-shadow: none; }
 .wallet-entry-foot { margin-top: 20rpx; padding-top: 18rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-top: 1rpx solid rgba(39,61,42,.07); font-size: 22rpx; }
 .wallet-entry-foot text:first-child { color: #687665; }
 .wallet-entry-foot text:last-child { color: #1f7c4b; font-weight: 900; }
@@ -450,6 +509,8 @@ onShow(async () => {
 .field-label { display: block; margin-bottom: 12rpx; color: #526153; font-size: 24rpx; font-weight: 900; }
 .readonly { padding: 20rpx; border-radius: 22rpx; background: #f7faf4; border: 1rpx solid rgba(39,61,42,.08); }
 .field-value { color: #172116; font-size: 29rpx; font-weight: 900; }
+.field-value--suspended { color: #a66d0e; }
+.field-value--banned { color: #a13d35; }
 .action-card { margin-top: 24rpx; padding: 24rpx; }
 .save-btn, .ghost-btn { width: 100%; }
 .ghost-btn { height: 80rpx; margin-top: 14rpx; border-radius: 22rpx; color: #687665; font-size: 27rpx; font-weight: 900; background: #f7faf4; }
