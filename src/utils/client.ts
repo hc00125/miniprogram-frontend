@@ -1,4 +1,5 @@
 import { getClientProfileApi, getPlayerApplyStatusApi, submitPlayerApplicationApi } from '@/api/client'
+import type { AccountStatus } from '@/utils/accountRestriction'
 import { diamondsFrom } from '@/utils/diamonds'
 
 export type PlayerApplyStatus = 'none' | 'pending' | 'approved' | 'rejected'
@@ -56,6 +57,10 @@ export interface ClientProfile {
   avatar_url?: string
   role?: string
   player_status: PlayerApplyStatus
+  account_status?: AccountStatus
+  account_status_text?: string
+  account_suspended_until?: string | null
+  account_restriction_reason?: string
   cumulative_consumption?: string | number
   cumulative_consumption_diamonds?: number
   vip?: VipSnapshot | null
@@ -119,8 +124,15 @@ export function shouldUploadAvatarUrl(url?: string) {
   return Boolean(value) && (isTemporaryAvatarUrl(value) || !/^https?:\/\//i.test(value))
 }
 
+function accountStatusText(status: AccountStatus) {
+  if (status === 'suspended') return '暂停使用'
+  if (status === 'banned') return '永久封禁'
+  return '正常'
+}
+
 function normalizeProfile(profile: ClientProfile): ClientProfile {
   const avatarUrl = normalizeAvatarUrl(profile.avatarUrl || profile.avatar_url)
+  const accountStatus: AccountStatus = profile.account_status || 'active'
   const vip = profile.vip
     ? {
         ...profile.vip,
@@ -178,6 +190,10 @@ function normalizeProfile(profile: ClientProfile): ClientProfile {
     nickname_customized: Boolean(profile.nickname_customized),
     avatarUrl,
     avatar_url: avatarUrl,
+    account_status: accountStatus,
+    account_status_text: profile.account_status_text || accountStatusText(accountStatus),
+    account_suspended_until: profile.account_suspended_until || null,
+    account_restriction_reason: profile.account_restriction_reason || '',
     cumulative_consumption: profile.cumulative_consumption ?? vip?.cumulative_consumption ?? 0,
     cumulative_consumption_diamonds: diamondsFrom(
       profile.cumulative_consumption_diamonds ?? vip?.growth_diamonds,
@@ -209,6 +225,10 @@ export function ensureClientProfile() {
     avatarUrl: '',
     avatar_url: '',
     player_status: 'none',
+    account_status: 'active',
+    account_status_text: '正常',
+    account_suspended_until: null,
+    account_restriction_reason: '',
     cumulative_consumption: 0,
     cumulative_consumption_diamonds: 0,
     vip: null,
