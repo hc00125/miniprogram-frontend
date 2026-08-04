@@ -51,6 +51,7 @@
 import { onBackPress } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi, wechatLogin as apiWechatLogin } from '@/api/client'
+import { isAccountRestricted, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { saveClientProfile, shouldUploadAvatarUrl } from '@/utils/client'
 import { success, toast } from '@/utils/feedback'
 import { go, relaunch, replace } from '@/utils/nav'
@@ -110,8 +111,14 @@ async function wechatLogin() {
       }
     }
     saveClientProfile(profile)
-    success('登录成功')
+    const restricted = isAccountRestricted(profile)
+    if (!restricted) success('登录成功')
     replace('/pages/client/profile/index')
+    if (restricted) {
+      setTimeout(() => {
+        void showAccountRestrictionModal(profile, { oncePerSession: true })
+      }, 350)
+    }
   } catch {
     toast('微信登录失败')
   } finally {
