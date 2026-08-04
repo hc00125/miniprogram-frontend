@@ -1,3 +1,5 @@
+import { showAccountRestrictionModal } from '@/utils/accountRestriction'
+
 const DEFAULT_BASE_URL = 'https://api.huc125.cn/api'
 
 export const BASE_URL = import.meta.env.VITE_BASE_URL || DEFAULT_BASE_URL
@@ -52,6 +54,15 @@ function handleRoomEntryTimeout(statusCode: number, data: any) {
   return true
 }
 
+function handleAccountRestriction(statusCode: number, data: any) {
+  if (statusCode !== 423) return null
+  const restrictedError = data && typeof data === 'object'
+    ? { ...data, handled: true }
+    : { statusCode, detail: String(data || '账户当前无法执行该操作'), handled: true }
+  void showAccountRestrictionModal(restrictedError)
+  return restrictedError
+}
+
 function request<T>(method: RequestMethod, url: string, data?: any, header: Record<string, string> = {}) {
   return new Promise<T>((resolve, reject) => {
     const token = getTokenByUrl(url)
@@ -72,6 +83,11 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
         const errorData = normalizeErrorData(res.data, statusCode)
         if (handleRoomEntryTimeout(statusCode, errorData)) {
           reject(errorData)
+          return
+        }
+        const restrictionError = handleAccountRestriction(statusCode, errorData)
+        if (restrictionError) {
+          reject(restrictionError)
           return
         }
         if (statusCode === 401 || statusCode === 403) {
