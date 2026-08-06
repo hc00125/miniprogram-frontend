@@ -1,10 +1,12 @@
+import { shouldSuppressIOSPurchaseFallbackToast } from '@/utils/purchaseAvailability'
+
 const navigationMessages: Record<string, string> = {
   '服务条款页面建设中': '/pages/legal/privacy/index'
 }
 
 export function toast(title: string, icon: UniApp.ShowToastOptions['icon'] = 'none') {
   const normalizedTitle = String(title || '').trim()
-  if (!normalizedTitle) return
+  if (!normalizedTitle || shouldSuppressIOSPurchaseFallbackToast(normalizedTitle)) return
   const target = navigationMessages[normalizedTitle]
   if (target) {
     uni.navigateTo({ url: target })
