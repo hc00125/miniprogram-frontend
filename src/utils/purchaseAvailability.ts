@@ -6,6 +6,10 @@ let cachedPlatform: ClientPlatform | null = null
 let noticeVisible = false
 let suppressFallbackToastUntil = 0
 
+const IOS_PURCHASE_ENABLED = ['1', 'true', 'yes', 'on'].includes(
+  String(import.meta.env.VITE_IOS_PURCHASE_ENABLED || 'false').toLowerCase()
+)
+
 const FALLBACK_TOASTS = new Set([
   '支付未完成',
   '充值未完成',
@@ -37,6 +41,10 @@ export function getClientPlatform(): ClientPlatform {
 
 export function isIOSDevice() {
   return getClientPlatform() === 'ios'
+}
+
+export function isIOSPurchaseEnabled() {
+  return IOS_PURCHASE_ENABLED
 }
 
 export function isPurchaseCreationRequest(method: string, url: string) {
