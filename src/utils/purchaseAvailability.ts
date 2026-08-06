@@ -4,6 +4,14 @@ export type ClientPlatform = 'ios' | 'android' | 'other'
 
 let cachedPlatform: ClientPlatform | null = null
 let noticeVisible = false
+let suppressFallbackToastUntil = 0
+
+const FALLBACK_TOASTS = new Set([
+  '支付未完成',
+  '充值未完成',
+  '创建订单失败',
+  '钻石支付失败，请稍后重试'
+])
 
 export function getClientPlatform(): ClientPlatform {
   if (cachedPlatform) return cachedPlatform
@@ -56,7 +64,12 @@ export function createIOSPurchaseDisabledError() {
   }
 }
 
+export function shouldSuppressIOSPurchaseFallbackToast(title: string) {
+  return Date.now() < suppressFallbackToastUntil && FALLBACK_TOASTS.has(String(title || '').trim())
+}
+
 export function showIOSPurchaseDisabledNotice() {
+  suppressFallbackToastUntil = Date.now() + 3000
   if (noticeVisible) return Promise.resolve(false)
   noticeVisible = true
 
