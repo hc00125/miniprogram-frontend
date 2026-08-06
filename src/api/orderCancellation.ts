@@ -4,6 +4,8 @@ export interface PlayerCancellationPreview {
   order_no: string
   stage: 'before_join' | 'in_service'
   stage_text: string
+  no_fault?: boolean
+  no_fault_reason?: string
   used_free_chance: boolean
   fine_rmb: number | string
   fine_fish: number | string
@@ -19,6 +21,7 @@ export interface OrderReplacementState {
   mode_text?: string
   status?: 'open' | 'cancel_requested' | 'resolved' | string
   status_text?: string
+  phase?: 'matching' | 'pre_service' | 'in_service' | string
   missing_slots?: number
   resume_status?: string
   remaining_minutes?: number | null
@@ -39,6 +42,8 @@ export interface PlayerCancellationResult {
   record_id: number
   stage: 'before_join' | 'in_service'
   stage_text: string
+  no_fault?: boolean
+  no_fault_reason?: string
   used_free_chance: boolean
   fine_rmb: number | string
   fine_fish: number | string
