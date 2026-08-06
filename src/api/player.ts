@@ -53,6 +53,13 @@ export interface DesignationInvitation {
   can_grab: false
 }
 
+export interface AvailableOrdersSummary {
+  available_count: number
+  public_order_count: number
+  hidden_counts: Record<string, number>
+  message: string
+}
+
 export interface PlayerPermissionState {
   can_accept_orders: boolean
   can_be_designated: boolean
@@ -161,6 +168,7 @@ export function submitEscortQualification(payload: { experience: string; evidenc
   return api.post<EscortQualificationResult>('/player/escort-qualification', payload)
 }
 export function getAvailableOrders() { return api.get<any[]>('/player/available-orders') }
+export function getAvailableOrdersSummary() { return api.get<AvailableOrdersSummary>('/player/available-orders-summary') }
 export function getDesignationInvitations() { return api.get<DesignationInvitation[]>('/player/designation-invitations') }
 export function acceptDesignation(orderNo: string) { return api.post<{ message: string; order_no: string; status: string }>(`/player/order/${orderNo}/designation/accept`) }
 export function declineDesignation(orderNo: string) { return api.post<{ message: string; order_no: string; status: string }>(`/player/order/${orderNo}/designation/decline`) }
