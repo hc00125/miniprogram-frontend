@@ -1,4 +1,10 @@
 import { showAccountRestrictionModal } from '@/utils/accountRestriction'
+import {
+  createIOSPurchaseDisabledError,
+  getClientPlatform,
+  isPurchaseCreationRequest,
+  showIOSPurchaseDisabledNotice
+} from '@/utils/purchaseAvailability'
 
 const DEFAULT_BASE_URL = 'https://api.huc125.cn/api'
 
@@ -63,8 +69,25 @@ function handleAccountRestriction(statusCode: number, data: any) {
   return restrictedError
 }
 
+function handleIOSPurchaseDisabled(statusCode: number, data: any) {
+  if (statusCode !== 403 || data?.code !== 'IOS_PURCHASE_DISABLED') return null
+  const disabledError = data && typeof data === 'object'
+    ? { ...data, handled: true }
+    : createIOSPurchaseDisabledError()
+  void showIOSPurchaseDisabledNotice()
+  return disabledError
+}
+
 function request<T>(method: RequestMethod, url: string, data?: any, header: Record<string, string> = {}) {
   return new Promise<T>((resolve, reject) => {
+    const clientPlatform = getClientPlatform()
+    if (clientPlatform === 'ios' && isPurchaseCreationRequest(method, url)) {
+      const disabledError = createIOSPurchaseDisabledError()
+      void showIOSPurchaseDisabledNotice()
+      reject(disabledError)
+      return
+    }
+
     const token = getTokenByUrl(url)
     uni.request({
       url: resolveUrl(url),
@@ -72,6 +95,7 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
       data,
       header: {
         ...header,
+        'X-Client-Platform': clientPlatform,
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       success: (res) => {
@@ -88,6 +112,11 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
         const restrictionError = handleAccountRestriction(statusCode, errorData)
         if (restrictionError) {
           reject(restrictionError)
+          return
+        }
+        const iosPurchaseError = handleIOSPurchaseDisabled(statusCode, errorData)
+        if (iosPurchaseError) {
+          reject(iosPurchaseError)
           return
         }
         if (statusCode === 401 || statusCode === 403) {
