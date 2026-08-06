@@ -2,6 +2,7 @@ import { showAccountRestrictionModal } from '@/utils/accountRestriction'
 import {
   createIOSPurchaseDisabledError,
   getClientPlatform,
+  isIOSPurchaseEnabled,
   isPurchaseCreationRequest,
   showIOSPurchaseDisabledNotice
 } from '@/utils/purchaseAvailability'
@@ -81,7 +82,7 @@ function handleIOSPurchaseDisabled(statusCode: number, data: any) {
 function request<T>(method: RequestMethod, url: string, data?: any, header: Record<string, string> = {}) {
   return new Promise<T>((resolve, reject) => {
     const clientPlatform = getClientPlatform()
-    if (clientPlatform === 'ios' && isPurchaseCreationRequest(method, url)) {
+    if (!isIOSPurchaseEnabled() && clientPlatform === 'ios' && isPurchaseCreationRequest(method, url)) {
       const disabledError = createIOSPurchaseDisabledError()
       void showIOSPurchaseDisabledNotice()
       reject(disabledError)
