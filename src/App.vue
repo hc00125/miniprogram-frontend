@@ -35,4 +35,9 @@ button {
 button::after {
   border: none;
 }
+
+/* 钱包入口已迁移到“我的/个人中心”，账号资料页不再重复展示旧卡片。 */
+.account-page .wallet-entry-card {
+  display: none !important;
+}
 </style>
