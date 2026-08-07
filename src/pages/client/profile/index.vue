@@ -21,6 +21,25 @@
       </view>
     </view>
 
+    <view v-if="isLoggedIn" class="wallet-entry-card" @tap="goWallet">
+      <view class="wallet-entry-head">
+        <view>
+          <text class="wallet-entry-eyebrow">可用钻石</text>
+          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>💎</text><text>{{ walletBalance }}</text></view>
+          <view v-else class="wallet-entry-balance wallet-entry-balance--error" @tap.stop="retryWalletOverview"><text>加载失败 · 点击重试</text></view>
+        </view>
+        <view
+          class="wallet-entry-recharge"
+          :class="{ 'wallet-entry-recharge--disabled': accountRestriction.restricted }"
+          @tap.stop="goRecharge"
+        >{{ accountRestriction.restricted ? '账户受限' : '充值钻石' }}</view>
+      </view>
+      <view class="wallet-entry-foot">
+        <text>可用钻石可直接支付平台商品与服务</text>
+        <text>查看明细 ›</text>
+      </view>
+    </view>
+
     <view v-if="!isLoggedIn" class="guest-card">
       <view class="guest-icon">游</view>
       <view class="guest-main">
@@ -95,8 +114,11 @@
 import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { updatePlayerOnlineStatus } from '@/api/player'
+import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
+import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { getClientProfile, normalizeAvatarUrl, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
+import { formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain as switchMainTab, type MainTab } from '@/utils/nav'
 import { getStorage } from '@/utils/storage'
@@ -105,6 +127,8 @@ const profile = ref<ClientProfile | null>(null)
 const isLoggedIn = ref(false)
 const onlineUpdating = ref(false)
 const refreshing = ref(false)
+const walletOverview = ref<WalletOverview | null>(null)
+const walletLoadFailed = ref(false)
 
 const displayAvatarUrl = computed(() => isLoggedIn.value ? normalizeAvatarUrl(profile.value?.avatarUrl || profile.value?.avatar_url) : '')
 const displayName = computed(() => {
@@ -116,6 +140,14 @@ const profileIdText = computed(() => {
   if (!isLoggedIn.value) return '无需登录即可浏览公开内容'
   const openid = profile.value?.openid || profile.value?.open_id || profile.value?.wechat_openid
   return openid ? `ID: ${openid.slice(-8).toUpperCase()}` : '已登录'
+})
+const accountRestriction = computed(() => getAccountRestrictionView(profile.value))
+const walletBalance = computed(() => {
+  try {
+    return formatDiamonds(walletOverview.value?.balance_diamonds ?? 0)
+  } catch {
+    return '--'
+  }
 })
 const canAcceptOrders = computed(() => profile.value?.player?.can_accept_orders !== false)
 const isPlayerOnline = computed(() => Boolean(profile.value?.player?.is_online))
@@ -167,12 +199,46 @@ function handleHeroTap() {
   go('/pages/client/account/index')
 }
 
+async function loadWalletOverview() {
+  if (!isLoggedIn.value) {
+    walletOverview.value = null
+    walletLoadFailed.value = false
+    return
+  }
+  try {
+    walletOverview.value = await getWalletOverview()
+    walletLoadFailed.value = false
+  } catch {
+    walletLoadFailed.value = walletOverview.value === null
+  }
+}
+
+function retryWalletOverview() {
+  void loadWalletOverview()
+}
+
+function goWallet() {
+  if (!requireLogin()) return
+  go('/pages/client/wallet/index')
+}
+
+function goRecharge() {
+  if (!requireLogin()) return
+  if (accountRestriction.value.restricted) {
+    void showAccountRestrictionModal(profile.value)
+    return
+  }
+  go('/pages/client/recharge/index')
+}
+
 async function loadProfile() {
   const token = getStorage<string>('token')
   isLoggedIn.value = Boolean(token)
   if (!token) {
     // 审核要求：游客进入“我的”页时必须停留在可浏览页面，不能自动跳转登录形成返回循环。
     profile.value = null
+    walletOverview.value = null
+    walletLoadFailed.value = false
     return
   }
 
@@ -186,6 +252,8 @@ async function loadProfile() {
       // 401会由请求层清除失效凭证；此处降级为游客模式，而不是再次跳回登录页。
       isLoggedIn.value = false
       profile.value = null
+      walletOverview.value = null
+      walletLoadFailed.value = false
       toast('登录状态已失效，可继续游客浏览或重新登录')
       return false
     }
@@ -195,11 +263,19 @@ async function loadProfile() {
   }
 }
 
+async function loadPage() {
+  await loadProfile()
+  if (isLoggedIn.value) void loadWalletOverview()
+}
+
 async function handleManualRefresh() {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    if (await loadProfile()) success('刷新成功')
+    if (await loadProfile()) {
+      await loadWalletOverview()
+      success('刷新成功')
+    }
   } finally {
     refreshing.value = false
   }
@@ -266,7 +342,7 @@ function handleMainTabSelect(tab: MainTab) {
   switchMainTab(tab)
 }
 
-onShow(loadProfile)
+onShow(loadPage)
 </script>
 
 <style lang="scss" scoped>
@@ -275,6 +351,8 @@ onShow(loadProfile)
 .profile-hero{position:relative;padding:32rpx 30rpx;overflow:hidden;border-radius:28rpx;background:linear-gradient(135deg,#173426,#1f7c4b 60%,#2f9b63);box-shadow:0 20rpx 44rpx rgba(23,52,38,.18)}
 .hero-glow{position:absolute;width:240rpx;height:240rpx;border-radius:50%;filter:blur(40rpx);opacity:.45}.hero-glow--left{left:-70rpx;top:-80rpx;background:#d8a144}.hero-glow--right{right:-80rpx;bottom:-100rpx;background:#5fb78a}
 .hero-top{position:relative;z-index:1;display:flex;align-items:center;gap:24rpx}.avatar-wrap{width:132rpx;height:132rpx;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:34rpx;color:#173426;background:linear-gradient(135deg,#f3d79b,#d8a144)}.avatar-img{width:100%;height:100%}.avatar-text{font-size:54rpx;font-weight:900}.hero-info{flex:1;min-width:0}.hero-name-row{display:flex;align-items:center;justify-content:space-between;gap:10rpx}.hero-name{overflow:hidden;color:#fffaf0;font-size:40rpx;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.hero-arrow{color:#f3d79b;font-size:25rpx}.hero-id-row{display:flex;align-items:center;gap:12rpx;flex-wrap:wrap;margin-top:12rpx}.hero-id{color:rgba(255,255,255,.76);font-size:21rpx}.hero-status{display:flex;align-items:center;gap:7rpx;padding:5rpx 12rpx;border-radius:999rpx;color:#fff;font-size:20rpx;background:rgba(255,255,255,.16)}.status-dot{width:8rpx;height:8rpx;border-radius:50%;background:#5fb78a}.hero-status.guest .status-dot{background:#f3d79b}.hero-status.rejected .status-dot{background:#ef5b5b}
+.wallet-entry-card{margin-top:22rpx;padding:24rpx 26rpx;border-radius:26rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07);box-shadow:0 12rpx 30rpx rgba(38,69,54,.06)}
+.wallet-entry-head{display:flex;align-items:center;justify-content:space-between;gap:20rpx}.wallet-entry-eyebrow{display:block;color:#a87520;font-size:21rpx;font-weight:900}.wallet-entry-balance{margin-top:8rpx;display:flex;align-items:baseline;gap:6rpx;color:#172116}.wallet-entry-balance text:first-child{font-size:26rpx;font-weight:900}.wallet-entry-balance text:last-child{font-size:48rpx;line-height:1;font-weight:900}.wallet-entry-balance--error text:first-child,.wallet-entry-balance--error text:last-child{font-size:25rpx;line-height:1.4;font-weight:900;color:#a13d35;text-decoration:underline}.wallet-entry-recharge{flex-shrink:0;padding:14rpx 30rpx;border-radius:999rpx;color:#fff;font-size:25rpx;font-weight:900;background:linear-gradient(135deg,#4fc083,#1f7c4b);box-shadow:0 10rpx 22rpx rgba(31,124,75,.18)}.wallet-entry-recharge--disabled{color:#76504d;background:#f4d5d1;box-shadow:none}.wallet-entry-foot{margin-top:18rpx;padding-top:16rpx;display:flex;align-items:center;justify-content:space-between;gap:16rpx;border-top:1rpx solid rgba(39,61,42,.07);font-size:21rpx}.wallet-entry-foot text:first-child{color:#687665}.wallet-entry-foot text:last-child{color:#1f7c4b;font-weight:900}
 .guest-card,.player-summary-card,.player-card,.list-card{margin-top:22rpx;border-radius:26rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07);box-shadow:0 12rpx 30rpx rgba(38,69,54,.06)}.guest-card{padding:28rpx;display:grid;grid-template-columns:auto 1fr;gap:16rpx}.guest-icon{width:72rpx;height:72rpx;display:flex;align-items:center;justify-content:center;border-radius:22rpx;color:#173426;font-size:30rpx;font-weight:900;background:linear-gradient(135deg,#f3d79b,#d8a144)}.guest-main text{display:block}.guest-title{font-size:29rpx;font-weight:900}.guest-sub{margin-top:8rpx;color:#687665;font-size:22rpx;line-height:1.5}.guest-login-btn,.guest-browse-btn{grid-column:1/3;width:100%;height:78rpx;border-radius:22rpx;font-size:26rpx;font-weight:900}.guest-login-btn{margin-top:8rpx;color:#fff;background:#1f7c4b}.guest-browse-btn{color:#5a6b5b;background:#f6f8f4}.guest-login-btn::after,.guest-browse-btn::after{border:none}
 .player-summary-card{padding:24rpx}.card-head{display:flex;align-items:center;justify-content:space-between}.card-title{font-size:30rpx;font-weight:900}.online-toggle{display:flex;align-items:center;gap:7rpx;padding:8rpx 14rpx;border-radius:999rpx;color:#1f7c4b;font-size:21rpx;background:#eef8f1}.online-toggle.off,.online-toggle.disabled{color:#687665;background:#f1f3ef}.online-dot{width:8rpx;height:8rpx;border-radius:50%;background:#5fb78a}.online-toggle.off .online-dot,.online-toggle.disabled .online-dot{background:#aab1a5}.player-meta{display:flex;gap:14rpx;margin-top:16rpx;color:#687665;font-size:22rpx}.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10rpx;margin-top:18rpx}.stats-row view{padding:18rpx 6rpx;border-radius:18rpx;text-align:center;background:#f7faf4}.stats-row text{display:block}.stats-row text:first-child{color:#1f7c4b;font-size:34rpx;font-weight:900}.stats-row text:last-child{margin-top:5rpx;color:#687665;font-size:20rpx}.warning-banner{margin-top:14rpx;padding:14rpx;border-radius:14rpx;color:#8f4d35;font-size:22rpx;background:#fff5e4}
 .quick-grid{margin-top:22rpx;display:grid;grid-template-columns:1fr 1fr;gap:14rpx}.quick-item{min-height:138rpx;display:flex;align-items:center;gap:14rpx;padding:20rpx;border-radius:22rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07)}.quick-item--primary{background:#fffaf0;border-color:rgba(216,161,68,.3)}.quick-icon{width:68rpx;height:68rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:20rpx;color:#f3d79b;font-size:29rpx;font-weight:900;background:#1f7c4b}.quick-icon--primary{color:#173426;background:#d8a144}.quick-item view:last-child{min-width:0}.quick-item text{display:block}.quick-item text:first-child{font-size:27rpx;font-weight:900}.quick-item text:last-child{margin-top:5rpx;color:#687665;font-size:20rpx;line-height:1.35}
