@@ -16,12 +16,15 @@
 
     <view v-if="replacement.status === 'cancel_requested'" class="replacement-notice">
       已提交取消剩余服务申请，等待客服核算未履行部分和退款金额。
+      <view v-if="replacement.can_revoke_cancel" class="replacement-actions revoke-row">
+        <button class="danger" :disabled="working" @tap="handleRevokeCancel">撤回申请，继续服务</button>
+      </view>
     </view>
 
     <view v-else-if="replacement.mode === 'targeted'" class="replacement-actions">
       <button :disabled="working" @tap="handleReassign">重新指定</button>
       <button :disabled="working" @tap="handlePublishPublic">转为公开名额</button>
-      <button v-if="replacement.can_request_cancel" class="danger" :disabled="working" @tap="handleCancelRemaining">取消剩余服务</button>
+      <button v-if="replacement.can_request_cancel" class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining">⚠️ 取消剩余服务</button>
       <view v-else class="replacement-notice matching-notice">订单尚未付款，取消整个订单请使用页面底部的“取消订单”。</view>
     </view>
 
@@ -38,6 +41,7 @@ import {
   publishOrderReplacement,
   reassignOrderReplacement,
   requestCancelRemainingService,
+  revokeCancelRemainingService,
   type OrderReplacementState
 } from '@/api/orderCancellation'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
@@ -81,7 +85,7 @@ async function handlePublishPublic() {
 }
 
 async function handleCancelRemaining() {
-  if (!(await confirm('确定申请取消未履行的剩余服务吗？客服会根据实际剩余时长核算退款。', '申请取消剩余服务'))) return
+  if (!(await confirm('⚠️ 确定申请取消未履行的剩余服务吗？\n\n提交后本单将进入退款核算流程，无法再继续服务；如需反悔可在客服核算前撤回申请。', '申请取消剩余服务'))) return
   working.value = true
   try {
     const result = await requestCancelRemainingService(props.orderNo)
@@ -89,6 +93,18 @@ async function handleCancelRemaining() {
     emit('updated')
   } catch (error) {
     toast(getErrorMessage(error, '提交申请失败'))
+  } finally { working.value = false }
+}
+
+async function handleRevokeCancel() {
+  if (!(await confirm('确定撤回取消申请吗？\n撤回后订单恢复补位流程，可重新指定陪玩或转为公开补位。', '撤回取消申请'))) return
+  working.value = true
+  try {
+    const result = await revokeCancelRemainingService(props.orderNo)
+    success(result.message)
+    emit('updated')
+  } catch (error) {
+    toast(getErrorMessage(error, '撤回申请失败'))
   } finally { working.value = false }
 }
 
@@ -134,6 +150,6 @@ async function handleReassign() {
 .replacement-head { display:flex;align-items:flex-start;justify-content:space-between;gap:18rpx; }.replacement-head>view { flex:1;min-width:0; }.replacement-title,.replacement-sub { display:block; }.replacement-title { color:#7b2525;font-size:30rpx;font-weight:900; }.replacement-sub { margin-top:6rpx;color:#876767;font-size:21rpx;line-height:1.45; }
 .replacement-chip { flex-shrink:0;padding:7rpx 13rpx;border-radius:999rpx;color:#ad3030;font-size:20rpx;font-weight:900;background:#ffe4e4; }
 .replacement-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10rpx;margin-top:20rpx; }.replacement-grid view { padding:16rpx 8rpx;border-radius:16rpx;text-align:center;background:#fff; }.replacement-grid text { display:block; }.replacement-grid text:first-child { color:#9b8181;font-size:19rpx; }.replacement-grid text:last-child { margin-top:5rpx;color:#492f2f;font-size:23rpx;font-weight:900; }
-.replacement-actions { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:18rpx; }.replacement-actions button { height:70rpx;margin:0;padding:0 12rpx;border-radius:18rpx;color:#8c3030;font-size:22rpx;font-weight:900;background:#ffeaea; }.replacement-actions button::after { border:none; }.replacement-actions .danger { grid-column:1 / -1;color:#fff;background:linear-gradient(135deg,#e36767,#b52d2d); }.replacement-actions .matching-notice { grid-column:1 / -1;margin-top:0; }
+.replacement-actions { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:18rpx; }.replacement-actions button { height:70rpx;margin:0;padding:0 12rpx;border-radius:18rpx;color:#8c3030;font-size:22rpx;font-weight:900;background:#ffeaea; }.replacement-actions button::after { border:none; }.replacement-actions .danger { grid-column:1 / -1;color:#fff;background:linear-gradient(135deg,#e36767,#b52d2d); }.replacement-actions .danger-strong { box-shadow:0 4rpx 12rpx rgba(181,45,45,.35); }.replacement-actions .matching-notice { grid-column:1 / -1;margin-top:0; }.replacement-actions.revoke-row { display:block;margin-top:16rpx; }.replacement-actions.revoke-row button { width:100%;grid-column:1 / -1;color:#8c3030;background:#ffeaea; }
 .replacement-notice { margin-top:18rpx;padding:18rpx;border-radius:18rpx;color:#7b5d36;font-size:22rpx;line-height:1.5;background:#fff3dc; }.replacement-notice--public { color:#276d43;background:#eaf7ed; }
 </style>

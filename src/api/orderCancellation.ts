@@ -76,3 +76,7 @@ export function reassignOrderReplacement(orderNo: string, playerId: number) {
 export function requestCancelRemainingService(orderNo: string) {
   return api.post<{ message: string; replacement: OrderReplacementState }>(`/boss/order/${orderNo}/replacement/cancel-remaining`)
 }
+
+export function revokeCancelRemainingService(orderNo: string) {
+  return api.post<{ message: string; replacement: OrderReplacementState }>(`/boss/order/${orderNo}/replacement/revoke-cancel`)
+}
