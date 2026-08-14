@@ -53,7 +53,7 @@ import { ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi, wechatLogin as apiWechatLogin } from '@/api/client'
 import { isAccountRestricted, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { saveClientProfile, shouldUploadAvatarUrl } from '@/utils/client'
-import { success, toast } from '@/utils/feedback'
+import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, relaunch, replace } from '@/utils/nav'
 import { setStorage } from '@/utils/storage'
 
@@ -106,8 +106,9 @@ async function wechatLogin() {
       try {
         const uploaded = await uploadClientAvatarApi(avatarUrl.value)
         if (uploaded.avatar_url) profile = await updateClientProfileApi({ avatar_url: uploaded.avatar_url })
-      } catch {
-        toast('头像上传失败，可稍后在账号信息中重试')
+      } catch (error) {
+        // 内容安全拒绝时保留后端的明确提示，避免审核人员只看到笼统“上传失败”。
+        toast(getErrorMessage(error, '头像上传失败，可稍后在账号信息中重试'))
       }
     }
     saveClientProfile(profile)
@@ -119,8 +120,8 @@ async function wechatLogin() {
         void showAccountRestrictionModal(profile, { oncePerSession: true })
       }, 350)
     }
-  } catch {
-    toast('微信登录失败')
+  } catch (error) {
+    toast(getErrorMessage(error, '微信登录失败'))
   } finally {
     loading.value = false
   }
