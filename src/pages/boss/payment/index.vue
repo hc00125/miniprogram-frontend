@@ -174,7 +174,7 @@
         </view>
       </view>
       <view class="pay-methods">
-        <view class="pay-method" :class="{ active: payMethod === 'wechat' }" @tap="selectPayMethod('wechat')">
+        <view v-if="!isIOS" class="pay-method" :class="{ active: payMethod === 'wechat' }" @tap="selectPayMethod('wechat')">
           <view class="pay-method-icon pay-method-icon--wechat">微</view>
           <view class="pay-method-main">
             <text>微信即时支付</text>
@@ -252,6 +252,7 @@
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
+import { isIOSDevice } from '@/utils/purchaseAvailability'
 import { closeVirtualPayment, createMiniProgramPayment } from '@/api/pay'
 import { getWalletOverview, payOrderWithBalance } from '@/api/wallet'
 import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
@@ -280,6 +281,9 @@ const loadError = ref('')
 const paying = ref(false)
 const cancelling = ref(false)
 const payMethod = ref<'wechat' | 'balance'>('wechat')
+// iOS 端：隐藏微信支付选项，只能使用钱包已有钻石付款
+const isIOS = isIOSDevice()
+if (isIOS) payMethod.value = 'balance'
 const walletBalance = ref<number | null>(null)
 const walletLoadFailed = ref(false)
 const payError = ref<PayErrorState | null>(null)
@@ -615,6 +619,10 @@ async function refreshPaymentStatus(silent = false) {
 
 async function payByWechat() {
   if (!orderNo.value || paying.value || cancelling.value || paymentConfirming.value) return
+  if (isIOS) {
+    toast('iOS 端暂不支持微信支付，请使用可用钻石付款')
+    return
+  }
   if (!canStartPayment.value) {
     await fetchOrder()
     toast(serverConfirming.value ? '支付窗口已结束，系统正在核验微信结果' : '当前订单已不能继续支付')
@@ -681,6 +689,7 @@ async function loadWalletBalance() {
 
 function selectPayMethod(method: 'wechat' | 'balance') {
   if (paying.value) return
+  if (isIOS && method === 'wechat') return
   if (method === 'balance' && !balanceSufficient.value) {
     if (walletBalance.value === null && walletLoadFailed.value) {
       toast('钻石余额加载失败，正在重试')
@@ -688,7 +697,7 @@ function selectPayMethod(method: 'wechat' | 'balance') {
     } else if (walletBalance.value === null) {
       toast('钻石余额加载中，请稍候')
     } else {
-      toast(`可用钻石不足，还差💎${diamond(balanceShortfall.value)}；可先充值或使用微信即时支付`)
+      toast(isIOS ? `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；iOS 端暂不支持充值，请更换设备支付或联系客服` : `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；可先充值或使用微信即时支付`)
     }
     return
   }
@@ -703,6 +712,10 @@ async function payByBalance() {
     return
   }
   if (!balanceSufficient.value) {
+    if (isIOS) {
+      toast('可用钻石不足，iOS 端暂不支持充值，请更换设备支付或联系客服')
+      return
+    }
     payMethod.value = 'wechat'
     toast('可用钻石不足，请先充值或使用微信即时支付')
     return

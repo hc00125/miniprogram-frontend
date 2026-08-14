@@ -51,11 +51,7 @@ export function isPurchaseCreationRequest(method: string, url: string) {
   if (String(method).toUpperCase() !== 'POST') return false
   const path = String(url || '').split('?')[0]
   return (
-    path === '/boss/order'
-    || path === '/boss/listing-order'
-    || path === '/boss/orders/batch'
-    || /^\/boss\/order\/[^/]+\/renew$/.test(path)
-    || path === '/client/wallet/recharge/create'
+    path === '/client/wallet/recharge/create'
     || path === '/pay/create'
     || path === '/pay/wechat/miniprogram/create'
     || path === '/pay/wechat/virtual/create'
@@ -65,6 +61,7 @@ export function isPurchaseCreationRequest(method: string, url: string) {
 /**
  * iOS 豁免判定：钱包余额付款（/pay/balance/create）不涉及新充值，
  * 仅消费已有钻石，允许 iOS 端使用；微信官方支付仍保持禁用。
+ * 下单/续单接口（/boss/order 等）仅创建订单不产生支付渠道，iOS 放行。
  */
 export function isIOSExemptRequest(method: string, url: string) {
   if (String(method).toUpperCase() !== 'POST') return false
