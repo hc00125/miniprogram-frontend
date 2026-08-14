@@ -57,10 +57,19 @@ export function isPurchaseCreationRequest(method: string, url: string) {
     || /^\/boss\/order\/[^/]+\/renew$/.test(path)
     || path === '/client/wallet/recharge/create'
     || path === '/pay/create'
-    || path === '/pay/balance/create'
     || path === '/pay/wechat/miniprogram/create'
     || path === '/pay/wechat/virtual/create'
   )
+}
+
+/**
+ * iOS 豁免判定：钱包余额付款（/pay/balance/create）不涉及新充值，
+ * 仅消费已有钻石，允许 iOS 端使用；微信官方支付仍保持禁用。
+ */
+export function isIOSExemptRequest(method: string, url: string) {
+  if (String(method).toUpperCase() !== 'POST') return false
+  const path = String(url || '').split('?')[0]
+  return path === '/pay/balance/create'
 }
 
 export function createIOSPurchaseDisabledError() {
