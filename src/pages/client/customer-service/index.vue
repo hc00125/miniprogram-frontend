@@ -74,7 +74,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { getSupportCenter, type SupportContact } from '@/api/support'
 import { getClientProfile } from '@/utils/client'
-import { getErrorMessage, success } from '@/utils/feedback'
+import { getErrorMessage, toast } from '@/utils/feedback'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -105,9 +105,11 @@ async function loadSupportCenter() {
 function copyWechat(wechatId: string) {
   const value = String(wechatId || '').trim()
   if (!value) return
+  // 微信 setClipboardData 成功后会自带“内容已复制”toast，
+  // 不要再调用 success() 弹 toast，否则两个 toast 冲突导致看起来“没反应”。
   uni.setClipboardData({
     data: value,
-    success: () => success('客服微信号已复制')
+    fail: () => toast('复制失败，请长按微信号手动复制')
   })
 }
 
