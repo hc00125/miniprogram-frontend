@@ -44,6 +44,7 @@ import {
   type OrderReplacementState
 } from '@/api/orderCancellation'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
+import { relaunch } from '@/utils/nav'
 
 const props = defineProps<{
   orderNo: string
@@ -89,7 +90,7 @@ async function handleCancelRemaining() {
   try {
     const result = await requestCancelRemainingService(props.orderNo)
     success(result.message)
-    emit('updated')
+    relaunch('/pages/boss/home/index', { tab: 'home' })
   } catch (error) {
     toast(getErrorMessage(error, '取消并退款失败'))
   } finally { working.value = false }
