@@ -74,7 +74,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { getSupportCenter, type SupportContact } from '@/api/support'
 import { getClientProfile } from '@/utils/client'
-import { getErrorMessage, toast } from '@/utils/feedback'
+import { getErrorMessage } from '@/utils/feedback'
 
 const loading = ref(true)
 const loadError = ref('')
@@ -105,11 +105,20 @@ async function loadSupportCenter() {
 function copyWechat(wechatId: string) {
   const value = String(wechatId || '').trim()
   if (!value) return
-  // 微信 setClipboardData 成功后会自带“内容已复制”toast，
-  // 不要再调用 success() 弹 toast，否则两个 toast 冲突导致看起来“没反应”。
-  uni.setClipboardData({
+  // 微信 setClipboardData 成功后会自带“内容已复制”toast，不要再叠加自定义 toast。
+  // 优先用原生 wx API（uni 代理在某些基础库版本会静默失败）；
+  // 失败时弹窗展示微信号，保证用户总能拿到客服微信号。
+  const clipboard: any = typeof wx !== 'undefined' && wx.setClipboardData ? wx : uni
+  clipboard.setClipboardData({
     data: value,
-    fail: () => toast('复制失败，请长按微信号手动复制')
+    fail: () => {
+      uni.showModal({
+        title: '复制失败',
+        content: `客服微信号：${value}\n请长按上方文字手动复制，或直接搜索添加。`,
+        showCancel: false,
+        confirmText: '我知道了'
+      })
+    }
   })
 }
 
