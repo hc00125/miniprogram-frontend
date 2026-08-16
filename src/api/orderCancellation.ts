@@ -32,6 +32,7 @@ export interface OrderReplacementState {
   can_reassign?: boolean
   can_publish_public?: boolean
   can_request_cancel?: boolean
+  can_revoke_cancel?: boolean
   created_at?: string
   updated_at?: string
 }
@@ -50,6 +51,15 @@ export interface PlayerCancellationResult {
   deducted_fish: number | string
   debt_fish: number | string
   suspended_until: string
+  replacement: OrderReplacementState
+}
+
+export interface CancelRemainingServiceResult {
+  message: string
+  refund_amount: number | string
+  remaining_minutes: number
+  refunded_order_nos: string[]
+  order_status: string
   replacement: OrderReplacementState
 }
 
@@ -74,9 +84,10 @@ export function reassignOrderReplacement(orderNo: string, playerId: number) {
 }
 
 export function requestCancelRemainingService(orderNo: string) {
-  return api.post<{ message: string; replacement: OrderReplacementState }>(`/boss/order/${orderNo}/replacement/cancel-remaining`)
+  return api.post<CancelRemainingServiceResult>(`/boss/order/${orderNo}/replacement/cancel-remaining`)
 }
 
+// 仅保留给旧版本客户端兼容；新版本取消剩余服务会立即退款并完成订单取消。
 export function revokeCancelRemainingService(orderNo: string) {
   return api.post<{ message: string; replacement: OrderReplacementState }>(`/boss/order/${orderNo}/replacement/revoke-cancel`)
 }
