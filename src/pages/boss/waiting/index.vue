@@ -86,7 +86,8 @@ const matchingReminderDue = computed(() => Boolean(orderInfo.value?.matching?.ac
 const matchingDecisionRequired = computed(() => Boolean(orderInfo.value?.matching?.active && orderInfo.value?.matching?.decision_required))
 const matchingCountdownText = computed(() => { const seconds = Math.max(0, Number(orderInfo.value?.matching?.remaining_seconds || 0)); if (!seconds) return '需确认'; return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` })
 const matchingRequiredTypeText = computed(() => { const types = Array.isArray(orderInfo.value?.matching?.required_player_types) ? orderInfo.value.matching.required_player_types : []; if (!types.length) return '不限等级'; return types.map((item: any) => `${item.name}${Number(item.count || 0) > 1 ? `×${item.count}` : ''}`).join('、') })
-const canCancelUnpaid = computed(() => Boolean(orderInfo.value && !orderInfo.value.paid && ['待接单', '待支付'].includes(orderInfo.value.status)))
+// 待接单/待支付订单均可取消；已付款的指定/待接单订单取消时后端会退款到钱包。
+const canCancelUnpaid = computed(() => Boolean(orderInfo.value && ['待接单', '待支付'].includes(orderInfo.value.status)))
 const waitingSlots = computed(() => Array.from({ length: Math.max(0, requiredCount.value - readyCount.value) }, (_, index) => index))
 const progressPercent = computed(() => requiredCount.value ? `${Math.min(100, readyCount.value / requiredCount.value * 100)}%` : '0%')
 const bookedHoursText = computed(() => `${Number(orderInfo.value?.booked_hours || 1)}小时`)
@@ -110,7 +111,7 @@ async function handleManualRefresh() { if (refreshing.value) return; refreshing.
 async function handleContinueMatching() { if (matchingWorking.value) return; matchingWorking.value = true; try { const result = await continueOrderMatching(orderNo.value); success(result.message); await checkOrder() } catch (error) { toast(getErrorMessage(error, '继续等待失败')) } finally { matchingWorking.value = false } }
 async function releaseDesignation(item: OrderDesignationItem & { releasing?: boolean }) { if (!(await confirm(`取消指定 ${item.player_name} 吗？该名额会立即转为公开抢单。`, '取消指定'))) return; item.releasing = true; try { await releaseOrderDesignation(orderNo.value, item.id); success('已取消指定，名额转为公开抢单'); await checkOrder() } catch (error) { toast(getErrorMessage(error, '取消指定失败')) } finally { item.releasing = false } }
 function goPayment() { replace('/pages/boss/payment/index', { orderNo: orderNo.value }) }
-async function handleCancel() { const joinedText = readyCount.value ? `当前已有${readyCount.value}位陪玩接单，取消后将全部释放。` : ''; if (!(await confirm(`确定要取消这个订单吗？${joinedText}`, '取消订单'))) return; try { await cancelOrder(orderNo.value); success('订单已取消'); stopTimers(); goMain('home') } catch (error) { toast(getErrorMessage(error, '取消失败')) } }
+async function handleCancel() { const joinedText = readyCount.value ? `当前已有${readyCount.value}位陪玩接单，取消后将全部释放。` : ''; const refundText = orderInfo.value?.paid ? '该订单已付款，取消后款项将原路退回到钱包。' : ''; if (!(await confirm(`确定要取消这个订单吗？${joinedText}${refundText}`, '取消订单'))) return; try { await cancelOrder(orderNo.value); success('订单已取消'); stopTimers(); goMain('home') } catch (error) { toast(getErrorMessage(error, '取消失败')) } }
 function stopTimers() { if (timer) clearInterval(timer); if (waitTimer) clearInterval(waitTimer); timer = null; waitTimer = null }
 onLoad(query => { orderNo.value = String(query?.orderNo || '') })
 onMounted(() => { checkOrder(); timer = setInterval(checkOrder, 5000); waitTimer = setInterval(updateWaitTime, 1000) })
