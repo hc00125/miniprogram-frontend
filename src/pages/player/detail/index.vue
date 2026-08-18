@@ -18,9 +18,9 @@
       </view>
 
       <view v-if="player" class="detail-card service-card" :class="{ blocked: !canDesignate }">
-        <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : '暂不接受指定' }}</text>
-        <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : '该陪玩师当前未开放专属服务。' }}</text>
-        <text class="service-state">{{ player.is_online ? '在线，可查看服务' : '离线，也可预约服务' }}</text>
+        <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : !player.is_online ? '当前离线' : '暂不接受指定' }}</text>
+        <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : !player.is_online ? '该陪玩师当前离线，暂时不能发起指定订单；上线后会自动恢复。' : '该陪玩师当前未开放专属服务。' }}</text>
+        <text class="service-state">{{ player.is_online ? '在线，可查看服务并指定' : '离线，暂不可指定' }}</text>
       </view>
 
       <view v-if="player" class="detail-card">
@@ -41,7 +41,7 @@
       <view class="bottom-space"></view>
     </scroll-view>
 
-    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : '暂不接受指定' }}</button></view>
+    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : !player.is_online ? '当前离线' : '暂不接受指定' }}</button></view>
   </view>
 </template>
 
@@ -62,7 +62,7 @@ const isPlaying = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
 
 const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
-const canDesignate = computed(() => player.value?.can_be_designated !== false)
+const canDesignate = computed(() => Boolean(player.value?.is_online) && player.value?.can_be_designated !== false)
 const ratingSummary = computed(() => ratingData.value?.summary || { average_rating: Number(player.value?.avg_rating || 0), rating_count: Number(player.value?.rating_count || 0), total_orders: Number(player.value?.total_orders || 0) })
 
 function starText(value: number) { const count = Math.max(1, Math.min(5, Number(value || 0))); return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}` }
