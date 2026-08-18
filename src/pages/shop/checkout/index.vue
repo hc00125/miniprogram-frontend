@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { createOrder, getMyBossOrders, getPackages, getPlayerServiceProducts, type BossOrderListItem, type BossPackage, type BossPackageSpec, type OrderCreatePayload } from '@/api/boss'
+import { createOrder, getPackages, getPlayerServiceProducts, type BossPackage, type BossPackageSpec, type OrderCreatePayload } from '@/api/boss'
 import { createCartOrderBatch } from '@/api/orderBatch'
 import { createSharedListingOrder } from '@/api/serviceListings'
 import { getClientProfile, syncClientProfile, type ClientProfile } from '@/utils/client'
@@ -80,7 +80,6 @@ import { getStorage, setStorage } from '@/utils/storage'
 import { getShopCart, type ShopCartItem } from '@/utils/shopCart'
 
 const fallbackImage = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
-const unfinished = ['待接单', '进行中', '待支付', '待开打']
 const packageId = ref<number | null>(null)
 const playerId = ref<number | null>(null)
 const initialSpecId = ref('')
@@ -153,7 +152,6 @@ async function fetchProduct() {
 }
 async function fetchCart() { loading.value = true; try { const ids = new Set(cartItemIds.value); cartItems.value = (await getShopCart()).filter(item => ids.has(String(item.id))) } catch (error) { toast(getErrorMessage(error, '购物车加载失败')) } finally { loading.value = false } }
 function note() { const lines: string[] = []; if (hourlyCurrent.value) lines.push(`预订时长：${effectiveHours.value}小时`); if (selectedSpec.value) lines.push(`规格：${selectedSpec.value.name}，预计总价：💎${diamondAmount(totalAmount.value)}`); if (form.note.trim()) lines.push(form.note.trim()); return lines.join('\n') || null }
-function showUnfinished(orders: BossOrderListItem[]) { uni.showModal({ title: '无法下单', content: `您有未完成的订单：\n${orders.slice(0, 5).map(item => `${item.order_no}（${item.status}）`).join('\n')}`, showCancel: false }) }
 
 async function submit() {
   if (blockReason.value) return toast(blockReason.value)
@@ -162,8 +160,6 @@ async function submit() {
   const openid = await ensureOpenid(); if (!openid) return toast('微信身份获取失败')
   submitting.value = true
   try {
-    const active = (await getMyBossOrders()).filter(item => unfinished.includes(item.status))
-    if (!isTargetedPlayerProduct.value && active.length) return showUnfinished(active)
     setStorage('boss_wechat', form.contact.trim())
     if (isCartCheckout.value) {
       const result = await createCartOrderBatch({ boss_wechat: openid, game_id: form.gameId.trim(), cart_item_ids: cartItems.value.map(item => Number(item.id)), boss_note: form.note.trim() || null })
