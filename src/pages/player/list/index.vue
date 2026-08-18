@@ -30,7 +30,7 @@
           <view class="name-row"><text>{{ player.name }}</text><text class="club-pill" :class="player.is_online ? '' : 'pill-offline'">{{ player.status || (player.is_online ? '在线' : '离线') }}</text></view>
           <view class="tags"><text>{{ player.type_name || '优质陪玩' }}</text><text class="rating-tag">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'} · ${player.rating_count}条评价` : '暂无评分' }}</text><text>接单 {{ player.total_orders || 0 }}</text><text v-if="player.audio_intro_url" class="audio-tag">语音介绍</text></view>
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
-          <view class="card-actions"><view><text class="designate-price">{{ player.can_be_designated === false ? '暂不接受指定' : '查看专属服务和规格' }}</text><text class="designate-state">{{ player.is_online ? '在线，可直接下单邀请' : '离线，也可提交指定订单' }}</text></view><button class="club-btn" :disabled="player.can_be_designated === false" @tap.stop="openPlayerDetail(player)">{{ player.can_be_designated === false ? '暂不可指定' : '查看服务' }}</button></view>
+          <view class="card-actions"><view><text class="designate-price">{{ player.can_be_designated === false ? '暂不接受指定' : !player.is_online ? '当前离线' : '查看专属服务和规格' }}</text><text class="designate-state">{{ player.is_online ? '在线，可直接下单邀请' : '离线，暂不可指定' }}</text></view><button class="club-btn" :disabled="player.can_be_designated === false || !player.is_online" @tap.stop="openPlayerDetail(player)">{{ player.can_be_designated === false ? '暂不可指定' : !player.is_online ? '当前离线' : '查看服务' }}</button></view>
         </view>
       </view>
     </view>
