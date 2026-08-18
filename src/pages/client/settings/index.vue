@@ -11,6 +11,20 @@
       <view class="setting-row" @tap="go('/pages/client/account/index')">
         <view><text>头像与昵称</text><text>修改账号公开资料</text></view><text>›</text>
       </view>
+      <view class="setting-row phone-row">
+        <view>
+          <text>绑定手机号</text>
+          <text>{{ phoneStatusText }}</text>
+        </view>
+        <button
+          class="notice-btn"
+          open-type="getPhoneNumber"
+          :disabled="phoneBinding"
+          @getphonenumber="bindPhoneNumber"
+        >
+          {{ phoneBinding ? '处理中' : (phoneBound ? '更换' : '绑定') }}
+        </button>
+      </view>
       <view v-if="profile?.player" class="setting-row notice-row">
         <view>
           <text>微信接单提醒</text>
@@ -66,6 +80,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { bindClientPhoneNumberApi } from '@/api/client'
 import {
   confirmPlayerOrderNoticeSubscription,
   getPlayerOrderNoticeConfig,
@@ -83,12 +98,25 @@ declare const wx: any
 const profile = ref<ClientProfile | null>(getClientProfile())
 const onlineUpdating = ref(false)
 const noticeUpdating = ref(false)
+const phoneBinding = ref(false)
 const noticeConfig = ref<PlayerOrderNoticeConfig | null>(null)
 
 const canAcceptOrders = computed(() => profile.value?.player?.can_accept_orders !== false)
 const canBeDesignated = computed(() => profile.value?.player?.can_be_designated !== false)
 const isPubliclyVisible = computed(() => profile.value?.player?.is_publicly_visible !== false)
 const canWithdraw = computed(() => profile.value?.player?.can_withdraw !== false)
+const phoneBound = computed(() => Boolean((profile.value as any)?.phone_bound))
+const phoneStatusText = computed(() => {
+  const value = (profile.value as any)?.phone_number_masked || ''
+  if (phoneBound.value) {
+    return profile.value?.player
+      ? `已绑定 ${value}，可用于指定订单短信提醒`
+      : `已绑定 ${value}，用于必要的订单与售后联系`
+  }
+  return profile.value?.player
+    ? '可选绑定；绑定后可接收指定订单短信提醒'
+    : '可选绑定；用于必要的订单与售后联系'
+})
 const noticeStatusText = computed(() => {
   if (!noticeConfig.value?.enabled) return '微信订阅消息暂未启用'
   const count = Number(noticeConfig.value.available_count || 0)
@@ -122,6 +150,28 @@ async function loadNoticeConfig() {
     noticeConfig.value = await getPlayerOrderNoticeConfig()
   } catch {
     noticeConfig.value = null
+  }
+}
+
+async function bindPhoneNumber(event: any) {
+  if (phoneBinding.value) return
+  const code = String(event?.detail?.code || '').trim()
+  if (!code) {
+    const errMsg = String(event?.detail?.errMsg || '')
+    toast(errMsg.includes('deny') ? '你已取消手机号授权' : '未获取到手机号授权，请重试')
+    return
+  }
+
+  phoneBinding.value = true
+  try {
+    const result = await bindClientPhoneNumberApi(code)
+    profile.value = result.profile
+    saveClientProfile(result.profile)
+    success(phoneBound.value ? '手机号绑定成功' : '手机号已更新')
+  } catch (error) {
+    toast(getErrorMessage(error, '手机号绑定失败'))
+  } finally {
+    phoneBinding.value = false
   }
 }
 
@@ -222,7 +272,7 @@ onShow(async () => {
 .setting-row view text:first-child { font-size: 26rpx; font-weight: 900; }
 .setting-row view text:last-child { margin-top: 5rpx; color: #879083; font-size: 20rpx; line-height: 1.45; }
 .setting-row > text { color: #aaa; font-size: 34rpx; }
-.notice-row { align-items: center; }
+.notice-row, .phone-row { align-items: center; }
 .notice-btn { min-width: 142rpx; height: 60rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; line-height: 60rpx; background: #eef8f1; }
 .notice-btn::after { border: none; }
 .notice-btn[disabled] { opacity: .55; }
