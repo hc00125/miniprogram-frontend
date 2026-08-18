@@ -24,6 +24,11 @@ export interface AvatarUploadResult {
   profile?: ClientProfile
 }
 
+export interface PhoneBindingResult {
+  detail: string
+  profile: ClientProfile
+}
+
 export interface PlayerAudioUploadResult {
   audio_intro_url: string
   audio_intro_title: string
@@ -63,6 +68,10 @@ export function getClientProfileApi() {
 
 export function updateClientProfileApi(payload: Partial<Pick<ClientProfile, 'nickname' | 'avatar_url'>>) {
   return api.put<ClientProfile>('/client/profile', payload)
+}
+
+export function bindClientPhoneNumberApi(code: string) {
+  return api.post<PhoneBindingResult>('/client/phone-number', { code })
 }
 
 export function uploadClientAvatarApi(filePath: string) {
