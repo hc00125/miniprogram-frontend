@@ -11,9 +11,14 @@
       <view class="setting-row" @tap="go('/pages/client/account/index')">
         <view><text>头像与昵称</text><text>修改账号公开资料</text></view><text>›</text>
       </view>
-      <view class="setting-row">
-        <view><text>接单通知</text><text>保存为本机偏好；系统消息能力后续可继续扩展</text></view>
-        <switch :checked="orderNotificationEnabled" color="#2f9b63" @change="toggleNotification" />
+      <view v-if="profile?.player" class="setting-row notice-row">
+        <view>
+          <text>微信接单提醒</text>
+          <text>{{ noticeStatusText }}</text>
+        </view>
+        <button class="notice-btn" :disabled="noticeUpdating" @tap.stop="subscribeOrderNotice">
+          {{ noticeUpdating ? '处理中' : '授权提醒' }}
+        </button>
       </view>
     </view>
 
@@ -61,20 +66,36 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { logoutPlayer, updatePlayerOnlineStatus } from '@/api/player'
+import {
+  confirmPlayerOrderNoticeSubscription,
+  getPlayerOrderNoticeConfig,
+  logoutPlayer,
+  updatePlayerOnlineStatus,
+  type PlayerOrderNoticeConfig
+} from '@/api/player'
 import { getClientProfile, saveClientProfile, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { clearPlayerAuth } from '@/utils/storage'
 
+declare const wx: any
+
 const profile = ref<ClientProfile | null>(getClientProfile())
 const onlineUpdating = ref(false)
-const orderNotificationEnabled = ref(uni.getStorageSync('player_order_notification') !== '0')
+const noticeUpdating = ref(false)
+const noticeConfig = ref<PlayerOrderNoticeConfig | null>(null)
 
 const canAcceptOrders = computed(() => profile.value?.player?.can_accept_orders !== false)
 const canBeDesignated = computed(() => profile.value?.player?.can_be_designated !== false)
 const isPubliclyVisible = computed(() => profile.value?.player?.is_publicly_visible !== false)
 const canWithdraw = computed(() => profile.value?.player?.can_withdraw !== false)
+const noticeStatusText = computed(() => {
+  if (!noticeConfig.value?.enabled) return '微信订阅消息暂未启用'
+  const count = Number(noticeConfig.value.available_count || 0)
+  return count > 0
+    ? `当前可接收 ${count} 次指定订单微信提醒`
+    : '尚未授权，点击右侧按钮开启下一次提醒'
+})
 const permissionWarning = computed(() => {
   const names: string[] = []
   if (!canAcceptOrders.value) names.push('接单')
@@ -92,10 +113,53 @@ async function loadProfile() {
   }
 }
 
-function toggleNotification(event: any) {
-  orderNotificationEnabled.value = Boolean(event?.detail?.value)
-  uni.setStorageSync('player_order_notification', orderNotificationEnabled.value ? '1' : '0')
-  toast(orderNotificationEnabled.value ? '已开启本机接单提醒偏好' : '已关闭本机接单提醒偏好')
+async function loadNoticeConfig() {
+  if (!profile.value?.player) {
+    noticeConfig.value = null
+    return
+  }
+  try {
+    noticeConfig.value = await getPlayerOrderNoticeConfig()
+  } catch {
+    noticeConfig.value = null
+  }
+}
+
+async function subscribeOrderNotice() {
+  if (!profile.value?.player || noticeUpdating.value) return
+  noticeUpdating.value = true
+  try {
+    const config = noticeConfig.value || await getPlayerOrderNoticeConfig()
+    noticeConfig.value = config
+    const templateId = String(config.template_id || '').trim()
+    if (!config.enabled || !templateId) {
+      toast('微信接单提醒暂未配置')
+      return
+    }
+    if (typeof wx === 'undefined' || typeof wx.requestSubscribeMessage !== 'function') {
+      toast('请在微信真机或微信开发者工具中开启接单提醒')
+      return
+    }
+
+    const result = await new Promise<any>((resolve, reject) => {
+      wx.requestSubscribeMessage({
+        tmplIds: [templateId],
+        success: resolve,
+        fail: reject
+      })
+    })
+    if (result?.[templateId] !== 'accept') {
+      toast('未授权微信接单提醒')
+      return
+    }
+
+    noticeConfig.value = await confirmPlayerOrderNoticeSubscription(templateId, true)
+    success('已开启下一次微信接单提醒')
+  } catch (error) {
+    toast(getErrorMessage(error, '微信接单提醒授权失败'))
+  } finally {
+    noticeUpdating.value = false
+  }
 }
 
 async function toggleOnline(event: any) {
@@ -131,7 +195,10 @@ async function logout() {
   replace('/pages/client/login/index')
 }
 
-onShow(loadProfile)
+onShow(async () => {
+  await loadProfile()
+  await loadNoticeConfig()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -155,6 +222,10 @@ onShow(loadProfile)
 .setting-row view text:first-child { font-size: 26rpx; font-weight: 900; }
 .setting-row view text:last-child { margin-top: 5rpx; color: #879083; font-size: 20rpx; line-height: 1.45; }
 .setting-row > text { color: #aaa; font-size: 34rpx; }
+.notice-row { align-items: center; }
+.notice-btn { min-width: 142rpx; height: 60rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; line-height: 60rpx; background: #eef8f1; }
+.notice-btn::after { border: none; }
+.notice-btn[disabled] { opacity: .55; }
 .danger-link view text:first-child { color: #a13d35; }
 .permission-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-top: 18rpx; }
 .permission-grid view { padding: 18rpx; border-radius: 18rpx; text-align: center; background: #eef8f1; }
