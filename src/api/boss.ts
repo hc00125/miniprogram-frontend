@@ -1,4 +1,5 @@
 import api from '@/utils/request'
+import { reconcileVirtualCheckoutByOrder } from '@/api/pay'
 
 function isTestEntry(name: string): boolean {
   const n = (name || '').trim().toLowerCase()
@@ -271,7 +272,24 @@ export function getOnlinePlayers() { return api.get<OnlinePlayer[]>('/boss/onlin
 export function getPlayerList(params: PlayerListParams = {}) { return api.get<OnlinePlayer[]>('/player/list', params) }
 export function createOrder(payload: OrderCreatePayload) { return api.post<{ order_no: string }>('/boss/order', payload) }
 export function createRenewal(orderNo: string, units = 1) { return api.post<RenewalCreateResult>(`/boss/order/${orderNo}/renew`, { units }) }
-export function getOrder(orderNo: string) { return api.get<any>(`/boss/order/${orderNo}`).then(normalizeBossOrderDisplay) }
+
+export async function getOrder(orderNo: string) {
+  let order = normalizeBossOrderDisplay(await api.get<any>(`/boss/order/${orderNo}`))
+  const pendingPayment = !order?.paid && ['待支付', 'pending_payment'].includes(String(order?.status || ''))
+  if (!pendingPayment) return order
+
+  try {
+    const reconciled: any = await reconcileVirtualCheckoutByOrder(orderNo)
+    if (reconciled?.status === 'paid' || reconciled?.order_status === '已完成') {
+      order = normalizeBossOrderDisplay(await api.get<any>(`/boss/order/${orderNo}`))
+    }
+  } catch (error) {
+    // 恢复检查不能阻断订单详情展示。支付页仍会保留待确认提示，并在下一次刷新重试。
+    console.warn('[coin checkout] recover pending order failed', orderNo, error)
+  }
+  return order
+}
+
 export function getMyBossOrders() { return api.get<BossOrderListItem[]>('/boss/orders/me') }
 export function cancelOrder(orderNo: string, reason?: string) { return api.post(`/boss/order/${orderNo}/cancel`, { reason }) }
 export function pauseBossOrder(orderNo: string) { return api.post(`/boss/order/${orderNo}/pause`) }
