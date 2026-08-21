@@ -58,7 +58,7 @@
         <view class="amount-preview">
           <text v-if="amountError" class="amount-error">{{ amountError }}</text>
           <text v-else-if="validAmount !== null">预计到账 💎{{ diamonds(expectedDiamonds) }}</text>
-          <text v-else>支持0.1元递增的自由金额充值</text>
+          <text v-else>支持0.01元精度的自由金额充值</text>
         </view>
       </view>
 
@@ -89,7 +89,7 @@
 
     <view class="card rules-card">
       <view class="card-head"><text>钻石规则</text><text>固定比例</text></view>
-      <text>• 人民币1元固定兑换10钻石，金额需为0.1元的整数倍。</text>
+      <text>• 人民币1元固定兑换10钻石，金额精确到0.01元；钻石最多显示1位小数。</text>
       <text>• iOS 单笔最低充值1元；其他平台最低金额以页面提示为准。</text>
       <text>• 已有钻石可直接用于订单支付。</text>
       <text>• 微信已扣款但钻石未到账时请勿重复充值，先刷新入账状态。</text>
@@ -147,7 +147,7 @@ import {
   type RechargeQueryResult,
   type WalletOverview
 } from '@/api/wallet'
-import { formatDiamonds, formatYuan } from '@/utils/diamonds'
+import { formatDiamonds, formatYuan, yuanToDiamonds } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { back, go, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
@@ -180,9 +180,9 @@ let pageAlive = true
 const isDev = Boolean(import.meta.env.DEV)
 const isIOS = computed(() => rechargeConfig.value?.client_platform === 'ios')
 const diamondsPerYuan = computed(() => Number(rechargeConfig.value?.diamonds_per_yuan || overview.value?.diamonds_per_yuan || DEFAULT_DIAMONDS_PER_YUAN))
-const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 1 : 0.1)))
+const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 1 : 0.01)))
 const maxAmount = computed(() => Number(rechargeConfig.value?.max_amount_yuan || 5000))
-const amountPlaceholder = computed(() => `${minAmount.value.toFixed(1)} - ${maxAmount.value.toFixed(0)}元`)
+const amountPlaceholder = computed(() => `${minAmount.value.toFixed(2)} - ${maxAmount.value.toFixed(2)}元`)
 
 function parseAmount(value: string) {
   const text = String(value || '').trim()
@@ -194,10 +194,9 @@ function parseAmount(value: string) {
 const amountError = computed(() => {
   if (!String(amountInput.value || '').trim()) return '请输入充值金额'
   const amount = parseAmount(amountInput.value)
-  if (amount === null) return '金额格式不正确'
+  if (amount === null) return '金额格式不正确，最多保留2位小数'
   if (amount < minAmount.value) return `单笔最低充值 ¥${yuan(minAmount.value)}`
   if (amount > maxAmount.value) return `单笔最高充值 ¥${yuan(maxAmount.value)}`
-  if (Math.abs(amount * 10 - Math.round(amount * 10)) > 1e-8) return '金额需为0.1元的整数倍'
   return ''
 })
 
@@ -205,7 +204,10 @@ const validAmount = computed<number | null>(() => {
   if (amountError.value) return null
   return parseAmount(amountInput.value)
 })
-const expectedDiamonds = computed(() => Math.round((validAmount.value || 0) * diamondsPerYuan.value))
+const expectedDiamonds = computed(() => {
+  if (validAmount.value === null) return 0
+  return yuanToDiamonds(validAmount.value.toFixed(2))
+})
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
@@ -275,7 +277,7 @@ function classifyRechargeError(error: any): PayErrorState {
     return { title: '微信登录凭证刷新失败', detail, action: '请关闭小程序后重新进入；系统不会重复扣款。', code }
   }
   if (/沙箱|正式环境|apple/.test(text)) return { title: 'iOS支付环境未就绪', detail, action: 'iOS需要使用微信虚拟支付正式环境，请联系管理员。', code }
-  if (/金额|价格|不一致|price|fee|0\.1/.test(text)) return { title: '充值金额校验未通过', detail, action: '请修改充值金额后重试。', code }
+  if (/金额|价格|不一致|price|fee|0\.01/.test(text)) return { title: '充值金额校验未通过', detail, action: '请修改充值金额后重试。', code }
   if (/openid|session|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请关闭并重新进入小程序。', code }
   if (Number(error?.statusCode) >= 500) return { title: '支付服务暂时异常', detail, action: '请稍后重试并保留错误编号。', code }
   return { title: '充值未完成', detail, action: '若微信已扣款，请勿重复充值，先刷新入账状态。', code }
