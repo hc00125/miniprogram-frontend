@@ -41,8 +41,14 @@ export function getClientPlatform(): ClientPlatform {
   return cachedPlatform
 }
 
+/**
+ * 历史支付页使用此函数决定是否隐藏“微信即时支付”。
+ * 当 iOS 官方虚拟支付已开启时必须返回 false，让支付页走统一
+ * short_series_coin → currency_pay 流程；真实平台识别始终使用
+ * getClientPlatform()，因此后端仍能正确识别 iOS 并应用 iOS 渠道费率。
+ */
 export function isIOSDevice() {
-  return getClientPlatform() === 'ios'
+  return getClientPlatform() === 'ios' && !IOS_PURCHASE_ENABLED
 }
 
 export function isIOSPurchaseEnabled() {
@@ -60,13 +66,11 @@ export function isPurchaseCreationRequest(method: string, url: string) {
   )
 }
 
-/**
- * 钱包余额付款本身不新建现金/Apple支付订单，继续保留豁免。
- */
 export function isIOSExemptRequest(method: string, url: string) {
   if (String(method).toUpperCase() !== 'POST') return false
   const path = String(url || '').split('?')[0]
   return path === '/pay/balance/create'
+    || path.startsWith('/pay/wechat/virtual/finalize/')
 }
 
 export function createIOSPurchaseDisabledError() {
