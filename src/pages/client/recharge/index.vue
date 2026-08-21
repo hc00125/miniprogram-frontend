@@ -3,7 +3,7 @@
     <view class="balance-card">
       <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
       <text class="recharge-title">钻石充值中心</text>
-      <text class="recharge-subtitle">选择档位后使用微信支付，钻石到账即可下单</text>
+      <text class="recharge-subtitle">自由输入充值金额，人民币1元固定兑换10钻石</text>
       <view class="balance-divider"></view>
       <text class="balance-label">当前可用钻石</text>
       <view v-if="overview || !overviewLoadFailed" class="balance-row">
@@ -12,7 +12,7 @@
       <view v-else class="balance-row balance-row--error" @tap="loadData">
         <text>余额加载失败 · 点击重试</text>
       </view>
-      <text class="secure-tip">微信官方小程序虚拟支付 · 钻石实时到账</text>
+      <text class="secure-tip">微信官方小程序虚拟支付 · Android / iOS 均可充值</text>
     </view>
 
     <view v-if="rechargeConfirming" class="card confirming-card">
@@ -25,21 +25,47 @@
 
     <view class="card package-card">
       <view class="card-head">
-        <text>选择钻石档位</text><text>人民币1元 = 10钻石</text>
+        <text>充值金额</text><text>1元 = 10钻石</text>
       </view>
-      <view v-if="packages.length" class="package-grid">
+
+      <view v-if="quickAmounts.length" class="package-grid">
         <view
-          v-for="item in packages"
+          v-for="item in quickAmounts"
           :key="item.id"
           class="package-item"
-          :class="{ active: selectedId === item.id }"
-          @tap="selectedId = item.id"
+          :class="{ active: isQuickSelected(item) }"
+          @tap="selectQuickAmount(item)"
         >
           <text class="package-diamonds">💎{{ diamonds(item.diamonds) }}</text>
-          <text class="package-yuan">实付 ¥{{ yuan(item.pay_amount_yuan || item.amount) }}</text>
+          <text class="package-yuan">¥{{ yuan(item.pay_amount_yuan || item.amount) }}</text>
         </view>
       </view>
-      <text v-else-if="!loading" class="empty-tip">暂无已启用的充值档位，请联系客服。</text>
+
+      <view class="custom-amount-block">
+        <text class="custom-label">其他金额</text>
+        <view class="amount-input-row" :class="{ invalid: amountTouched && amountError }">
+          <text class="currency-symbol">¥</text>
+          <input
+            v-model="amountInput"
+            class="amount-input"
+            type="digit"
+            maxlength="9"
+            :placeholder="amountPlaceholder"
+            @focus="amountTouched = true"
+            @input="onAmountInput"
+          />
+        </view>
+        <view class="amount-preview">
+          <text v-if="amountError" class="amount-error">{{ amountError }}</text>
+          <text v-else-if="validAmount !== null">预计到账 💎{{ diamonds(expectedDiamonds) }}</text>
+          <text v-else>支持0.1元递增的自由金额充值</text>
+        </view>
+      </view>
+
+      <view v-if="isIOS" class="ios-tip">
+        <text class="ios-tip-title">iOS 已支持充值</text>
+        <text>iOS 使用微信官方 Apple 虚拟支付通道；充值比例与其他设备一致，不额外减少到账钻石。</text>
+      </view>
     </view>
 
     <view class="support-card" @tap="goCustomerService">
@@ -63,8 +89,9 @@
 
     <view class="card rules-card">
       <view class="card-head"><text>钻石规则</text><text>固定比例</text></view>
-      <text>• 人民币1元固定兑换10钻石，到账钻石均为整数。</text>
-      <text>• 已有钻石可直接消费，也可以在订单页使用微信即时支付。</text>
+      <text>• 人民币1元固定兑换10钻石，金额需为0.1元的整数倍。</text>
+      <text>• iOS 单笔最低充值1元；其他平台最低金额以页面提示为准。</text>
+      <text>• 已有钻石可直接用于订单支付。</text>
       <text>• 微信已扣款但钻石未到账时请勿重复充值，先刷新入账状态。</text>
     </view>
 
@@ -91,11 +118,11 @@
     </view>
 
     <view class="pay-bar">
-      <button class="primary-button pay-button" :disabled="paying || rechargeConfirming || !selectedPackage" @tap="payRecharge">
+      <button class="primary-button pay-button" :disabled="paying || rechargeConfirming || validAmount === null" @tap="payRecharge">
         {{ payButtonText }}
       </button>
       <text class="pay-support-link" @tap="goCustomerService">无法充值请联系客服</text>
-      <button v-if="isDev" class="mock-button" :disabled="paying || mocking || rechargeConfirming || !selectedPackage" @tap="mockRecharge">
+      <button v-if="isDev" class="mock-button" :disabled="paying || mocking || rechargeConfirming || validAmount === null" @tap="mockRecharge">
         {{ mocking ? '模拟充值中...' : '模拟充值成功（仅开发环境）' }}
       </button>
     </view>
@@ -115,6 +142,7 @@ import {
   getWalletOverview,
   mockRechargeSuccess,
   queryRecharge,
+  type RechargeConfig,
   type RechargePackage,
   type RechargeQueryResult,
   type WalletOverview
@@ -129,12 +157,15 @@ type PendingRechargeState = { rechargeNo: string; createdAt: number }
 
 const RECHARGE_PENDING_STORAGE_KEY = 'wallet_recharge_pending'
 const RECHARGE_EXPIRE_MS = 10 * 60 * 1000
+const DEFAULT_DIAMONDS_PER_YUAN = 10
 
 const overview = ref<WalletOverview | null>(null)
 const overviewLoadFailed = ref(false)
-const packages = ref<RechargePackage[]>([])
+const rechargeConfig = ref<RechargeConfig | null>(null)
+const quickAmounts = ref<RechargePackage[]>([])
 const rechargeHistory = ref<RechargeQueryResult[]>([])
-const selectedId = ref<number | null>(null)
+const amountInput = ref('30')
+const amountTouched = ref(false)
 const loading = ref(true)
 const paying = ref(false)
 const mocking = ref(false)
@@ -147,12 +178,39 @@ let confirmationTimer: ReturnType<typeof setTimeout> | null = null
 let pageAlive = true
 
 const isDev = Boolean(import.meta.env.DEV)
-const selectedPackage = computed(() => packages.value.find(item => item.id === selectedId.value) || null)
+const isIOS = computed(() => rechargeConfig.value?.client_platform === 'ios')
+const diamondsPerYuan = computed(() => Number(rechargeConfig.value?.diamonds_per_yuan || overview.value?.diamonds_per_yuan || DEFAULT_DIAMONDS_PER_YUAN))
+const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 1 : 0.1)))
+const maxAmount = computed(() => Number(rechargeConfig.value?.max_amount_yuan || 5000))
+const amountPlaceholder = computed(() => `${minAmount.value.toFixed(1)} - ${maxAmount.value.toFixed(0)}元`)
+
+function parseAmount(value: string) {
+  const text = String(value || '').trim()
+  if (!/^\d+(?:\.\d{0,2})?$/.test(text)) return null
+  const number = Number(text)
+  return Number.isFinite(number) ? number : null
+}
+
+const amountError = computed(() => {
+  if (!String(amountInput.value || '').trim()) return '请输入充值金额'
+  const amount = parseAmount(amountInput.value)
+  if (amount === null) return '金额格式不正确'
+  if (amount < minAmount.value) return `单笔最低充值 ¥${yuan(minAmount.value)}`
+  if (amount > maxAmount.value) return `单笔最高充值 ¥${yuan(maxAmount.value)}`
+  if (Math.abs(amount * 10 - Math.round(amount * 10)) > 1e-8) return '金额需为0.1元的整数倍'
+  return ''
+})
+
+const validAmount = computed<number | null>(() => {
+  if (amountError.value) return null
+  return parseAmount(amountInput.value)
+})
+const expectedDiamonds = computed(() => Math.round((validAmount.value || 0) * diamondsPerYuan.value))
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
-  if (!selectedPackage.value) return '请选择钻石档位'
-  return `立即支付 ¥${yuan(selectedPackage.value.pay_amount_yuan || selectedPackage.value.amount)} · 获得 💎${diamonds(selectedPackage.value.diamonds)}`
+  if (validAmount.value === null) return amountError.value || '请输入充值金额'
+  return `立即支付 ¥${yuan(validAmount.value)} · 获得 💎${diamonds(expectedDiamonds.value)}`
 })
 
 function diamonds(value: unknown) {
@@ -161,6 +219,22 @@ function diamonds(value: unknown) {
 
 function yuan(value: number | string | null | undefined) {
   return formatYuan(value)
+}
+
+function isQuickSelected(item: RechargePackage) {
+  const current = validAmount.value
+  return current !== null && Math.abs(current - Number(item.pay_amount_yuan || item.amount || 0)) < 1e-8
+}
+
+function selectQuickAmount(item: RechargePackage) {
+  amountTouched.value = true
+  amountInput.value = String(Number(item.pay_amount_yuan || item.amount || 0))
+  payError.value = null
+}
+
+function onAmountInput() {
+  amountTouched.value = true
+  payError.value = null
 }
 
 function goCustomerService() {
@@ -200,8 +274,8 @@ function classifyRechargeError(error: any): PayErrorState {
   if (/40163|code\s*been\s*used|登录凭证/.test(text) || code === '40163') {
     return { title: '微信登录凭证刷新失败', detail, action: '请关闭小程序后重新进入；系统不会重复扣款。', code }
   }
-  if (/未绑定|道具id|product/.test(text)) return { title: '钻石档位暂不可用', detail, action: '请管理员核对微信虚拟道具ID。', code }
-  if (/金额|价格|不一致|price|fee/.test(text)) return { title: '充值金额校验未通过', detail, action: '请管理员核对微信道具价格。', code }
+  if (/沙箱|正式环境|apple/.test(text)) return { title: 'iOS支付环境未就绪', detail, action: 'iOS需要使用微信虚拟支付正式环境，请联系管理员。', code }
+  if (/金额|价格|不一致|price|fee|0\.1/.test(text)) return { title: '充值金额校验未通过', detail, action: '请修改充值金额后重试。', code }
   if (/openid|session|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请关闭并重新进入小程序。', code }
   if (Number(error?.statusCode) >= 500) return { title: '支付服务暂时异常', detail, action: '请稍后重试并保留错误编号。', code }
   return { title: '充值未完成', detail, action: '若微信已扣款，请勿重复充值，先刷新入账状态。', code }
@@ -259,7 +333,7 @@ async function closeExpiredRechargeOrders(items: RechargeQueryResult[]) {
 async function loadData() {
   loading.value = true
   try {
-    const [overviewResult, packagesResult, historyResult] = await Promise.allSettled([
+    const [overviewResult, configResult, historyResult] = await Promise.allSettled([
       getWalletOverview(), getRechargePackages(), getRechargeOrders(1, 8)
     ])
     if (overviewResult.status === 'fulfilled') {
@@ -268,9 +342,13 @@ async function loadData() {
     } else {
       overviewLoadFailed.value = overview.value === null
     }
-    if (packagesResult.status === 'fulfilled') {
-      packages.value = packagesResult.value.results || []
-      if (selectedId.value === null && packages.value.length) selectedId.value = packages.value[0].id
+    if (configResult.status === 'fulfilled') {
+      rechargeConfig.value = configResult.value
+      quickAmounts.value = configResult.value.results || []
+      if (!amountTouched.value && quickAmounts.value.length) {
+        const preferred = quickAmounts.value.find(item => Number(item.pay_amount_yuan || item.amount || 0) === 30) || quickAmounts.value[0]
+        amountInput.value = String(Number(preferred.pay_amount_yuan || preferred.amount || minAmount.value))
+      }
     }
     if (historyResult.status === 'fulfilled') {
       let results = historyResult.value.results || []
@@ -310,22 +388,13 @@ async function refreshPendingRecharge(silent = false) {
   }
 }
 
-function findPackageForHistory(item: RechargeQueryResult) {
-  if (item.recharge_product_id) {
-    const exact = packages.value.find(product => product.id === item.recharge_product_id)
-    if (exact) return exact
-  }
-  const amount = Number(item.pay_amount_yuan || item.amount || 0)
-  return packages.value.find(product => Number(product.pay_amount_yuan || product.amount || 0) === amount) || null
-}
-
-async function startRecharge(product: RechargePackage) {
+async function startRecharge(amount: number) {
   if (paying.value || rechargeConfirming.value) return
   payError.value = null
   paying.value = true
   let currentRechargeNo = ''
   try {
-    const payParams = await createRecharge(product.id)
+    const payParams = await createRecharge(amount)
     currentRechargeNo = payParams.recharge_no || payParams.payment_no || ''
     if (payParams.mock === true || !payParams.signData) {
       const ok = await confirm('当前为模拟支付模式，不产生真实扣款。是否继续？', '模拟支付')
@@ -355,15 +424,17 @@ async function startRecharge(product: RechargePackage) {
 }
 
 async function payRecharge() {
-  if (!selectedPackage.value) return toast('请先选择钻石档位')
-  await startRecharge(selectedPackage.value)
+  amountTouched.value = true
+  if (validAmount.value === null) return toast(amountError.value || '请输入正确的充值金额')
+  await startRecharge(validAmount.value)
 }
 
 async function continueRecharge(item: RechargeQueryResult) {
-  const product = findPackageForHistory(item)
-  if (!product) return toast('对应充值档位已下架，请取消旧充值后重新选择')
-  selectedId.value = product.id
-  await startRecharge(product)
+  const amount = Number(item.pay_amount_yuan || item.amount || 0)
+  if (!Number.isFinite(amount) || amount <= 0) return toast('旧充值金额异常，请取消后重新充值')
+  amountInput.value = String(amount)
+  amountTouched.value = true
+  await startRecharge(amount)
 }
 
 async function cancelPendingRecharge(item: RechargeQueryResult) {
@@ -391,10 +462,10 @@ async function runMockRechargeFlow(rechargeNo: string) {
 }
 
 async function mockRecharge() {
-  if (!isDev || !selectedPackage.value || mocking.value) return
+  if (!isDev || validAmount.value === null || mocking.value) return
   mocking.value = true
   try {
-    const payParams = await createRecharge(selectedPackage.value.id)
+    const payParams = await createRecharge(validAmount.value)
     await runMockRechargeFlow(payParams.recharge_no || payParams.payment_no || '')
   } catch (error) {
     toast(getErrorMessage(error, '模拟充值失败'))
@@ -427,7 +498,10 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 .section-desc { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; }
 .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
 .package-item { padding: 28rpx 8rpx 24rpx; border: 3rpx solid rgba(39,61,42,.08); border-radius: 22rpx; text-align: center; background: #f7faf4; }
-.package-item.active { border-color: #1f9c51; background: #e9f8ef; box-shadow: 0 8rpx 20rpx rgba(31,156,81,.12); }.package-diamonds { display: block; font-size: 36rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #687665; font-size: 21rpx; font-weight: 700; }
+.package-item.active { border-color: #1f9c51; background: #e9f8ef; box-shadow: 0 8rpx 20rpx rgba(31,156,81,.12); }.package-diamonds { display: block; font-size: 32rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; font-weight: 700; }
+.custom-amount-block { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid rgba(39,61,42,.08); }.custom-label { display: block; margin-bottom: 12rpx; color: #4c5b49; font-size: 24rpx; font-weight: 900; }
+.amount-input-row { display: flex; align-items: center; height: 96rpx; padding: 0 24rpx; border: 3rpx solid rgba(31,124,75,.16); border-radius: 22rpx; background: #fbfdf9; }.amount-input-row:focus-within { border-color: #1f9c51; box-shadow: 0 0 0 6rpx rgba(31,156,81,.07); }.amount-input-row.invalid { border-color: rgba(177,54,44,.55); background: #fff8f6; }.currency-symbol { margin-right: 12rpx; color: #1f7c4b; font-size: 38rpx; font-weight: 900; }.amount-input { flex: 1; height: 96rpx; color: #172116; font-size: 42rpx; font-weight: 900; }.amount-preview { min-height: 36rpx; padding-top: 10rpx; color: #1f7c4b; font-size: 22rpx; font-weight: 800; }.amount-error { color: #a13d35; }
+.ios-tip { margin-top: 20rpx; padding: 18rpx 20rpx; border-radius: 18rpx; background: #f0f5ff; color: #50627b; font-size: 21rpx; line-height: 1.55; }.ios-tip text { display: block; }.ios-tip-title { margin-bottom: 4rpx; color: #355070; font-size: 23rpx; font-weight: 900; }
 .support-card { display: flex; align-items: center; gap: 16rpx; border: 2rpx solid rgba(216,161,68,.22); background: #fff8e7; }
 .support-icon { width: 64rpx; height: 64rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; color: #fff; font-size: 24rpx; font-weight: 900; background: #a87520; }
 .support-main { flex: 1; min-width: 0; }.support-title, .support-desc { display: block; }.support-title { color: #6f4c12; font-size: 27rpx; font-weight: 900; }.support-desc { margin-top: 5rpx; color: #8b7750; font-size: 20rpx; line-height: 1.45; }.support-action { flex-shrink: 0; color: #1f7c4b; font-size: 22rpx; font-weight: 900; }
@@ -441,5 +515,5 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 .primary-button { width: 100%; min-height: 88rpx; margin-top: 20rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #2fbd68, #15934c); }.primary-button::after, .mock-button::after { border: none; }.primary-button[disabled], .mock-button[disabled], .mini-button[disabled] { opacity: .55; }
 .pay-button { min-height: 96rpx; box-shadow: 0 12rpx 28rpx rgba(21,147,76,.22); }
 .pay-support-link { display: block; padding: 18rpx 0 2rpx; color: #a87520; text-align: center; font-size: 22rpx; font-weight: 900; text-decoration: underline; }
-.mock-button { width: 100%; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 24rpx; background: #fff6df; }.empty-tip, .loading-state { display: block; padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 23rpx; }
+.mock-button { width: 100%; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 24rpx; background: #fff6df; }.loading-state { display: block; padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 23rpx; }
 </style>
