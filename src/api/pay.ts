@@ -23,6 +23,7 @@ export interface VirtualPaymentReconcileResult {
   found: boolean
   payment_no?: string
   order_no?: string
+  checkout_order_no?: string
   status?: string
   order_status?: string
   paid_at?: string | null
@@ -51,7 +52,7 @@ function isWechatLoginCodeUsed(error: any) {
   return code === '40163' || /(?:^|\D)40163(?:\D|$)|code\s*been\s*used/i.test(detail)
 }
 
-async function finalizeCoinCheckout(rechargeNo: string) {
+export async function finalizeCoinCheckout(rechargeNo: string) {
   let lastError: any = null
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const code = await requestWechatLoginCode()
@@ -85,6 +86,19 @@ export async function queryVirtualPayment(payment_no: string) {
 
 export function queryVirtualPaymentByOrder(order_no: string) {
   return api.post<VirtualPaymentReconcileResult>(`/pay/wechat/virtual/query-order/${order_no}`)
+}
+
+/**
+ * 用户在 Apple/微信收银台成功后杀掉小程序时的恢复入口。
+ * 重新打开待支付订单会先主动查微信充值单；若已 credited，则自动使用新的
+ * wx.login code 完成 currency_pay，避免“钱已扣但业务订单仍待支付”。
+ */
+export async function reconcileVirtualCheckoutByOrder(order_no: string) {
+  const result = await queryVirtualPaymentByOrder(order_no)
+  if (result?.found && result?.payment_no && result?.status === 'credited') {
+    return finalizeCoinCheckout(result.payment_no)
+  }
+  return result
 }
 
 export function closeVirtualPayment(payment_no: string) {
