@@ -2,7 +2,6 @@ import api from '@/utils/request'
 import type { MiniPaymentRequest } from '@/api/pay'
 
 export interface WalletOverview {
-  /** 旧版人民币字段，仅用于兼容和排错。 */
   balance?: string
   recharged_total?: string
   spent_total?: string
@@ -16,7 +15,6 @@ export interface WalletOverview {
 }
 
 export interface RechargePackage {
-  /** 快捷金额标识；不再是微信虚拟道具 ID。 */
   id: number
   amount?: string
   pay_amount_yuan: string
@@ -40,7 +38,6 @@ export type RechargeStatus = 'created' | 'paying' | 'paid' | 'credited' | 'close
 export interface RechargeQueryResult {
   recharge_no: string
   status: RechargeStatus
-  /** 旧字段。 */
   amount?: string
   pay_amount_yuan: string
   diamonds: number
@@ -68,7 +65,6 @@ export type WalletEntryType = 'recharge' | 'order_payment' | 'refund_in' | 'admi
 export interface WalletTransactionItem {
   id: number
   entry_type: WalletEntryType
-  /** 旧版人民币字段，仅用于兼容。 */
   amount?: string
   balance_after?: string
   amount_diamonds: number
@@ -88,6 +84,8 @@ export interface BalancePaymentResult {
   amount_diamonds: number
   balance_diamonds: number
   diamonds_per_yuan: number
+  /** 本次实际同步从微信官方 coin 账户扣除的钻石。 */
+  wechat_coin_diamonds?: number
 }
 
 type RechargeCreateResult = MiniPaymentRequest & {
@@ -156,17 +154,10 @@ export function getWalletOverview() {
   return api.get<WalletOverview>('/client/wallet/overview')
 }
 
-/**
- * 兼容旧函数名。后端现在返回“充值配置 + 快捷金额”，快捷项不再绑定微信道具。
- */
 export function getRechargePackages() {
   return api.get<RechargeConfig>('/client/wallet/recharge/packages')
 }
 
-/**
- * 创建自由金额钻石充值。金额由用户输入，后端按固定比例换算成整数钻石；
- * 每次真正创建前重新调用 wx.login。40163 时获取新的 code 后重试。
- */
 export async function createRecharge(amountYuan: number | string, _legacyCode?: string) {
   let previousCode = ''
   let lastError: any = null
@@ -212,11 +203,33 @@ export function getWalletTransactions(page = 1, pageSize = 20) {
   })
 }
 
-export function payOrderWithBalance(orderNo: string) {
-  return api.post<BalancePaymentResult>('/pay/balance/create', { order_no: orderNo })
+/**
+ * 钻石余额支付。每次都获取 fresh wx.login code：
+ * - 纯历史/人工余额时后端会忽略 code；
+ * - short_series_coin 充值形成的余额会先同步 pending 退款，再 currency_pay 扣官方 coin。
+ * 40163 时自动换新 code 重试，后端使用确定性 coin order_id 保证远端幂等。
+ */
+export async function payOrderWithBalance(orderNo: string) {
+  let previousCode = ''
+  let lastError: any = null
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = await getDistinctWechatLoginCode(previousCode)
+    previousCode = code
+    try {
+      return await api.post<BalancePaymentResult>('/pay/balance/create', { order_no: orderNo, code })
+    } catch (error: any) {
+      lastError = error
+      if (!isWechatLoginCodeUsed(error)) throw error
+    }
+  }
+  throw {
+    ...(lastError || {}),
+    code: 'WECHAT_LOGIN_CODE_USED',
+    wechat_code: 40163,
+    detail: '微信连续返回已使用的登录凭证，请关闭并重新进入小程序后重试'
+  }
 }
 
-/** 仅开发环境可用（后端 ENABLE_MOCK_PAYMENT gate）。 */
 export function mockRechargeSuccess(rechargeNo: string) {
   return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock/${rechargeNo}/success`)
 }
