@@ -1,9 +1,9 @@
 export const DIAMONDS_PER_YUAN = 10
 
 /**
- * Legacy API fallback only. New APIs should return integer diamond fields.
- * The conversion parses decimal text into integer cents first, avoiding direct
- * binary floating-point multiplication for user-facing diamond values.
+ * RMB is the accounting source of truth and is precise to cents.
+ * The public exchange ratio stays fixed at ¥1 = 10 diamonds, therefore
+ * ¥0.01 = 0.1 diamond and ¥12.35 = 123.5 diamonds exactly.
  */
 export function yuanToDiamonds(value: number | string | null | undefined): number {
   const raw = String(value ?? '0').trim()
@@ -16,16 +16,21 @@ export function yuanToDiamonds(value: number | string | null | undefined): numbe
   if (!Number.isSafeInteger(yuan) || !Number.isSafeInteger(cents)) throw new Error('人民币金额超出范围')
 
   const totalCents = sign * (yuan * 100 + cents)
-  if (!Number.isSafeInteger(totalCents) || totalCents % 10 !== 0) {
-    throw new Error('该金额会产生小数钻石')
-  }
+  if (!Number.isSafeInteger(totalCents)) throw new Error('人民币金额超出范围')
   return totalCents / 10
 }
 
+/** Accept diamond values in exact 0.1-diamond increments. */
 export function normalizeDiamonds(value: unknown): number {
-  const diamonds = typeof value === 'number' ? value : Number(value ?? 0)
-  if (!Number.isSafeInteger(diamonds)) throw new Error('钻石数量必须为整数')
-  return diamonds
+  if (value === null || value === undefined || value === '') return 0
+  const diamonds = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(diamonds)) throw new Error('钻石数量格式不正确')
+
+  const tenths = Math.round(diamonds * 10)
+  if (!Number.isSafeInteger(tenths) || Math.abs(diamonds * 10 - tenths) > 1e-8) {
+    throw new Error('钻石数量最多保留1位小数')
+  }
+  return tenths / 10
 }
 
 export function diamondsFrom(
@@ -39,7 +44,10 @@ export function diamondsFrom(
 }
 
 export function formatDiamonds(value: unknown): string {
-  return normalizeDiamonds(value).toLocaleString('zh-CN')
+  return normalizeDiamonds(value).toLocaleString('zh-CN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1
+  })
 }
 
 export function diamondText(value: unknown): string {
