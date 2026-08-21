@@ -5,14 +5,13 @@ export interface MiniPaymentRequest {
   paySig: string
   payment_no: string
   order_no?: string
+  checkout_order_no?: string
   amount?: number
   status?: string
   virtual?: boolean
   virtual_env?: number
   product_id?: string
-  /** 后端处于模拟支付模式时返回 true（此时无 signData 等签名字段） */
   mock?: boolean
-  // 兼容旧版支付页的字段
   timeStamp?: string
   nonceStr?: string
   package?: string
@@ -32,27 +31,66 @@ export interface VirtualPaymentReconcileResult {
 
 import api from '@/utils/request'
 
+function requestWechatLoginCode() {
+  return new Promise<string>((resolve, reject) => {
+    uni.login({
+      provider: 'weixin',
+      success: (result: any) => {
+        const code = String(result?.code || '')
+        if (code) resolve(code)
+        else reject({ detail: '微信登录凭证获取失败，请重新进入小程序后重试' })
+      },
+      fail: reject
+    })
+  })
+}
+
+function isWechatLoginCodeUsed(error: any) {
+  const code = String(error?.wechat_code ?? error?.errCode ?? error?.code ?? '')
+  const detail = String(error?.detail ?? error?.errMsg ?? error?.message ?? '')
+  return code === '40163' || /(?:^|\D)40163(?:\D|$)|code\s*been\s*used/i.test(detail)
+}
+
+async function finalizeCoinCheckout(rechargeNo: string) {
+  let lastError: any = null
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = await requestWechatLoginCode()
+    try {
+      return await api.post<any>(`/pay/wechat/virtual/finalize/${rechargeNo}`, { code })
+    } catch (error: any) {
+      lastError = error
+      if (!isWechatLoginCodeUsed(error)) throw error
+    }
+  }
+  throw lastError || { detail: '微信登录凭证连续失效，请重新进入小程序后重试' }
+}
+
 export function createMiniProgramPayment(order_no: string, code?: string, openid?: string) {
   return api.post<MiniPaymentRequest>('/pay/wechat/virtual/create', { order_no, code, openid })
 }
 
-export function queryVirtualPayment(payment_no: string) {
-  return api.post<any>(`/pay/wechat/virtual/query/${payment_no}`)
+/**
+ * 兼容两代支付：
+ * - 历史 short_series_goods：直接返回 Payment 查询结果；
+ * - 新 short_series_coin 订单充值：充值 credited 后立刻用 fresh wx.login code
+ *   调 finalize，让后端 currency_pay 扣官方钻石并完成业务订单。
+ */
+export async function queryVirtualPayment(payment_no: string) {
+  const result = await api.post<any>(`/pay/wechat/virtual/query/${payment_no}`)
+  if (result?.checkout_order_no && result?.status === 'credited') {
+    return finalizeCoinCheckout(payment_no)
+  }
+  return result
 }
 
 export function queryVirtualPaymentByOrder(order_no: string) {
   return api.post<VirtualPaymentReconcileResult>(`/pay/wechat/virtual/query-order/${order_no}`)
 }
 
-/** 用户主动放弃支付时关闭 'paying' 状态的虚拟支付单，释放余额支付通道；其他状态幂等返回现状。 */
 export function closeVirtualPayment(payment_no: string) {
   return api.post<{ payment_no: string; status: string }>(`/pay/wechat/virtual/close/${payment_no}`)
 }
 
-/**
- * 虚拟商品支付已切换到官方小程序虚拟支付，禁止支付页再创建普通微信支付单。
- * 保留函数签名是为了兼容可能尚未清理的旧调用。
- */
 export function createPayment(_order_no: string, _channel: 'wechat' | 'alipay') {
   return Promise.reject({ detail: '当前订单必须使用小程序虚拟支付' })
 }
