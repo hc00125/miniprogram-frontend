@@ -16,11 +16,23 @@ export interface WalletOverview {
 }
 
 export interface RechargePackage {
+  /** 快捷金额标识；不再是微信虚拟道具 ID。 */
   id: number
-  /** 旧字段。 */
   amount?: string
   pay_amount_yuan: string
   diamonds: number
+  quick_amount?: boolean
+}
+
+export interface RechargeConfig {
+  diamonds_per_yuan: number
+  min_amount_yuan: string
+  max_amount_yuan: string
+  amount_step_yuan: string
+  client_platform: string
+  platform_fee_percent?: string
+  target_net_margin_percent?: string
+  results: RechargePackage[]
 }
 
 export type RechargeStatus = 'created' | 'paying' | 'paid' | 'credited' | 'closed' | 'failed' | string
@@ -36,6 +48,10 @@ export interface RechargeQueryResult {
   balance?: string
   balance_diamonds?: number
   recharge_product_id?: number | null
+  client_platform?: string
+  platform_fee_percent?: string | null
+  estimated_platform_fee_yuan?: string | null
+  estimated_settlement_yuan?: string | null
   expires_at?: string | null
   created_at?: string | null
   paid_at?: string | null
@@ -79,6 +95,10 @@ type RechargeCreateResult = MiniPaymentRequest & {
   pay_amount_yuan: string
   diamonds: number
   diamonds_per_yuan: number
+  client_platform?: string
+  platform_fee_percent?: string
+  estimated_platform_fee_yuan?: string
+  estimated_settlement_yuan?: string
 }
 
 function isWechatLoginCodeUsed(error: any) {
@@ -125,9 +145,9 @@ async function getDistinctWechatLoginCode(previousCode = '') {
   }
 }
 
-function postRechargeCreate(rechargeProductId: number, code: string) {
+function postRechargeCreate(amountYuan: number | string, code: string) {
   return api.post<RechargeCreateResult>('/client/wallet/recharge/create', {
-    recharge_product_id: rechargeProductId,
+    amount_yuan: amountYuan,
     code
   })
 }
@@ -136,16 +156,18 @@ export function getWalletOverview() {
   return api.get<WalletOverview>('/client/wallet/overview')
 }
 
+/**
+ * 兼容旧函数名。后端现在返回“充值配置 + 快捷金额”，快捷项不再绑定微信道具。
+ */
 export function getRechargePackages() {
-  return api.get<{ diamonds_per_yuan: number; results: RechargePackage[] }>('/client/wallet/recharge/packages')
+  return api.get<RechargeConfig>('/client/wallet/recharge/packages')
 }
 
 /**
- * 创建充值单。页面传入的旧 code 仅为兼容参数，不再直接使用。每次真正创建前
- * 都重新调用 wx.login；遇到 40163 时获取一个与上次不同的 code 后重试，最多
- * 三次后端请求，避免无限循环。
+ * 创建自由金额钻石充值。金额由用户输入，后端按固定比例换算成整数钻石；
+ * 每次真正创建前重新调用 wx.login。40163 时获取新的 code 后重试。
  */
-export async function createRecharge(rechargeProductId: number, _legacyCode?: string) {
+export async function createRecharge(amountYuan: number | string, _legacyCode?: string) {
   let previousCode = ''
   let lastError: any = null
 
@@ -153,7 +175,7 @@ export async function createRecharge(rechargeProductId: number, _legacyCode?: st
     const code = await getDistinctWechatLoginCode(previousCode)
     previousCode = code
     try {
-      return await postRechargeCreate(rechargeProductId, code)
+      return await postRechargeCreate(amountYuan, code)
     } catch (error: any) {
       lastError = error
       if (!isWechatLoginCodeUsed(error)) throw error
