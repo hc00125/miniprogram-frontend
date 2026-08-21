@@ -1,4 +1,4 @@
-export const IOS_PURCHASE_DISABLED_MESSAGE = 'iOS端当前暂不提供在线购买'
+export const IOS_PURCHASE_DISABLED_MESSAGE = 'iOS端虚拟支付当前未启用'
 
 export type ClientPlatform = 'ios' | 'android' | 'other'
 
@@ -6,8 +6,10 @@ let cachedPlatform: ClientPlatform | null = null
 let noticeVisible = false
 let suppressFallbackToastUntil = 0
 
-const IOS_PURCHASE_ENABLED = ['1', 'true', 'yes', 'on'].includes(
-  String(import.meta.env.VITE_IOS_PURCHASE_ENABLED || 'false').toLowerCase()
+// 2026 起微信小程序虚拟支付支持 iOS。默认开启；若线上需要紧急熔断，
+// 可显式设置 VITE_IOS_PURCHASE_ENABLED=false。
+const IOS_PURCHASE_ENABLED = !['0', 'false', 'no', 'off'].includes(
+  String(import.meta.env.VITE_IOS_PURCHASE_ENABLED || 'true').toLowerCase()
 )
 
 const FALLBACK_TOASTS = new Set([
@@ -59,9 +61,7 @@ export function isPurchaseCreationRequest(method: string, url: string) {
 }
 
 /**
- * iOS 豁免判定：钱包余额付款（/pay/balance/create）不涉及新充值，
- * 仅消费已有钻石，允许 iOS 端使用；微信官方支付仍保持禁用。
- * 下单/续单接口（/boss/order 等）仅创建订单不产生支付渠道，iOS 放行。
+ * 钱包余额付款本身不新建现金/Apple支付订单，继续保留豁免。
  */
 export function isIOSExemptRequest(method: string, url: string) {
   if (String(method).toUpperCase() !== 'POST') return false
