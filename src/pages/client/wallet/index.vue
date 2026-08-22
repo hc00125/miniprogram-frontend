@@ -17,8 +17,9 @@
       </view>
       <view class="total-grid">
         <view><text>{{ overviewUnavailable ? '--' : `💎${diamonds(overview?.recharged_total_diamonds)}` }}</text><text>累计充值钻石</text></view>
-        <view><text>{{ overviewUnavailable ? '--' : `💎${diamonds(overview?.spent_total_diamonds)}` }}</text><text>累计钻石支付</text></view>
+        <view><text>{{ overviewUnavailable ? '--' : `💎${diamonds(overview?.spent_total_diamonds)}` }}</text><text>历史累计支付（含退款）</text></view>
       </view>
+      <text class="total-note">历史累计支付统计所有成功支付过的钻石，后续退款不会回减；VIP等级与成长进度请以“成长钻石”为准。</text>
     </view>
 
     <view class="section-head">
@@ -198,6 +199,7 @@ onReachBottom(() => {
 .total-grid text { display: block; }
 .total-grid text:first-child { font-size: 29rpx; font-weight: 900; }
 .total-grid text:last-child { margin-top: 5rpx; color: rgba(255,255,255,.66); font-size: 20rpx; }
+.total-note { display: block; margin-top: 14rpx; color: rgba(255,255,255,.68); font-size: 20rpx; line-height: 1.55; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 26rpx 6rpx 14rpx; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
 .section-head text:last-child { color: #879083; font-size: 21rpx; }
