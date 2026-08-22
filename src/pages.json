@@ -17,6 +17,7 @@
     { "path": "pages/legal/privacy/index", "style": { "navigationBarTitleText": "隐私政策", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/legal/user-agreement/index", "style": { "navigationBarTitleText": "用户服务协议", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/account/index", "style": { "navigationBarTitleText": "账号信息" } },
+    { "path": "pages/client/growth-records/index", "style": { "navigationBarTitleText": "累计钻石记录", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/settings/index", "style": { "navigationBarTitleText": "设置与权限", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/customer-service/index", "style": { "navigationBarTitleText": "联系客服", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/wallet/index", "style": { "navigationBarTitleText": "我的钱包", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
