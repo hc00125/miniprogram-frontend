@@ -63,6 +63,12 @@
       <view v-if="vipBenefits.length" class="vip-benefits">
         <text v-for="benefit in vipBenefits" :key="benefit">{{ benefit }}</text>
       </view>
+      <view class="vip-actions">
+        <view class="vip-action" @tap.stop="goGrowthRecords">
+          <text>累计钻石记录</text>
+          <text>›</text>
+        </view>
+      </view>
     </view>
 
     <view class="club-card wallet-entry-card" @tap="goWallet">
@@ -236,6 +242,10 @@ function retryWalletOverview() {
 
 function goWallet() {
   go('/pages/client/wallet/index')
+}
+
+function goGrowthRecords() {
+  go('/pages/client/growth-records/index')
 }
 
 function goRecharge() {
@@ -473,6 +483,9 @@ onShow(async () => {
 .vip-progress-text { margin-top: 14rpx; display: flex; justify-content: space-between; gap: 20rpx; font-size: 22rpx; opacity: .82; }
 .vip-benefits { margin-top: 18rpx; display: flex; flex-wrap: wrap; gap: 10rpx; }
 .vip-benefits text { padding: 8rpx 14rpx; border-radius: 999rpx; font-size: 20rpx; font-weight: 900; background: rgba(255,255,255,.12); }
+.vip-actions { margin-top: 18rpx; padding-top: 16rpx; border-top: 1rpx solid rgba(255,255,255,.14); }
+.vip-action { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; padding: 12rpx 16rpx; border-radius: 999rpx; font-size: 22rpx; font-weight: 900; background: rgba(255,255,255,.12); }
+.vip-action text:last-child { font-size: 30rpx; line-height: 1; }
 .wallet-entry-card { margin-bottom: 24rpx; padding: 28rpx; }
 .wallet-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
 .wallet-entry-eyebrow { display: block; color: #a87520; font-size: 21rpx; font-weight: 900; }
