@@ -3,7 +3,7 @@
     <view class="balance-card">
       <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
       <text class="recharge-title">钻石充值中心</text>
-      <text class="recharge-subtitle">自由输入充值金额，人民币1元固定兑换10钻石</text>
+      <text class="recharge-subtitle">Android 1元=10钻石；iOS按渠道费率折算到账</text>
       <view class="balance-divider"></view>
       <text class="balance-label">当前可用钻石</text>
       <view v-if="overview || !overviewLoadFailed" class="balance-row">
@@ -25,7 +25,7 @@
 
     <view class="card package-card">
       <view class="card-head">
-        <text>充值金额</text><text>1元 = 10钻石</text>
+        <text>充值金额</text><text>{{ isIOS ? `iOS扣除${iosFeePercentText}%渠道费` : '1元 = 10钻石' }}</text>
       </view>
 
       <view v-if="quickAmounts.length" class="package-grid">
@@ -63,8 +63,8 @@
       </view>
 
       <view v-if="isIOS" class="ios-tip">
-        <text class="ios-tip-title">iOS 已支持充值</text>
-        <text>iOS 使用微信官方 Apple 虚拟支付通道；充值比例与其他设备一致，不额外减少到账钻石。</text>
+        <text class="ios-tip-title">iOS 已支持充值 · 到账钻石已扣渠道费</text>
+        <text>iOS 使用微信官方 Apple 虚拟支付通道；当前按 {{ iosFeePercentText }}% 渠道费减少到账钻石。实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
       </view>
     </view>
 
@@ -88,8 +88,9 @@
     </view>
 
     <view class="card rules-card">
-      <view class="card-head"><text>钻石规则</text><text>固定比例</text></view>
-      <text>• 人民币1元固定兑换10钻石，金额精确到0.01元；钻石最多显示1位小数。</text>
+      <view class="card-head"><text>钻石规则</text><text>按渠道到账</text></view>
+      <text>• Android/其他平台仍按人民币1元兑换10钻石；iOS按当前渠道费率扣减后折算到账。</text>
+      <text v-if="isIOS">• 当前iOS渠道费率为 {{ iosFeePercentText }}%，具体费率以服务器配置和实际签约费率为准。</text>
       <text>• iOS 单笔最低充值1元；其他平台最低金额以页面提示为准。</text>
       <text>• 已有钻石可直接用于订单支付。</text>
       <text>• 微信已扣款但钻石未到账时请勿重复充值，先刷新入账状态。</text>
@@ -147,7 +148,7 @@ import {
   type RechargeQueryResult,
   type WalletOverview
 } from '@/api/wallet'
-import { formatDiamonds, formatYuan, yuanToDiamonds } from '@/utils/diamonds'
+import { formatDiamonds, formatYuan } from '@/utils/diamonds'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { back, go, replace } from '@/utils/nav'
 import { isVirtualPaymentConfirmationPending, requestWechatVirtualPayment } from '@/utils/virtual-payment'
@@ -180,9 +181,20 @@ let pageAlive = true
 const isDev = Boolean(import.meta.env.DEV)
 const isIOS = computed(() => rechargeConfig.value?.client_platform === 'ios')
 const diamondsPerYuan = computed(() => Number(rechargeConfig.value?.diamonds_per_yuan || overview.value?.diamonds_per_yuan || DEFAULT_DIAMONDS_PER_YUAN))
+const iosFeePercent = computed(() => Math.max(0, Math.min(100, Number(rechargeConfig.value?.platform_fee_percent || 0))))
+const iosFeePercentText = computed(() => {
+  const value = iosFeePercent.value
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+})
+const creditMultiplier = computed(() => isIOS.value ? Math.max(0, 1 - iosFeePercent.value / 100) : 1)
 const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 1 : 0.01)))
 const maxAmount = computed(() => Number(rechargeConfig.value?.max_amount_yuan || 5000))
 const amountPlaceholder = computed(() => `${minAmount.value.toFixed(2)} - ${maxAmount.value.toFixed(2)}元`)
+
+function expectedDiamondsForAmount(amount: number) {
+  const value = amount * diamondsPerYuan.value * creditMultiplier.value
+  return Math.round(value * 10) / 10
+}
 
 function parseAmount(value: string) {
   const text = String(value || '').trim()
@@ -206,8 +218,9 @@ const validAmount = computed<number | null>(() => {
 })
 const expectedDiamonds = computed(() => {
   if (validAmount.value === null) return 0
-  return yuanToDiamonds(validAmount.value.toFixed(2))
+  return expectedDiamondsForAmount(validAmount.value)
 })
+const iosHundredDiamonds = computed(() => expectedDiamondsForAmount(100))
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
