@@ -30,6 +30,9 @@
 
     <view v-else class="replacement-notice replacement-notice--public">
       空缺名额已进入抢单大厅，原订单号、付款记录和其他陪玩均保持不变。
+      <view v-if="replacement.can_request_cancel" class="replacement-actions public-cancel-row">
+        <button class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining">⚠️ 取消剩余服务并退款</button>
+      </view>
     </view>
   </view>
 </template>
@@ -62,7 +65,9 @@ const subtitle = computed(() => {
   if (props.replacement?.phase === 'matching') return '该指定名额已退出；可重新指定或转为公开名额，订单尚未付款'
   return props.replacement?.mode === 'targeted'
     ? '本次指定已取消，可重新指定、转公开补位，或取消剩余服务并自动退款'
-    : '系统只补充退出的名额，不会取消其他陪玩或要求重复付款'
+    : props.replacement?.can_request_cancel
+      ? '系统正在补充退出名额；如不再继续等待，可取消未履行服务并自动退款'
+      : '系统只补充退出的名额，不会取消其他陪玩或要求重复付款'
 })
 const remainingText = computed(() => {
   const minutes = Number(props.replacement?.remaining_minutes || 0)
@@ -138,6 +143,6 @@ async function handleReassign() {
 .replacement-head { display:flex;align-items:flex-start;justify-content:space-between;gap:18rpx; }.replacement-head>view { flex:1;min-width:0; }.replacement-title,.replacement-sub { display:block; }.replacement-title { color:#7b2525;font-size:30rpx;font-weight:900; }.replacement-sub { margin-top:6rpx;color:#876767;font-size:21rpx;line-height:1.45; }
 .replacement-chip { flex-shrink:0;padding:7rpx 13rpx;border-radius:999rpx;color:#ad3030;font-size:20rpx;font-weight:900;background:#ffe4e4; }
 .replacement-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10rpx;margin-top:20rpx; }.replacement-grid view { padding:16rpx 8rpx;border-radius:16rpx;text-align:center;background:#fff; }.replacement-grid text { display:block; }.replacement-grid text:first-child { color:#9b8181;font-size:19rpx; }.replacement-grid text:last-child { margin-top:5rpx;color:#492f2f;font-size:23rpx;font-weight:900; }
-.replacement-actions { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:18rpx; }.replacement-actions button { height:70rpx;margin:0;padding:0 12rpx;border-radius:18rpx;color:#8c3030;font-size:22rpx;font-weight:900;background:#ffeaea; }.replacement-actions button::after { border:none; }.replacement-actions .danger { grid-column:1 / -1;color:#fff;background:linear-gradient(135deg,#e36767,#b52d2d); }.replacement-actions .danger-strong { box-shadow:0 4rpx 12rpx rgba(181,45,45,.35); }.replacement-actions .matching-notice { grid-column:1 / -1;margin-top:0; }.replacement-actions.legacy-cancel-row { display:block;margin-top:16rpx; }.replacement-actions.legacy-cancel-row button { width:100%; }
+.replacement-actions { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:18rpx; }.replacement-actions button { height:70rpx;margin:0;padding:0 12rpx;border-radius:18rpx;color:#8c3030;font-size:22rpx;font-weight:900;background:#ffeaea; }.replacement-actions button::after { border:none; }.replacement-actions .danger { grid-column:1 / -1;color:#fff;background:linear-gradient(135deg,#e36767,#b52d2d); }.replacement-actions .danger-strong { box-shadow:0 4rpx 12rpx rgba(181,45,45,.35); }.replacement-actions .matching-notice { grid-column:1 / -1;margin-top:0; }.replacement-actions.legacy-cancel-row,.replacement-actions.public-cancel-row { display:block;margin-top:16rpx; }.replacement-actions.legacy-cancel-row button,.replacement-actions.public-cancel-row button { width:100%; }
 .replacement-notice { margin-top:18rpx;padding:18rpx;border-radius:18rpx;color:#7b5d36;font-size:22rpx;line-height:1.5;background:#fff3dc; }.replacement-notice--public { color:#276d43;background:#eaf7ed; }
 </style>
