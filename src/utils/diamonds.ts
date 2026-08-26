@@ -2,8 +2,10 @@ export const DIAMONDS_PER_YUAN = 10
 
 /**
  * RMB is the accounting source of truth and is precise to cents.
- * The public exchange ratio stays fixed at ¥1 = 10 diamonds, therefore
+ * The base business/display ratio is ¥1 = 10 diamonds, therefore
  * ¥0.01 = 0.1 diamond and ¥12.35 = 123.5 diamonds exactly.
+ * Standalone iOS wallet recharge is a special purchase rule and may credit
+ * fewer diamonds (currently ¥1 = 7); its preview must use recharge config.
  */
 export function yuanToDiamonds(value: number | string | null | undefined): number {
   const raw = String(value ?? '0').trim()
