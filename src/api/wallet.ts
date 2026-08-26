@@ -24,12 +24,16 @@ export interface RechargePackage {
 
 export interface RechargeConfig {
   diamonds_per_yuan: number
+  effective_diamonds_per_yuan?: number
   min_amount_yuan: string
   max_amount_yuan: string
   amount_step_yuan: string
   client_platform: string
   platform_fee_percent?: string
   target_net_margin_percent?: string
+  custom_amount_enabled?: boolean
+  allowed_amounts_yuan?: string[] | null
+  ios_diamonds_per_yuan?: string | null
   results: RechargePackage[]
 }
 
@@ -222,14 +226,9 @@ export async function payOrderWithBalance(orderNo: string) {
       if (!isWechatLoginCodeUsed(error)) throw error
     }
   }
-  throw {
-    ...(lastError || {}),
-    code: 'WECHAT_LOGIN_CODE_USED',
-    wechat_code: 40163,
-    detail: '微信连续返回已使用的登录凭证，请关闭并重新进入小程序后重试'
-  }
+  throw lastError || new Error('钻石支付失败')
 }
 
 export function mockRechargeSuccess(rechargeNo: string) {
-  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock/${rechargeNo}/success`)
+  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock-success/${rechargeNo}`)
 }
