@@ -226,9 +226,14 @@ export async function payOrderWithBalance(orderNo: string) {
       if (!isWechatLoginCodeUsed(error)) throw error
     }
   }
-  throw lastError || new Error('钻石支付失败')
+  throw {
+    ...(lastError || {}),
+    code: 'WECHAT_LOGIN_CODE_USED',
+    wechat_code: 40163,
+    detail: '微信连续返回已使用的登录凭证，请关闭并重新进入小程序后重试'
+  }
 }
 
 export function mockRechargeSuccess(rechargeNo: string) {
-  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock-success/${rechargeNo}`)
+  return api.post<RechargeQueryResult>(`/client/wallet/recharge/mock/${rechargeNo}/success`)
 }
