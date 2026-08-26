@@ -3,7 +3,7 @@
     <view class="balance-card">
       <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
       <text class="recharge-title">钻石充值中心</text>
-      <text class="recharge-subtitle">Android 1元=10钻石；iOS按渠道费率折算到账</text>
+      <text class="recharge-subtitle">{{ isIOS ? '同样充值金额，iOS因渠道服务费到账钻石会相应减少' : '人民币1元固定兑换10钻石' }}</text>
       <view class="balance-divider"></view>
       <text class="balance-label">当前可用钻石</text>
       <view v-if="overview || !overviewLoadFailed" class="balance-row">
@@ -25,7 +25,7 @@
 
     <view class="card package-card">
       <view class="card-head">
-        <text>充值金额</text><text>{{ isIOS ? `iOS扣除${iosFeePercentText}%渠道费` : '1元 = 10钻石' }}</text>
+        <text>充值金额</text><text>{{ isIOS ? `iOS渠道服务费${iosFeePercentText}%` : '1元 = 10钻石' }}</text>
       </view>
 
       <view v-if="quickAmounts.length" class="package-grid">
@@ -63,8 +63,8 @@
       </view>
 
       <view v-if="isIOS" class="ios-tip">
-        <text class="ios-tip-title">iOS 已支持充值 · 到账钻石已扣渠道费</text>
-        <text>iOS 使用微信官方 Apple 虚拟支付通道；当前按 {{ iosFeePercentText }}% 渠道费减少到账钻石。实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
+        <text class="ios-tip-title">iOS 充值说明</text>
+        <text>由于 iOS 渠道服务费较高，同样的充值金额实际到账钻石会少于 Android。当前渠道服务费为 {{ iosFeePercentText }}%，实付 ¥10 预计到账 💎{{ diamonds(iosTenDiamonds) }}，实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
       </view>
     </view>
 
@@ -88,10 +88,17 @@
     </view>
 
     <view class="card rules-card">
-      <view class="card-head"><text>钻石规则</text><text>按渠道到账</text></view>
-      <text>• Android/其他平台仍按人民币1元兑换10钻石；iOS按当前渠道费率扣减后折算到账。</text>
-      <text v-if="isIOS">• 当前iOS渠道费率为 {{ iosFeePercentText }}%，具体费率以服务器配置和实际签约费率为准。</text>
-      <text>• iOS 单笔最低充值1元；其他平台最低金额以页面提示为准。</text>
+      <view class="card-head"><text>钻石规则</text><text>{{ isIOS ? 'iOS按实际到账' : '固定比例' }}</text></view>
+      <template v-if="isIOS">
+        <text>• iOS充值因渠道服务费，到账钻石会相应减少；当前渠道服务费为 {{ iosFeePercentText }}%。</text>
+        <text>• 同样充值金额，iOS到账钻石会少于Android；支付前请以页面显示的“预计到账”钻石为准。</text>
+        <text>• 例如实付 ¥10 预计到账 💎{{ diamonds(iosTenDiamonds) }}，实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
+        <text>• iOS 单笔最低充值1元。</text>
+      </template>
+      <template v-else>
+        <text>• Android及其他平台按人民币1元兑换10钻石。</text>
+        <text>• 充值金额以页面显示为准。</text>
+      </template>
       <text>• 已有钻石可直接用于订单支付。</text>
       <text>• 微信已扣款但钻石未到账时请勿重复充值，先刷新入账状态。</text>
     </view>
@@ -220,6 +227,7 @@ const expectedDiamonds = computed(() => {
   if (validAmount.value === null) return 0
   return expectedDiamondsForAmount(validAmount.value)
 })
+const iosTenDiamonds = computed(() => expectedDiamondsForAmount(10))
 const iosHundredDiamonds = computed(() => expectedDiamondsForAmount(100))
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
