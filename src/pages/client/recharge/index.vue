@@ -3,7 +3,7 @@
     <view class="balance-card">
       <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
       <text class="recharge-title">钻石充值中心</text>
-      <text class="recharge-subtitle">{{ isIOS ? '同样充值金额，iOS因渠道服务费到账钻石会相应减少' : '人民币1元固定兑换10钻石' }}</text>
+      <text class="recharge-subtitle">{{ isIOS ? 'iOS充值固定1元=7钻石，仅支持10元/30元档位' : '人民币1元固定兑换10钻石' }}</text>
       <view class="balance-divider"></view>
       <text class="balance-label">当前可用钻石</text>
       <view v-if="overview || !overviewLoadFailed" class="balance-row">
@@ -25,10 +25,10 @@
 
     <view class="card package-card">
       <view class="card-head">
-        <text>充值金额</text><text>{{ isIOS ? `iOS渠道服务费${iosFeePercentText}%` : '1元 = 10钻石' }}</text>
+        <text>充值金额</text><text>{{ isIOS ? 'iOS 1元 = 7钻石' : '1元 = 10钻石' }}</text>
       </view>
 
-      <view v-if="quickAmounts.length" class="package-grid">
+      <view v-if="quickAmounts.length" class="package-grid" :class="{ 'package-grid--ios': isIOS }">
         <view
           v-for="item in quickAmounts"
           :key="item.id"
@@ -41,7 +41,7 @@
         </view>
       </view>
 
-      <view class="custom-amount-block">
+      <view v-if="!isIOS" class="custom-amount-block">
         <text class="custom-label">其他金额</text>
         <view class="amount-input-row" :class="{ invalid: amountTouched && amountError }">
           <text class="currency-symbol">¥</text>
@@ -64,7 +64,7 @@
 
       <view v-if="isIOS" class="ios-tip">
         <text class="ios-tip-title">iOS 充值说明</text>
-        <text>由于 iOS 渠道服务费较高，同样的充值金额实际到账钻石会少于 Android。当前渠道服务费为 {{ iosFeePercentText }}%，实付 ¥10 预计到账 💎{{ diamonds(iosTenDiamonds) }}，实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
+        <text>由于 iOS 渠道成本较高，iOS充值采用独立到账比例：人民币1元=7钻石。仅支持 ¥10、¥30 两个固定档位，不支持自定义金额。</text>
       </view>
     </view>
 
@@ -88,12 +88,11 @@
     </view>
 
     <view class="card rules-card">
-      <view class="card-head"><text>钻石规则</text><text>{{ isIOS ? 'iOS按实际到账' : '固定比例' }}</text></view>
+      <view class="card-head"><text>钻石规则</text><text>{{ isIOS ? 'iOS固定比例' : '固定比例' }}</text></view>
       <template v-if="isIOS">
-        <text>• iOS充值因渠道服务费，到账钻石会相应减少；当前渠道服务费为 {{ iosFeePercentText }}%。</text>
-        <text>• 同样充值金额，iOS到账钻石会少于Android；支付前请以页面显示的“预计到账”钻石为准。</text>
-        <text>• 例如实付 ¥10 预计到账 💎{{ diamonds(iosTenDiamonds) }}，实付 ¥100 预计到账 💎{{ diamonds(iosHundredDiamonds) }}。</text>
-        <text>• iOS 单笔最低充值1元。</text>
+        <text>• iOS充值固定按人民币1元兑换7钻石。</text>
+        <text>• iOS仅提供 ¥10 与 ¥30 两个充值档位，不支持自定义充值金额。</text>
+        <text>• ¥10 到账 💎70；¥30 到账 💎210，不产生小数钻石。</text>
       </template>
       <template v-else>
         <text>• Android及其他平台按人民币1元兑换10钻石。</text>
@@ -188,18 +187,17 @@ let pageAlive = true
 const isDev = Boolean(import.meta.env.DEV)
 const isIOS = computed(() => rechargeConfig.value?.client_platform === 'ios')
 const diamondsPerYuan = computed(() => Number(rechargeConfig.value?.diamonds_per_yuan || overview.value?.diamonds_per_yuan || DEFAULT_DIAMONDS_PER_YUAN))
-const iosFeePercent = computed(() => Math.max(0, Math.min(100, Number(rechargeConfig.value?.platform_fee_percent || 0))))
-const iosFeePercentText = computed(() => {
-  const value = iosFeePercent.value
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+const effectiveDiamondsPerYuan = computed(() => {
+  const configured = Number(rechargeConfig.value?.effective_diamonds_per_yuan || 0)
+  if (configured > 0) return configured
+  return isIOS.value ? 7 : diamondsPerYuan.value
 })
-const creditMultiplier = computed(() => isIOS.value ? Math.max(0, 1 - iosFeePercent.value / 100) : 1)
-const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 1 : 0.01)))
-const maxAmount = computed(() => Number(rechargeConfig.value?.max_amount_yuan || 5000))
+const minAmount = computed(() => Number(rechargeConfig.value?.min_amount_yuan || (isIOS.value ? 10 : 0.01)))
+const maxAmount = computed(() => Number(rechargeConfig.value?.max_amount_yuan || (isIOS.value ? 30 : 5000)))
 const amountPlaceholder = computed(() => `${minAmount.value.toFixed(2)} - ${maxAmount.value.toFixed(2)}元`)
 
 function expectedDiamondsForAmount(amount: number) {
-  const value = amount * diamondsPerYuan.value * creditMultiplier.value
+  const value = amount * effectiveDiamondsPerYuan.value
   return Math.round(value * 10) / 10
 }
 
@@ -214,6 +212,10 @@ const amountError = computed(() => {
   if (!String(amountInput.value || '').trim()) return '请输入充值金额'
   const amount = parseAmount(amountInput.value)
   if (amount === null) return '金额格式不正确，最多保留2位小数'
+  if (isIOS.value) {
+    const allowed = (rechargeConfig.value?.allowed_amounts_yuan || ['10.00', '30.00']).map(Number)
+    if (!allowed.some(item => Math.abs(item - amount) < 1e-8)) return 'iOS仅支持10元或30元固定充值档位'
+  }
   if (amount < minAmount.value) return `单笔最低充值 ¥${yuan(minAmount.value)}`
   if (amount > maxAmount.value) return `单笔最高充值 ¥${yuan(maxAmount.value)}`
   return ''
@@ -227,12 +229,10 @@ const expectedDiamonds = computed(() => {
   if (validAmount.value === null) return 0
   return expectedDiamondsForAmount(validAmount.value)
 })
-const iosTenDiamonds = computed(() => expectedDiamondsForAmount(10))
-const iosHundredDiamonds = computed(() => expectedDiamondsForAmount(100))
 const payButtonText = computed(() => {
   if (paying.value) return '正在拉起微信虚拟支付...'
   if (rechargeConfirming.value) return '上一笔充值确认入账中'
-  if (validAmount.value === null) return amountError.value || '请输入充值金额'
+  if (validAmount.value === null) return amountError.value || '请选择充值档位'
   return `立即支付 ¥${yuan(validAmount.value)} · 获得 💎${diamonds(expectedDiamonds.value)}`
 })
 
@@ -298,7 +298,7 @@ function classifyRechargeError(error: any): PayErrorState {
     return { title: '微信登录凭证刷新失败', detail, action: '请关闭小程序后重新进入；系统不会重复扣款。', code }
   }
   if (/沙箱|正式环境|apple/.test(text)) return { title: 'iOS支付环境未就绪', detail, action: 'iOS需要使用微信虚拟支付正式环境，请联系管理员。', code }
-  if (/金额|价格|不一致|price|fee|0\.01/.test(text)) return { title: '充值金额校验未通过', detail, action: '请修改充值金额后重试。', code }
+  if (/金额|价格|不一致|price|fee|0\.01/.test(text)) return { title: '充值金额校验未通过', detail, action: '请选择页面提供的充值档位后重试。', code }
   if (/openid|session|jscode/.test(text)) return { title: '微信登录态已失效', detail, action: '请关闭并重新进入小程序。', code }
   if (Number(error?.statusCode) >= 500) return { title: '支付服务暂时异常', detail, action: '请稍后重试并保留错误编号。', code }
   return { title: '充值未完成', detail, action: '若微信已扣款，请勿重复充值，先刷新入账状态。', code }
@@ -369,7 +369,8 @@ async function loadData() {
       rechargeConfig.value = configResult.value
       quickAmounts.value = configResult.value.results || []
       if (!amountTouched.value && quickAmounts.value.length) {
-        const preferred = quickAmounts.value.find(item => Number(item.pay_amount_yuan || item.amount || 0) === 30) || quickAmounts.value[0]
+        const preferredAmount = configResult.value.client_platform === 'ios' ? 10 : 30
+        const preferred = quickAmounts.value.find(item => Number(item.pay_amount_yuan || item.amount || 0) === preferredAmount) || quickAmounts.value[0]
         amountInput.value = String(Number(preferred.pay_amount_yuan || preferred.amount || minAmount.value))
       }
     }
@@ -448,7 +449,7 @@ async function startRecharge(amount: number) {
 
 async function payRecharge() {
   amountTouched.value = true
-  if (validAmount.value === null) return toast(amountError.value || '请输入正确的充值金额')
+  if (validAmount.value === null) return toast(amountError.value || '请选择正确的充值档位')
   await startRecharge(validAmount.value)
 }
 
@@ -520,6 +521,7 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 .card-head text:first-child, .section-title { font-size: 30rpx; font-weight: 900; }.card-head text:last-child { color: #1f7c4b; font-size: 22rpx; font-weight: 800; }
 .section-desc { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; }
 .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
+.package-grid--ios { grid-template-columns: repeat(2, 1fr); }
 .package-item { padding: 28rpx 8rpx 24rpx; border: 3rpx solid rgba(39,61,42,.08); border-radius: 22rpx; text-align: center; background: #f7faf4; }
 .package-item.active { border-color: #1f9c51; background: #e9f8ef; box-shadow: 0 8rpx 20rpx rgba(31,156,81,.12); }.package-diamonds { display: block; font-size: 32rpx; font-weight: 900; }.package-yuan { display: block; margin-top: 10rpx; color: #687665; font-size: 23rpx; font-weight: 700; }
 .custom-amount-block { margin-top: 24rpx; padding-top: 22rpx; border-top: 1rpx solid rgba(39,61,42,.08); }.custom-label { display: block; margin-bottom: 12rpx; color: #4c5b49; font-size: 24rpx; font-weight: 900; }
