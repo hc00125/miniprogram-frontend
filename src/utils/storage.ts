@@ -1,3 +1,6 @@
+// No credential payload: consumers invalidate their local session generation.
+export const SESSION_CHANGED_EVENT = 'auth-session-changed'
+
 type StorageKey =
   | 'token'
   | 'player'
@@ -31,6 +34,7 @@ export function getStorage<T = any>(key: StorageKey): T | '' {
 
 export function setStorage(key: StorageKey, value: any) {
   uni.setStorageSync(key, value)
+  if (key === 'token') uni.$emit?.(SESSION_CHANGED_EVENT)
 }
 
 export function removeStorage(key: StorageKey) {
@@ -43,6 +47,7 @@ export function removeStorage(key: StorageKey) {
 
 export function clearPlayerAuth() {
   playerAuthKeys.forEach(removeStorageRaw)
+  uni.$emit?.(SESSION_CHANGED_EVENT)
 }
 
 export function clearAdminAuth() {

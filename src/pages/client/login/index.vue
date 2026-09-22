@@ -56,6 +56,7 @@ import { saveClientProfile, shouldUploadAvatarUrl } from '@/utils/client'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, relaunch, replace } from '@/utils/nav'
 import { setStorage } from '@/utils/storage'
+import { clearSessionReturn, finishSessionLogin } from '@/utils/sessionExpiry'
 
 const avatarUrl = ref('')
 const loading = ref(false)
@@ -79,6 +80,7 @@ function openAgreement() {
 }
 
 function leaveLogin() {
+  clearSessionReturn()
   // 审核要求：取消登录和系统返回都必须真正离开登录流程，不能退回受限页后再次弹回登录页。
   // 首页是公开 tabBar 页面，使用 reLaunch/switchTab 会清理登录页及其前方的受限页面栈。
   relaunch('/pages/boss/home/index', { tab: 'home' })
@@ -114,7 +116,7 @@ async function wechatLogin() {
     saveClientProfile(profile)
     const restricted = isAccountRestricted(profile)
     if (!restricted) success('登录成功')
-    replace('/pages/client/profile/index')
+    replace(finishSessionLogin())
     if (restricted) {
       setTimeout(() => {
         void showAccountRestrictionModal(profile, { oncePerSession: true })

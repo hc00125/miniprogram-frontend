@@ -1,3 +1,4 @@
+import { handleSessionExpiry } from '@/utils/sessionExpiry'
 import { showAccountRestrictionModal } from '@/utils/accountRestriction'
 import {
   createIOSPurchaseDisabledError,
@@ -92,6 +93,9 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
     }
 
     const token = getTokenByUrl(url)
+    const tokenKey = ADMIN_PREFIXES.some(prefix => url.startsWith(prefix))
+      || (token && token === getStorageString('admin_token') && token !== getStorageString('token'))
+      ? 'admin_token' : 'token'
     uni.request({
       url: resolveUrl(url),
       method,
@@ -104,6 +108,11 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
       success: (res) => {
         const statusCode = res.statusCode || 0
         if (statusCode >= 200 && statusCode < 300) {
+          // Ignore stale reads after logout/relogin; never hide a write's outcome.
+          if (method === 'GET' && token && getStorageString(tokenKey) !== token) {
+            reject({ statusCode, code: 'STALE_SESSION_READ', handled: true })
+            return
+          }
           resolve(res.data as T)
           return
         }
@@ -122,22 +131,7 @@ function request<T>(method: RequestMethod, url: string, data?: any, header: Reco
           reject(iosPurchaseError)
           return
         }
-        if (statusCode === 401 || statusCode === 403) {
-          if (url.startsWith('/player/')) {
-            uni.removeStorageSync('token')
-            uni.removeStorageSync('player')
-            uni.redirectTo({ url: '/pages/client/login/index' })
-          } else if (url.startsWith('/admin/')) {
-            uni.removeStorageSync('admin_token')
-            uni.removeStorageSync('admin')
-          } else if (url.startsWith('/boss/') || url.startsWith('/pay/')) {
-            uni.removeStorageSync('token')
-            uni.removeStorageSync('admin_token')
-            uni.removeStorageSync('boss')
-            uni.removeStorageSync('player')
-          }
-        }
-        reject(errorData)
+        reject(handleSessionExpiry(statusCode, errorData, url, tokenKey, token) || errorData)
       },
       fail: reject
     })

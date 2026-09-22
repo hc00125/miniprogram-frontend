@@ -1,0 +1,23 @@
+/* Scoped to complaint pages: App.vue intentionally resets native button sizing. */
+.page button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 92rpx;
+  padding: 22rpx 28rpx;
+  margin: 20rpx 0 0;
+  border: 1rpx solid #dce7dd;
+  border-radius: 20rpx;
+  background: #edf4ed;
+  color: #25613e;
+  font-size: 28rpx;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.page button::after { border: none; }
+.page button.primary { background: #1f7c4b; color: #fff; border-color: transparent; }
+.page button[disabled] { opacity: .48; }
+.page button[size="mini"] { display: inline-flex; width: auto; min-height: 64rpx; padding: 12rpx 20rpx; margin-top: 10rpx; font-size: 24rpx; border-radius: 14rpx; }
+.page .button-pressed { opacity: .82; }

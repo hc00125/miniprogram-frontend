@@ -101,8 +101,10 @@
     </view>
 
     <view class="list-card">
+      <view v-if="isLoggedIn && profile?.player_status === 'approved'" class="list-item" @tap="go('/pages/player/kook-binding/index')"><text class="list-icon list-icon--green">通</text><text class="list-label">接单通知</text><text class="list-note">KOOK账号绑定</text><text class="chevron">›</text></view>
       <view class="list-item" @tap="handleService"><text class="list-icon list-icon--green">服</text><text class="list-label">服务条款</text><text class="list-note">隐私政策与服务说明</text><text class="chevron">›</text></view>
       <view class="list-item" @tap="go('/pages/client/customer-service/index')"><text class="list-icon list-icon--blue">客</text><text class="list-label">联系客服</text><text class="list-note">微信官方客服与人工客服</text><text class="chevron">›</text></view>
+      <view class="list-item" @tap="go('/pages/client/complaints/index')"><text class="list-icon list-icon--green">诉</text><text class="list-label">投诉与反馈</text><text class="list-note">平台内部反馈与处理进度</text><text class="chevron">›</text></view>
       <view class="list-item" @tap="handleSettings"><text class="list-icon list-icon--gold">设</text><text class="list-label">设置</text><text class="list-note">{{ isLoggedIn ? '账号、资料与权限' : '登录后管理账号' }}</text><text class="chevron">›</text></view>
     </view>
 
@@ -112,7 +114,7 @@
 
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { updatePlayerOnlineStatus } from '@/api/player'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
@@ -122,6 +124,7 @@ import { formatDiamonds } from '@/utils/diamonds'
 import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain as switchMainTab, type MainTab } from '@/utils/nav'
 import { getStorage } from '@/utils/storage'
+import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
 
 const profile = ref<ClientProfile | null>(null)
 const isLoggedIn = ref(false)
@@ -129,6 +132,16 @@ const onlineUpdating = ref(false)
 const refreshing = ref(false)
 const walletOverview = ref<WalletOverview | null>(null)
 const walletLoadFailed = ref(false)
+
+function clearExpiredProfile(tokenKey: string) {
+  if (tokenKey !== 'token') return
+  isLoggedIn.value = false
+  profile.value = null
+  walletOverview.value = null
+  walletLoadFailed.value = false
+}
+uni.$on(SESSION_EXPIRED_EVENT, clearExpiredProfile)
+onUnmounted(() => uni.$off(SESSION_EXPIRED_EVENT, clearExpiredProfile))
 
 const displayAvatarUrl = computed(() => isLoggedIn.value ? normalizeAvatarUrl(profile.value?.avatarUrl || profile.value?.avatar_url) : '')
 const displayName = computed(() => {
@@ -209,7 +222,7 @@ async function loadWalletOverview() {
     walletOverview.value = await getWalletOverview()
     walletLoadFailed.value = false
   } catch {
-    walletLoadFailed.value = walletOverview.value === null
+    walletLoadFailed.value = isLoggedIn.value && walletOverview.value === null
   }
 }
 
@@ -254,7 +267,6 @@ async function loadProfile() {
       profile.value = null
       walletOverview.value = null
       walletLoadFailed.value = false
-      toast('登录状态已失效，可继续游客浏览或重新登录')
       return false
     }
     profile.value = cached

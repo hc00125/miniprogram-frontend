@@ -6,6 +6,11 @@
       <text class="support-sub">可通过微信官方客服或复制人工客服微信号联系我们</text>
     </view>
 
+    <view class="feedback-entry">
+      <text class="feedback-title">投诉与反馈</text>
+      <button class="feedback-action" @tap="openComplaints">去反馈</button>
+    </view>
+
     <view v-if="scene === 'account-cancellation'" class="scene-notice">
       <text class="scene-notice-title">账号注销申请</text>
       <text class="scene-notice-text">请联系客服核验未完成订单、提现和身份信息后处理账号注销。</text>
@@ -49,7 +54,7 @@
             <text v-if="contact.service_hours" class="service-hours">服务时间：{{ contact.service_hours }}</text>
             <view class="wechat-row">
               <text class="wechat-label">微信号</text>
-              <text class="wechat-id">{{ contact.wechat_id }}</text>
+              <text class="wechat-id" user-select selectable>{{ contact.wechat_id }}</text>
             </view>
           </view>
           <button class="channel-action copy-action" @tap="copyWechat(contact.wechat_id)">复制</button>
@@ -75,6 +80,9 @@ import { ref } from 'vue'
 import { getSupportCenter, type SupportContact } from '@/api/support'
 import { getClientProfile } from '@/utils/client'
 import { getErrorMessage } from '@/utils/feedback'
+import { copyText } from '@/utils/clipboard'
+
+function openComplaints() { uni.navigateTo({ url: '/pages/client/complaints/index' }) }
 
 const loading = ref(true)
 const loadError = ref('')
@@ -105,21 +113,7 @@ async function loadSupportCenter() {
 function copyWechat(wechatId: string) {
   const value = String(wechatId || '').trim()
   if (!value) return
-  // 微信 setClipboardData 成功后会自带“内容已复制”toast，不要再叠加自定义 toast。
-  // 优先用原生 wx API（uni 代理在某些基础库版本会静默失败）；
-  // 失败时弹窗展示微信号，保证用户总能拿到客服微信号。
-  const clipboard: any = typeof wx !== 'undefined' && wx.setClipboardData ? wx : uni
-  clipboard.setClipboardData({
-    data: value,
-    fail: () => {
-      uni.showModal({
-        title: '复制失败',
-        content: `客服微信号：${value}\n请长按上方文字手动复制，或直接搜索添加。`,
-        showCancel: false,
-        confirmText: '我知道了'
-      })
-    }
-  })
+  copyText(value, 'customer-service')
 }
 
 onLoad((options) => {
@@ -136,6 +130,10 @@ onShow(loadSupportCenter)
 .support-eyebrow { color: rgba(255,255,255,.66); font-size: 20rpx; font-weight: 900; letter-spacing: 3rpx; }
 .support-title { margin-top: 10rpx; font-size: 44rpx; font-weight: 900; }
 .support-sub { margin-top: 12rpx; color: rgba(255,255,255,.78); font-size: 23rpx; line-height: 1.55; }
+.feedback-entry { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 20rpx; padding: 18rpx 26rpx; border: 1rpx solid rgba(39,61,42,.08); border-radius: 24rpx; background: rgba(255,255,255,.92); }
+.feedback-title { min-width: 0; color: #172116; font-size: 27rpx; font-weight: 700; }
+.feedback-action { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 132rpx; height: 64rpx; margin: 0; padding: 12rpx 20rpx; box-sizing: border-box; border: 1rpx solid rgba(31,124,75,.18); border-radius: 999rpx; color: #1f7c4b; background: #eef8f1; font-size: 23rpx; font-weight: 700; line-height: 1.2; }
+.feedback-action::after { border: none; }
 .scene-notice { margin-top: 20rpx; padding: 24rpx; border: 1rpx solid rgba(216,161,68,.28); border-radius: 24rpx; background: #fff7e5; }
 .scene-notice-title,.scene-notice-text { display: block; }
 .scene-notice-title { color: #8b5b13; font-size: 27rpx; font-weight: 900; }

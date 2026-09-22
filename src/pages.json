@@ -1,6 +1,9 @@
 {
   "pages": [
     { "path": "pages/boss/home/index", "style": { "navigationBarTitleText": "偷吃电竞", "navigationBarBackgroundColor": "#fbf7ef", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/complaints/index", "style": { "navigationBarTitleText": "投诉与反馈" } },
+    { "path": "pages/client/complaints/create", "style": { "navigationBarTitleText": "提交投诉" } },
+    { "path": "pages/client/complaints/detail", "style": { "navigationBarTitleText": "反馈详情" } },
     { "path": "pages/boss/order-notice/index", "style": { "navigationBarTitleText": "点单须知", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" } },
     { "path": "pages/shop/category/index", "style": { "navigationStyle": "custom", "navigationBarTitleText": "商品分类", "navigationBarBackgroundColor": "#ffffff", "navigationBarTextStyle": "black" } },
     { "path": "pages/shop/detail/index", "style": { "navigationBarTitleText": "商品详情", "navigationBarBackgroundColor": "#f7f7f7", "navigationBarTextStyle": "black" } },
@@ -26,6 +29,7 @@
     { "path": "pages/player/profile-settings/index", "style": { "navigationBarTitleText": "陪玩资料设置", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/player/service-management/index", "style": { "navigationBarTitleText": "我的服务", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/player/escort-qualification/index", "style": { "navigationBarTitleText": "护航资格申请", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
+    { "path": "pages/player/kook-binding/index", "style": { "navigationBarTitleText": "接单通知", "navigationBarBackgroundColor": "#fbf7ef" } },
     { "path": "pages/player/grab/index", "style": { "navigationBarTitleText": "抢单大厅" } },
     { "path": "pages/player/my-orders/index", "style": { "navigationBarTitleText": "我的订单" } },
     { "path": "pages/player/earnings/index", "style": { "navigationBarTitleText": "鱼干收益中心", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },

@@ -80,6 +80,7 @@
       <button class="withdraw-btn" :disabled="submitting || !canSubmit" @tap="submitWithdrawal">
         {{ submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请') }}
       </button>
+      <text v-if="withdrawalBlockReason" class="withdraw-tip" style="color: #c0392b;" role="alert">{{ withdrawalBlockReason }}</text>
       <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(fishToYuan(minWithdrawalFishValue)) }}）；所有提现均由管理员人工审核，其他日期也可处理。</text>
     </view>
 
@@ -177,7 +178,7 @@ const form = reactive({ amount: '', account_name: '', account_no: '', request_no
 
 const availableFish = computed(() => Number(overview.value?.available_balance || 0))
 const debtFish = computed(() => Number(overview.value?.debt_balance || 0))
-const minWithdrawalFishValue = computed(() => Number(overview.value?.min_withdrawal_amount || 10))
+const minWithdrawalFishValue = computed(() => Number(overview.value?.min_withdrawal_amount ?? 0.1))
 const minWithdrawalFish = computed(() => fish(minWithdrawalFishValue.value))
 const withdrawalFish = computed(() => Number(form.amount || 0))
 const withdrawalYuan = computed(() => fishToYuan(withdrawalFish.value))
@@ -190,16 +191,20 @@ const accountPlaceholder = computed(() => {
   if (method === 'bank') return '银行卡号'
   return '填写收款账号'
 })
-const canSubmit = computed(() => {
-  const amount = withdrawalFish.value
-  return overview.value?.can_withdraw !== false
-    && debtFish.value <= 0
-    && amount >= minWithdrawalFishValue.value
-    && amount <= availableFish.value
-    && hasValidFishPrecision.value
-    && Boolean(form.account_name.trim())
-    && Boolean(form.account_no.trim())
+const withdrawalBlockReason = computed(() => {
+  if (loading.value) return '收益数据加载中，请稍候'
+  if (!overview.value) return '收益数据加载失败，请刷新后重试'
+  if (overview.value.can_withdraw === false) return overview.value.withdrawal_block_reason || '当前账号暂不能提现，请联系管理员'
+  if (debtFish.value > 0) return '当前有未抵扣欠款，暂不能提现'
+  if (!form.amount || !Number.isFinite(withdrawalFish.value)) return '请输入有效的提现鱼干数量'
+  if (withdrawalFish.value < minWithdrawalFishValue.value) return `最低提现 ${minWithdrawalFish.value} 鱼干`
+  if (withdrawalFish.value > availableFish.value) return '提现金额超过可提现余额'
+  if (!hasValidFishPrecision.value) return '鱼干数量最多保留1位小数'
+  if (!form.account_name.trim()) return '请填写收款人姓名'
+  if (!form.account_no.trim()) return '请填写收款账号'
+  return ''
 })
+const canSubmit = computed(() => !withdrawalBlockReason.value)
 
 function money(value?: number | string | null) { return Number(value || 0).toFixed(2) }
 function fish(value?: number | string | null) { return Number(value || 0).toFixed(2) }
@@ -229,7 +234,8 @@ function fillAll() {
     toast(overview.value?.withdrawal_block_reason || '当前暂不能提现')
     return
   }
-  form.amount = availableFish.value.toFixed(1).replace(/\.0$/, '')
+  // 按十进制字符串截断到一位小数，不四舍五入，也不扣除钱包余数。
+  form.amount = String(availableFish.value).replace(/(\.\d)\d+$/, '$1').replace(/\.0$/, '')
 }
 
 async function loadAll() {
@@ -258,7 +264,7 @@ async function submitWithdrawal() {
   }
   if (!hasValidFishPrecision.value) return toast('鱼干数量最多保留1位小数')
   if (withdrawalFish.value < minWithdrawalFishValue.value) return toast(`最低提现${minWithdrawalFish.value}鱼干`)
-  if (!canSubmit.value) return toast('请完整填写提现信息，并确认鱼干余额充足')
+  if (!canSubmit.value) return toast(withdrawalBlockReason.value)
 
   const fishAmount = withdrawalFish.value
   const yuanAmount = withdrawalYuan.value

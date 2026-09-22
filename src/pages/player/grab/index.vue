@@ -21,16 +21,21 @@
       <view v-else class="empty-card">{{ emptyReason }}</view>
     </view>
 
+    <view v-if="kookNotice" class="empty-card">{{ kookNotice }}</view>
+    <view class="footer-actions"><button @tap="go('/pages/player/kook-binding/index')">接单通知 · KOOK</button></view>
     <view class="footer-actions"><button @tap="go('/pages/player/my-orders/index')">我的订单</button><button @tap="handleLogout">退出登录</button></view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { onHide, onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onLoad, onUnload } from '@dcloudio/uni-app'
+import { getEntry } from '@/api/kook'
+import { parseKookIntent, interpretEntry } from '@/utils/kookIntent'
 import { acceptDesignation, declineDesignation, getAvailableOrders, getAvailableOrdersSummary, getCurrentPlayer, getDesignationInvitations, grabOrder as apiGrabOrder, logoutPlayer, updatePlayerOnlineStatus, type AvailableOrdersSummary, type DesignationInvitation } from '@/api/player'
 import { getPlayerTypes, type PlayerType } from '@/api/boss'
-import { getStorage, removeStorage } from '@/utils/storage'
+import { getStorage, removeStorage, SESSION_CHANGED_EVENT } from '@/utils/storage'
+import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, replace } from '@/utils/nav'
 import { getClientProfile, isApprovedPlayer, normalizeAvatarUrl, setPlayerOnlineStatus, getPlayerOnlineStatus } from '@/utils/client'
@@ -38,6 +43,29 @@ import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { formatHours } from '@/utils/format'
 import { createOrderAlert } from '@/utils/orderAlert'
 
+const kookNotice = ref('')
+let kookGeneration = 0, kookVisible = true
+let kookOwner = String(getStorage<string>('token') || '')
+function clearKookNotice() { kookGeneration++; kookNotice.value = ''; kookOwner = String(getStorage<string>('token') || '') }
+function expireKookNotice(scope: string) { if (scope === 'token') clearKookNotice() }
+uni.$on(SESSION_CHANGED_EVENT, clearKookNotice)
+uni.$on(SESSION_EXPIRED_EVENT, expireKookNotice)
+function disposeKookNotice() { kookVisible = false; clearKookNotice(); uni.$off(SESSION_CHANGED_EVENT, clearKookNotice); uni.$off(SESSION_EXPIRED_EVENT, expireKookNotice) }
+onUnload(disposeKookNotice)
+onLoad(async (options) => {
+  clearKookNotice()
+  const generation = kookGeneration, owner = kookOwner
+  const current = () => kookVisible && generation === kookGeneration && owner === String(getStorage<string>('token') || '')
+  if (!options?.kook_intent) return
+  const intent = parseKookIntent(options.kook_intent)
+  if (!intent) { kookNotice.value = '通知链接无效，请查看大厅最新订单'; return }
+  if (!getStorage<string>('token')) { kookNotice.value = '请先微信登录，再重新打开KOOK通知链接'; return }
+  try {
+    const result = interpretEntry(await getEntry(intent))
+    if (!current()) return
+    kookNotice.value = result.orderNo ? `${result.message}（${result.orderNo}）` : result.message
+  } catch { if (current()) kookNotice.value = '通知解析暂不可用，请在大厅核对最新订单' }
+})
 const player = ref<any>(null)
 const orders = ref<any[]>([])
 const invitations = ref<Array<DesignationInvitation & { responding?: boolean }>>([])
@@ -72,10 +100,10 @@ async function decline(item: DesignationInvitation & { responding?: boolean }) {
 async function grab(order: any) { if (!order.can_grab || order.grabbing) return; if (!(await confirm('确定抢这个公开订单吗？'))) return; order.grabbing = true; try { await apiGrabOrder(order.order_no, player.value.id); success('抢单成功'); await refreshAll(); go('/pages/player/order-detail/index', { orderNo: order.order_no }) } catch (error) { toast(getErrorMessage(error, '抢单失败')) } finally { order.grabbing = false } }
 async function toggleOnline() { if (onlineUpdating.value) return; onlineUpdating.value = true; try { const result = await updatePlayerOnlineStatus(!online.value); online.value = Boolean(result.is_online); setPlayerOnlineStatus(online.value); if (online.value) { void orderAlert.prepare(); await startRefresh() } else { stopRefresh(); await refreshAll() }; toast(online.value ? '已上线，开始接单' : '已离线，指定邀请仍可查看') } catch (error) { toast(getErrorMessage(error, '在线状态更新失败')) } finally { onlineUpdating.value = false } }
 async function handleLogout() { if (!(await confirm('确定退出登录吗？'))) return; try { await logoutPlayer() } catch {}; setPlayerOnlineStatus(false); removeStorage('token'); removeStorage('player'); replace('/pages/client/login/index') }
-onShow(() => { pageVisible = true; void orderAlert.prepare() })
-onHide(() => { pageVisible = false })
+onShow(() => { kookVisible = true; if (kookOwner !== String(getStorage<string>('token') || '')) clearKookNotice(); pageVisible = true; void orderAlert.prepare() })
+onHide(() => { kookVisible = false; clearKookNotice(); pageVisible = false })
 onMounted(async () => { if (!(await isApprovedPlayer())) { toast('请先成为陪玩师'); go('/pages/player/apply/index'); return }; if (!getStorage<string>('token')) { replace('/pages/client/login/index'); return }; try { player.value = await getCurrentPlayer(); online.value = Boolean(player.value?.is_online); setPlayerOnlineStatus(online.value) } catch { player.value = getStorage<any>('player') }; if (!player.value) { toast('陪玩师信息未同步'); replace('/pages/client/profile/index'); return }; try { playerTypes.value = await getPlayerTypes() } catch { playerTypes.value = [] }; void orderAlert.prepare(); await startRefresh(); clockTimer = setInterval(() => { now.value = Date.now() }, 1000) })
-onUnmounted(() => { stopRefresh(); if (clockTimer) clearInterval(clockTimer); orderAlert.destroy() })
+onUnmounted(() => { disposeKookNotice(); stopRefresh(); if (clockTimer) clearInterval(clockTimer); orderAlert.destroy() })
 </script>
 
 <style lang="scss" scoped>

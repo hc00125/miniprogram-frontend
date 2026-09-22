@@ -1,5 +1,6 @@
 <template>
   <view class="payment-page">
+    <button v-if="orderNo" size="mini" @tap="openOrderComplaint">投诉/售后 · 平台反馈</button>
     <view class="status-card" :class="{ paid: isPaid }">
       <view class="status-dot"></view>
       <view class="status-main">
@@ -249,10 +250,11 @@
 </template>
 
 <script setup lang="ts">
+function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/create?order_no=${encodeURIComponent(orderNo.value)}` }) }
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import { cancelOrder, getOrder, getOrderRatings, ratePlayer, type OrderRatingRecord } from '@/api/boss'
-import { isIOSDevice } from '@/utils/purchaseAvailability'
+import { isIOSDevice, getClientPlatform } from '@/utils/purchaseAvailability'
 import { closeVirtualPayment, createMiniProgramPayment } from '@/api/pay'
 import { getWalletOverview, payOrderWithBalance } from '@/api/wallet'
 import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
@@ -283,6 +285,8 @@ const cancelling = ref(false)
 const payMethod = ref<'wechat' | 'balance'>('wechat')
 // iOS 端：隐藏微信支付选项，只能使用钱包已有钻石付款
 const isIOS = isIOSDevice()
+// 方案B：iOS 端禁用订单直接微信支付，苹果税在充值入口承担（1元=7钻）。
+const isIOSPlatform = getClientPlatform() === 'ios'
 if (isIOS) payMethod.value = 'balance'
 const walletBalance = ref<number | null>(null)
 const walletLoadFailed = ref(false)
@@ -368,6 +372,7 @@ const balanceSufficient = computed(() => walletBalance.value !== null && walletB
 const balanceShortfall = computed(() => Math.max(0, orderAmount.value - Number(walletBalance.value || 0)))
 const balanceOptionSub = computed(() => {
   if (walletBalance.value !== null) return `当前可用 💎${diamond(walletBalance.value)} · 支付后 💎${diamond(Math.max(0, walletBalance.value - orderAmount.value))}`
+  if (isIOSPlatform) return '钻石余额加载中...（iOS 充值 1元=7钻石）'
   return walletLoadFailed.value ? '钻石余额加载失败，点击重试' : '钻石余额加载中...'
 })
 const payButtonText = computed(() => {
@@ -697,7 +702,7 @@ function selectPayMethod(method: 'wechat' | 'balance') {
     } else if (walletBalance.value === null) {
       toast('钻石余额加载中，请稍候')
     } else {
-      toast(isIOS ? `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；iOS 端暂不支持充值，请更换设备支付或联系客服` : `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；可先充值或使用微信即时支付`)
+      toast(isIOSPlatform ? `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；iOS 端充值 1元=7钻石` : `可用钻石不足，还差💎${diamond(balanceShortfall.value)}；可先充值或使用微信即时支付`)
     }
     return
   }
@@ -712,8 +717,9 @@ async function payByBalance() {
     return
   }
   if (!balanceSufficient.value) {
-    if (isIOS) {
-      toast('可用钻石不足，iOS 端暂不支持充值，请更换设备支付或联系客服')
+    if (isIOSPlatform) {
+      const ok = await confirm(`可用钻石还差💎${diamond(balanceShortfall.value)}。iOS 端充值 1元=7钻石，是否先去充值？`, '钻石不足')
+      if (ok) uni.navigateTo({ url: '/pages/client/recharge/index' })
       return
     }
     payMethod.value = 'wechat'
