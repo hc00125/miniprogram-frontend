@@ -34,7 +34,13 @@ async function render(page, cls, state = {}) {
 function asset(html,name) { assert.ok(html.includes('/icons/duotone/'+name+'.png'), name+' pictogram missing') }
 test('phase2 all original scripts, directives, button text and monetary interpolations are preserved',()=>{
  const {contract,files}=require('./secondary-icons-phase2-helpers.cjs'),expected=require('./secondary-icons-phase2-contracts.json');
- for(const p of files)assert.deepEqual(contract(read(p)),expected[p],p)
+ // Approved commerce host additions are covered by commerce-hosts.test.cjs.
+ // Strip only those exact additions; keep all historical service/payment hashes.
+ for(const p of files){
+   const source=read(p).replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
+     .replace('    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />\n','')
+   assert.deepEqual(contract(source),expected[p],p)
+ }
 })
 test('payment SFC waiting verification collection and diamond icons keep brand and status gates',async()=>{
  const template=parse(read('src/pages/boss/payment/index.vue')).descriptor.template.content;

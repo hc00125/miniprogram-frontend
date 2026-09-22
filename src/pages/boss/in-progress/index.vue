@@ -1,6 +1,7 @@
 <template>
   <view class="progress-page">
     <button v-if="orderNo" size="mini" @tap="openOrderComplaint">投诉/售后 · 平台反馈</button>
+    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />
     <view class="status-bar" :class="{ 'status-bar--replacement': replacementActive }"><view class="live-dot" :class="{ waiting: orderInfo?.status === '待开打', danger: replacementActive }"></view><view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSub }}</text></view><text class="live-tag">{{ orderInfo?.status || '加载中' }}</text></view>
 
     <view class="hero-card"><text class="hero-eyebrow">SERVICE PROGRESS</text><text class="hero-title">{{ heroTitle }}</text><view class="timer-card" :class="{ 'timer-card--replacement': replacementActive }"><text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text><text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text><text>{{ durationStatus }}</text></view><view class="hero-meta"><view><text>订单号</text><text>{{ orderNo || '加载中' }}</text></view><view><text>开始时间</text><text>{{ startTimeText }}</text></view></view></view>
@@ -41,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'
 import { uiIcons } from '@/utils/uiIcons'
 function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/create?order_no=${encodeURIComponent(orderNo.value)}` }) }
 import { computed, onMounted, onUnmounted, ref } from 'vue'

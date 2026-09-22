@@ -28,6 +28,7 @@
               <view class="order-amount"><view class="cover-status" :class="`cover-status--${coverStatusKey(order.status)}`"><text>{{ order.status }}</text></view><view class="order-amount-main"><text class="amount-currency">💎</text><text class="amount-value">{{ diamond(orderDisplayDiamonds(order)) }}</text></view><text v-if="renewalPaidDiamonds(order) > 0" class="amount-renewal-note">含续单 💎{{ diamond(renewalPaidDiamonds(order)) }}</text></view>
             </view>
             <view class="order-meta"><text class="order-no">订单号 {{ order.order_no }}</text><view class="meta-item"><text class="meta-text">{{ formatOrderTime(order.created_at) }}</text></view><view class="meta-item"><text class="meta-text">{{ stageHint(order.status) }}</text></view></view>
+            <view @tap.stop><OrderSurchargeHost :order-no="order.order_no" /></view>
             <view class="order-actions"><button class="club-btn club-btn--ghost" @tap.stop="goMain('order')">再来一单</button><button class="club-btn club-btn--primary" @tap.stop="openOrder(order)">{{ actionText(order.status) }}</button></view>
           </view>
         </view>
@@ -46,6 +47,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { getMyBossOrders, type BossOrderListItem } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
+import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'
 import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { formatDateTime as formatDateTimeValue } from '@/utils/format'
 import { success, toast, getErrorMessage } from '@/utils/feedback'

@@ -1,6 +1,7 @@
 <template>
   <view class="waiting-page">
     <button v-if="orderNo" size="mini" @tap="openOrderComplaint">投诉/售后 · 平台反馈</button>
+    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />
     <view class="status-bar"><view class="status-pulse" :class="{ danger: replacementActive || matchingDecisionRequired }"></view><view class="status-copy"><text>{{ statusTitle }}</text><text>{{ statusSubtitle }}</text></view><text class="status-tag">{{ orderInfo?.status || '待接单' }}</text></view>
 
     <view class="hero-card">
@@ -57,6 +58,7 @@ function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import OrderReplacementCard from '@/components/OrderReplacementCard.vue'
+import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'
 import { cancelOrder, getOrder, getOrderDesignations, releaseOrderDesignation, type OrderDesignationItem } from '@/api/boss'
 import { continueOrderMatching } from '@/api/orderMatching'
 import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'

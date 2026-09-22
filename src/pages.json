@@ -12,6 +12,7 @@
     { "path": "pages/boss/query/index", "style": { "navigationBarTitleText": "订单查询" } },
     { "path": "pages/player/list/index", "style": { "navigationBarTitleText": "已入驻陪玩" } },
     { "path": "pages/player/detail/index", "style": { "navigationBarTitleText": "陪玩详情", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/gifts/index", "style": { "navigationBarTitleText": "我的礼物与记录", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/profile/index", "style": { "navigationBarTitleText": "个人中心" } },
     { "path": "pages/boss/waiting/index", "style": { "navigationBarTitleText": "等待接单" } },
     { "path": "pages/boss/in-progress/index", "style": { "navigationBarTitleText": "服务进行中" } },

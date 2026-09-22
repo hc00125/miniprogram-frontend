@@ -1,0 +1,58 @@
+const { test } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const ts = require('typescript')
+function load(file) {
+  const target = path.join(__dirname, '..', file)
+  assert.ok(fs.existsSync(target), `foundation module must exist: ${file}`)
+  const mod = { exports: {} }
+  const code = ts.transpileModule(fs.readFileSync(target, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText
+  new Function('require', 'module', 'exports', 'uni', code)(() => { throw Error('No network dependencies allowed') }, mod, mod.exports, new Proxy({}, { get() { throw Error('No unconfirmed network or storage operations allowed') } }))
+  return mod.exports
+}
+test('unconfirmed surcharge contract fails closed without requests, fake paid data or write exports', async () => {
+  const api = load('src/api/surcharges.ts')
+  assert.deepEqual(api.getSurchargeCapabilities(), { status_query_enabled: false, payment_enabled: false })
+  const status = await api.getOrderSurchargeStatus('真实/订单 #号')
+  assert.equal(status.order_no, '真实/订单 #号')
+  assert.equal(status.available, false)
+  assert.equal(status.reason_code, 'CONTRACT_UNCONFIRMED')
+  assert.equal(status.summary, undefined)
+  assert.deepEqual(Object.keys(api).sort(), ['getOrderSurchargeStatus', 'getSurchargeCapabilities'])
+  await assert.rejects(api.getOrderSurchargeStatus(''))
+})
+test('ephemeral intent validates positive integer diamonds, binds order/session and discards stale responses', () => {
+  const { createSurchargeIntent } = load('src/utils/surchargeIntent.ts')
+  const intent = createSurchargeIntent()
+  intent.open('account-a', 'session-1', '原单/一', 3)
+  assert.equal(intent.setAmount('25'), true)
+  assert.equal(intent.snapshot().amount_diamonds, 25)
+  for (const value of ['', '0', '-1', '1.5', '1e2', ' 2', '+2', '01', '9007199254740992']) {
+    assert.equal(intent.setAmount(value), false, value)
+    assert.equal(intent.snapshot().amount_diamonds, null)
+  }
+  intent.setAmount('25')
+  const stamp = intent.stamp()
+  intent.rechargeReturned()
+  assert.equal(intent.accepts(stamp), false)
+  assert.equal(intent.snapshot().order_no, '原单/一')
+  assert.equal(intent.snapshot().amount_diamonds, 25)
+  assert.equal(intent.snapshot().needs_confirmation, true)
+  intent.syncSession('account-a', 'session-2')
+  assert.equal(intent.snapshot().order_no, '')
+  assert.equal(intent.snapshot().amount_diamonds, null)
+  intent.open('account-a', 'session-2', '原单/二', 2)
+  const fresh = intent.stamp()
+  intent.syncSession('account-b', 'session-2')
+  assert.equal(intent.accepts(fresh), false)
+  intent.open('account-b', 'session-3', '原单/三', 1)
+  intent.close()
+  assert.equal(intent.snapshot().account_id, '')
+  assert.equal(intent.setAmount('2'), false)
+  intent.open('', '', '原单/三', 1)
+  assert.equal(intent.snapshot().order_no, '')
+  intent.open('a', 's', '原单', 0)
+  assert.equal(intent.snapshot().order_no, '')
+})
+exports.load = load

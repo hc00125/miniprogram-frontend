@@ -10,6 +10,7 @@
             <text class="player-type">{{ player.type_name || '优质陪玩' }}</text>
           </view>
         </view>
+        <GiftHost :recipient-id="player.id" :recipient-name="player.name" />
         <view class="stats-row">
           <view><text>{{ player.total_orders || 0 }}</text><text>接单数</text></view>
           <view><text>{{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text><text>{{ ratingSummary.rating_count }}条评价</text></view>
@@ -52,6 +53,7 @@ import { getPlayerList, getPlayerServiceProducts, type OnlinePlayer } from '@/ap
 import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult } from '@/api/player'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go } from '@/utils/nav'
+import GiftHost from '@/components/gifts/GiftHost.vue'
 
 const playerId = ref<number | null>(null)
 const player = ref<OnlinePlayer | null>(null)

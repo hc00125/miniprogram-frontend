@@ -1,6 +1,7 @@
 <template>
   <view class="payment-page">
     <button v-if="orderNo" size="mini" @tap="openOrderComplaint">投诉/售后 · 平台反馈</button>
+    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />
     <view class="status-card" :class="{ paid: isPaid }">
       <view class="status-dot"></view>
       <view class="status-main">
@@ -250,6 +251,7 @@
 </template>
 
 <script setup lang="ts">
+import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'
 import { uiIcons } from '@/utils/uiIcons'
 function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/create?order_no=${encodeURIComponent(orderNo.value)}` }) }
 import { computed, ref } from 'vue'

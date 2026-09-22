@@ -101,6 +101,7 @@
     </view>
 
     <view class="list-card">
+      <view v-if="isLoggedIn" class="list-item" @tap="go('/pages/client/gifts/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.query" mode="aspectFit" /></view><text class="list-label">我的礼物</text><text class="list-note">库存、购买与送收记录</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view v-if="isLoggedIn && profile?.player_status === 'approved'" class="list-item" @tap="go('/pages/player/kook-binding/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.notification" mode="aspectFit" /></view><text class="list-label">接单通知</text><text class="list-note">KOOK账号绑定</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view class="list-item" @tap="handleService"><view class="list-icon"><image class="entry-icon" :src="uiIcons.terms" mode="aspectFit" /></view><text class="list-label">服务条款</text><text class="list-note">隐私政策与服务说明</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view class="list-item" @tap="go('/pages/client/customer-service/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.support" mode="aspectFit" /></view><text class="list-label">联系客服</text><text class="list-note">微信官方客服与人工客服</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
