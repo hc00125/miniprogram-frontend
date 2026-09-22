@@ -6,7 +6,7 @@
     <view class="product-cover__content">
       <text v-if="badge" class="product-cover__badge">{{ badge }}</text>
       <text class="product-cover__title">{{ title }}</text>
-      <text class="product-cover__summary">{{ summary || '平台保障 · 快速匹配 · 服务留痕' }}</text>
+      <text v-if="showSummary" class="product-cover__summary">{{ summary || '平台保障 · 快速匹配 · 服务留痕' }}</text>
     </view>
     <text v-if="soldText" class="product-cover__sold">{{ soldText }}</text>
   </view>
@@ -17,12 +17,14 @@ withDefaults(defineProps<{
   image?: string
   title: string
   summary?: string
+  showSummary?: boolean
   badge?: string
   soldText?: string
   theme?: 'green' | 'gold' | 'rose' | 'blue' | string
 }>(), {
   image: '',
   summary: '',
+  showSummary: true,
   badge: '',
   soldText: '',
   theme: 'green'

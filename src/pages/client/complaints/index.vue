@@ -2,7 +2,7 @@
   <view class="page">
     <view class="brand-row"><view class="brand-dot" /><text>偷吃电竞 · 客服反馈</text></view>
     <button class="primary feedback-action" hover-class="button-pressed" @tap="create">
-      <view class="action-icon"><view class="message-icon"><text>···</text></view></view>
+      <view class="action-icon"><image class="feedback-icon" :src="uiIcons.feedbackLight" mode="aspectFit" /></view>
       <view class="action-copy"><text class="action-title">提交反馈</text><text class="action-note">遇到问题或有建议，告诉我们</text></view>
       <text class="action-arrow">›</text>
     </button>
@@ -26,6 +26,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { ref, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { listComplaints, categoryLabels, statusLabels, type Complaint } from '@/api/complaints'
@@ -62,9 +63,6 @@ onShow(() => { items.value = []; void load(true) })
 .brand-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #1f7c4b; }
 .page button.feedback-action { min-height: 164rpx; padding: 30rpx; margin-top: 24rpx; border-radius: 28rpx; text-align: left; justify-content: flex-start; box-shadow: 0 10rpx 24rpx rgba(31, 124, 75, .12); }
 .action-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 76rpx; height: 76rpx; border-radius: 24rpx; background: rgba(255,255,255,.14); margin-right: 22rpx; }
-.message-icon { position: relative; width: 40rpx; height: 32rpx; border: 3rpx solid #fff; border-radius: 10rpx; display: flex; align-items: center; justify-content: center; }
-.message-icon::after { content: ''; position: absolute; bottom: -8rpx; left: 8rpx; width: 8rpx; height: 10rpx; border-left: 3rpx solid #fff; transform: skewY(-35deg); }
-.message-icon text { font-size: 32rpx; line-height: 1; margin-top: -8rpx; }
 .action-copy { flex: 1; min-width: 0; }
 .action-title { display: block; font-size: 34rpx; font-weight: 700; }
 .action-note { display: block; margin-top: 8rpx; font-size: 23rpx; color: #e3f0e7; font-weight: 400; }
@@ -94,4 +92,8 @@ onShow(() => { items.value = []; void load(true) })
 .error { color: #a13d35; font-size: 26rpx; }
 .end { text-align: center; padding: 24rpx; font-size: 22rpx; }
 .card-pressed { background: #f0f4e9; }
+</style>
+
+<style scoped>
+.feedback-icon { width: 52rpx; height: 52rpx; }
 </style>

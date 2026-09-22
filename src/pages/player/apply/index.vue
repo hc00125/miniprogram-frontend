@@ -5,9 +5,9 @@
       <view class="hero-title">成为<br/>偷吃电竞陪玩师</view>
       <view class="hero-sub">展示你的实力，接住今晚的订单</view>
       <view class="hero-tags">
-        <view class="hero-tag"><text>证</text><text>资料审核</text></view>
-        <view class="hero-tag"><text>声</text><text>语音介绍</text></view>
-        <view class="hero-tag"><text>单</text><text>在线接单</text></view>
+        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.apply" mode="aspectFit" /><text>资料审核</text></view>
+        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.microphone" mode="aspectFit" /><text>语音介绍</text></view>
+        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.order" mode="aspectFit" /><text>在线接单</text></view>
       </view>
     </view>
 
@@ -68,7 +68,7 @@
         <view><text class="form-eyebrow">音频自我介绍</text><text class="form-hint">可选，上传后审核通过会展示在陪玩详情页</text></view>
       </view>
       <view v-if="form.audio_intro_url" class="audio-info">
-        <view class="audio-icon">声</view>
+        <view class="audio-icon"><image class="secondary-pictogram" :src="uiIcons.microphone" mode="aspectFit" /></view>
         <view class="audio-main"><text class="audio-title">{{ form.audio_intro_title || '音频自我介绍' }}</text><text class="audio-url">已上传，提交申请后同步给后台审核</text></view>
         <text class="audio-remove" @tap="removeAudio">移除</text>
       </view>
@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { onShow } from '@dcloudio/uni-app'
 import { computed, reactive, ref } from 'vue'
 import { getPlayerTypes, type PlayerType } from '@/api/boss'
@@ -287,4 +288,8 @@ onShow(loadApplyContext)
 .rule-mask { position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;background:rgba(0,0,0,.42); }.rule-sheet { width:100%;max-height:78vh;padding:28rpx;border-radius:32rpx 32rpx 0 0;background:#fff;box-sizing:border-box; }
 .rule-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:18rpx; }.rule-title { color:#172116;font-size:32rpx;font-weight:900; }.rule-close { color:#687665;font-size:46rpx; }.rule-body { max-height:48vh; }
 .rule-line { display:block;margin-bottom:12rpx;color:#687665;font-size:26rpx;line-height:1.7; }.rule-confirm { margin-top:18rpx; }
+.audio-icon { background: transparent; }
+.secondary-pictogram { width: 48rpx; height: 48rpx; }
+.hero-tag .secondary-pictogram { width: 32rpx; height: 32rpx; flex-shrink: 0; }
+.secondary-pictogram { display: block; }
 </style>

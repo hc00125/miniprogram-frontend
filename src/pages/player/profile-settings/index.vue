@@ -12,13 +12,13 @@
     </view>
 
     <view class="card escort-card" @tap="go('/pages/player/service-management/index')">
-      <view class="escort-icon">服</view>
+      <view class="escort-icon"><image class="secondary-pictogram" :src="uiIcons.terms" mode="aspectFit" /></view>
       <view class="escort-main"><text class="card-title">我的服务</text><text class="card-sub">从平台共享规格中申请上架、暂停或下架服务</text></view>
       <view class="escort-status"><text>管理</text><text>›</text></view>
     </view>
 
     <view class="card escort-card" @tap="go('/pages/player/escort-qualification/index')">
-      <view class="escort-icon">护</view>
+      <view class="escort-icon"><image class="secondary-pictogram" :src="uiIcons.shield" mode="aspectFit" /></view>
       <view class="escort-main"><text class="card-title">护航资格</text><text class="card-sub">独立专业资格，申请后由后台审核</text></view>
       <view class="escort-status"><text>{{ settings?.player.escort_status_text || '未申请' }}</text><text>›</text></view>
     </view>
@@ -29,7 +29,7 @@
       <textarea v-model="form.bio" class="bio-input" maxlength="500" placeholder="填写在线时间、擅长玩法、沟通风格等公开介绍" />
       <view class="audio-section">
         <view class="audio-head"><text>语音自我介绍</text><text>支持 MP3 / M4A / AAC / WAV，20MB以内</text></view>
-        <view v-if="form.audio_intro_url" class="audio-card"><view class="audio-icon">声</view><view class="audio-main"><text>{{ form.audio_intro_title || '音频自我介绍' }}</text><text>{{ isPlaying ? '正在播放' : '已上传，等待随资料提交审核' }}</text></view><button class="audio-action" @tap="toggleAudio">{{ isPlaying ? '暂停' : '试听' }}</button><button class="audio-remove" @tap="removeAudio">移除</button></view>
+        <view v-if="form.audio_intro_url" class="audio-card"><view class="audio-icon"><image class="secondary-pictogram" :src="uiIcons.microphone" mode="aspectFit" /></view><view class="audio-main"><text>{{ form.audio_intro_title || '音频自我介绍' }}</text><text>{{ isPlaying ? '正在播放' : '已上传，等待随资料提交审核' }}</text></view><button class="audio-action" @tap="toggleAudio">{{ isPlaying ? '暂停' : '试听' }}</button><button class="audio-remove" @tap="removeAudio">移除</button></view>
         <button v-else class="upload-btn" :disabled="audioUploading" @tap="chooseAudio">{{ audioUploading ? '上传中...' : '选择并上传语音介绍' }}</button>
       </view>
       <view class="review-notice"><text>审核说明</text><text>{{ settings?.review_notice || '修改提交后进入审核，审核期间继续展示旧资料。' }}</text></view>
@@ -40,6 +40,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { onBeforeUnmount, reactive, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { uploadPlayerApplicationAudioApi } from '@/api/client'
@@ -145,4 +146,7 @@ onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.de
 .submit-btn { width: 100%; height: 84rpx; margin-top: 22rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
 .submit-btn[disabled], .upload-btn[disabled] { opacity: .55; }
 .loading-state { padding: 50rpx; color: #879083; text-align: center; }
+.escort-icon,.audio-icon { background: transparent; }
+.secondary-pictogram { width: 46rpx; height: 46rpx; }
+.secondary-pictogram { display: block; }
 </style>

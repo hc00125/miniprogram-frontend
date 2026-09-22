@@ -75,7 +75,7 @@
       <view class="wallet-entry-head">
         <view>
           <text class="wallet-entry-eyebrow">可用钻石</text>
-          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><text>💎</text><text>{{ walletBalance }}</text></view>
+          <view v-if="walletOverview || !walletLoadFailed" class="wallet-entry-balance"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ walletBalance }}</text></view>
           <view v-else class="wallet-entry-balance wallet-entry-balance--error" @tap.stop="retryWalletOverview"><text>加载失败 · 点击重试</text></view>
         </view>
         <view
@@ -99,7 +99,7 @@
         <text class="vip-room-state" :class="vipKookRoomStatusClass">{{ vipKookRoomStatusText }}</text>
       </view>
       <view class="vip-room-body">
-        <view class="vip-room-icon">房</view>
+        <view class="vip-room-icon"><image class="room-pictogram" :src="uiIcons.room" mode="aspectFit" /></view>
         <view class="vip-room-main">
           <text class="vip-room-description">{{ vipKookRoomDescription }}</text>
           <view v-if="vipKookRoomNumber" class="vip-room-number-row">
@@ -162,6 +162,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { updateClientProfileApi, uploadClientAvatarApi } from '@/api/client'
@@ -538,4 +539,14 @@ onShow(async () => {
 .privacy-actions button::after { border: none; }
 .privacy-cancel { color: #687665; background: #f1f3ef; }
 .privacy-agree { color: #fff; background: linear-gradient(135deg,#4fc083,#1f7c4b); }
+</style>
+<style scoped>
+.vip-room-icon { background: transparent; }
+.room-pictogram { width: 54rpx; height: 54rpx; }
+</style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
 </style>

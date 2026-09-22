@@ -5,7 +5,7 @@
         <view class="head"><text class="title">购物车结算</text><text class="pill">{{ cartOrderCount }}单</text></view>
         <view v-for="item in cartItems" :key="item.id" class="row player">
           <view class="grow"><text>{{ item.package_name }} · {{ item.spec_display_name || item.spec_name || '默认规格' }}</text><text class="muted">{{ isHourlyItem(item) ? `服务时长 ${itemHours(item)}小时` : '按单购买' }}</text></view>
-          <text class="price">💎{{ diamondAmount(itemAmount(item)) }}</text>
+          <view class="price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(itemAmount(item)) }}</text></view>
         </view>
       </view>
 
@@ -14,7 +14,7 @@
         <view class="grow">
           <view class="head"><text class="title">{{ product.name }}</text><text class="pill">{{ isTargetedPlayerProduct ? '指定服务' : `需${requiredPlayers}人` }}</text></view>
           <text class="sub">{{ selectedSpec?.name || product.description || '精选陪玩服务' }}</text>
-          <text class="price">💎{{ diamondAmount(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text>
+          <view class="price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text></view>
         </view>
       </view>
 
@@ -27,7 +27,7 @@
         <view class="head"><view><text class="title">选择规格</text><text class="sub">服务规格由平台统一配置，钻石价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
         <view class="specs">
           <view v-for="spec in allSpecs" :key="spec.id" class="spec" :class="{ active: selectedSpec?.id === spec.id }" @tap="chooseSpec(spec)">
-            <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><text class="spec-price">💎{{ specDiamonds(spec) }}{{ hourlyCurrent ? '/小时' : '' }}</text>
+            <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><view class="spec-price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ specDiamonds(spec) }}{{ hourlyCurrent ? '/小时' : '' }}</text></view>
           </view>
         </view>
       </view>
@@ -49,9 +49,9 @@
       <view v-if="hasData" class="card amounts">
         <text class="title">钻石明细</text>
         <view v-if="selectedSpec && !isCartCheckout" class="row amount"><text>{{ isTargetedPlayerProduct ? '指定服务规格' : '基础规格' }}</text><text>{{ selectedSpec.name }}</text></view>
-        <view v-if="!isCartCheckout && hourlyCurrent" class="row amount"><text>每小时钻石 × {{ effectiveHours }}小时</text><text>💎{{ diamondAmount(basePrice) }} × {{ effectiveHours }}</text></view>
-        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个订单合计</text><text>💎{{ diamondAmount(totalAmount) }}</text></view>
-        <view class="row total"><text>预计总钻石</text><text>💎{{ diamondAmount(totalAmount) }}</text></view>
+        <view v-if="!isCartCheckout && hourlyCurrent" class="row amount"><text>每小时钻石 × {{ effectiveHours }}小时</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(basePrice) }} × {{ effectiveHours }}</text></view></view>
+        <view v-if="isCartCheckout" class="row amount"><text>{{ cartOrderCount }}个订单合计</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(totalAmount) }}</text></view></view>
+        <view class="row total"><text>预计总钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(totalAmount) }}</text></view></view>
       </view>
 
       <view v-if="!hasData" class="empty">{{ loading ? '商品加载中...' : '商品不存在或购物车已变化' }}</view>
@@ -59,13 +59,14 @@
     </view>
 
     <view v-if="hasData && !fieldEditing" class="bottom">
-      <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : isTargetedPlayerProduct ? '支付成功后立即通知陪玩师' : hourlyCurrent ? `${effectiveHours}小时服务` : '预计总钻石' }}</text><text class="price">💎{{ diamondAmount(totalAmount) }}</text></view>
+      <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : isTargetedPlayerProduct ? '支付成功后立即通知陪玩师' : hourlyCurrent ? `${effectiveHours}小时服务` : '预计总钻石' }}</text><view class="price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(totalAmount) }}</text></view></view>
       <button class="submit" :disabled="submitting || Boolean(blockReason)" @tap="submit">{{ submitting ? '提交中...' : isTargetedPlayerProduct ? '确认指定并支付' : isCartCheckout ? `发布${cartOrderCount}个订单` : '立即下单' }}</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { computed, reactive, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { createOrder, getPackages, getPlayerServiceProducts, type BossPackage, type BossPackageSpec, type OrderCreatePayload } from '@/api/boss'
@@ -190,3 +191,9 @@ onLoad(query => {
 </script>
 
 <style lang="scss" src="./index.scss" scoped></style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
+</style>

@@ -24,20 +24,21 @@
     <view v-else-if="replacement.mode === 'targeted'" class="replacement-actions">
       <button :disabled="working" @tap="handleReassign">重新指定</button>
       <button :disabled="working" @tap="handlePublishPublic">转为公开名额</button>
-      <button v-if="replacement.can_request_cancel" class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining">⚠️ 取消剩余服务</button>
+      <button v-if="replacement.can_request_cancel" class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining"><image class="warning-icon" :src="uiIcons.warningLight" mode="aspectFit" /> 取消剩余服务</button>
       <view v-else class="replacement-notice matching-notice">订单尚未付款，取消整个订单请使用页面底部的“取消订单”。</view>
     </view>
 
     <view v-else class="replacement-notice replacement-notice--public">
       空缺名额已进入抢单大厅，原订单号、付款记录和其他陪玩均保持不变。
       <view v-if="replacement.can_request_cancel" class="replacement-actions public-cancel-row">
-        <button class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining">⚠️ 取消剩余服务并退款</button>
+        <button class="danger danger-strong" :disabled="working" @tap="handleCancelRemaining"><image class="warning-icon" :src="uiIcons.warningLight" mode="aspectFit" /> 取消剩余服务并退款</button>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { computed, ref } from 'vue'
 import { getPlayerList } from '@/api/boss'
 import {
@@ -145,4 +146,8 @@ async function handleReassign() {
 .replacement-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:10rpx;margin-top:20rpx; }.replacement-grid view { padding:16rpx 8rpx;border-radius:16rpx;text-align:center;background:#fff; }.replacement-grid text { display:block; }.replacement-grid text:first-child { color:#9b8181;font-size:19rpx; }.replacement-grid text:last-child { margin-top:5rpx;color:#492f2f;font-size:23rpx;font-weight:900; }
 .replacement-actions { display:grid;grid-template-columns:1fr 1fr;gap:12rpx;margin-top:18rpx; }.replacement-actions button { height:70rpx;margin:0;padding:0 12rpx;border-radius:18rpx;color:#8c3030;font-size:22rpx;font-weight:900;background:#ffeaea; }.replacement-actions button::after { border:none; }.replacement-actions .danger { grid-column:1 / -1;color:#fff;background:linear-gradient(135deg,#e36767,#b52d2d); }.replacement-actions .danger-strong { box-shadow:0 4rpx 12rpx rgba(181,45,45,.35); }.replacement-actions .matching-notice { grid-column:1 / -1;margin-top:0; }.replacement-actions.legacy-cancel-row,.replacement-actions.public-cancel-row { display:block;margin-top:16rpx; }.replacement-actions.legacy-cancel-row button,.replacement-actions.public-cancel-row button { width:100%; }
 .replacement-notice { margin-top:18rpx;padding:18rpx;border-radius:18rpx;color:#7b5d36;font-size:22rpx;line-height:1.5;background:#fff3dc; }.replacement-notice--public { color:#276d43;background:#eaf7ed; }
+</style>
+
+<style scoped>
+.warning-icon { display: inline-block; width: 30rpx; height: 30rpx; margin-right: 4rpx; vertical-align: middle; }
 </style>

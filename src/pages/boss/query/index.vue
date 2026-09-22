@@ -2,7 +2,7 @@
   <view class="club-page query-page">
     <view class="query-hero">
       <view class="hero-bg"><view class="ambient-glow ambient-glow--left"></view><view class="ambient-glow ambient-glow--right"></view></view>
-      <view class="hero-content"><view class="hero-eyebrow">ORDER CENTER</view><view class="hero-title">订单中心</view><view class="hero-sub">查看派单、接单、钻石支付和开打进度</view></view>
+      <view class="hero-content"><view class="hero-title">订单中心</view></view>
       <button class="refresh-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh"><text v-if="!refreshing" class="refresh-icon">↻</text><text>{{ refreshing ? '刷新中' : '刷新' }}</text></button>
     </view>
 
@@ -12,22 +12,22 @@
       <view class="summary-item"><text class="summary-value">{{ runningCount }}</text><text class="summary-label">进行中</text></view>
     </view>
 
-    <view class="cart-entry-card" @tap="openCart"><view class="cart-entry-icon">🛒</view><view class="cart-entry-main"><text class="cart-entry-title">购物车</text><text class="cart-entry-sub">{{ cartSummaryText }}</text></view><button class="cart-entry-btn" @tap.stop="openCart">{{ isLoggedIn ? '去结算' : '去登录' }}</button></view>
+    <view class="cart-entry-card" :class="{ 'cart-entry-card--compact': cartCount === 0 }" @tap="openCart"><view class="cart-entry-icon">🛒</view><view class="cart-entry-main"><text class="cart-entry-title">{{ isLoggedIn && cartCount === 0 ? '购物车为空' : '购物车' }}</text><text v-if="cartCount > 0" class="cart-entry-sub">{{ cartSummaryText }}</text></view><button class="cart-entry-btn" @tap.stop="openCart">{{ isLoggedIn ? (cartCount > 0 ? '去结算' : '查看') : '去登录' }}</button></view>
 
     <view v-if="!isLoggedIn" class="login-card"><view class="login-icon">微</view><view class="login-text"><text class="login-title">请先微信登录</text><text class="login-sub">登录后可查看当前账号的全部点单记录</text></view><button class="club-btn club-btn--primary login-btn" @tap="go('/pages/client/login/index')">去登录</button></view>
 
     <template v-else>
-      <scroll-view scroll-x class="tabs" show-scrollbar="false"><view v-for="tab in tabs" :key="tab.key" class="tab" :class="{ active: activeTab === tab.key }" @tap="activeTab = tab.key"><text>{{ tab.label }}</text><text v-if="tab.count" class="tab-count">{{ tab.count }}</text></view></scroll-view>
+      <view class="tabs"><view v-for="tab in tabs" :key="tab.key" class="tab" :class="{ active: activeTab === tab.key }" @tap="activeTab = tab.key"><text>{{ tab.label }}</text><text class="tab-count">{{ tab.count }}</text></view></view>
 
       <view v-if="filteredOrders.length" class="order-list">
         <view v-for="order in filteredOrders" :key="order.order_no" class="order-card" @tap="openOrder(order)">
-          <view class="order-cover"><image class="cover-img" :src="orderCover(order)" mode="aspectFill" /><view class="cover-shade"></view><view class="cover-status" :class="`cover-status--${coverStatusKey(order.status)}`"><text>{{ order.status }}</text></view></view>
           <view class="order-body">
             <view class="order-head">
-              <view class="order-main"><text class="order-title">{{ order.package_name || '套餐订单' }}</text><text class="order-no">订单号 {{ order.order_no }}</text></view>
-              <view class="order-amount"><view class="order-amount-main"><text class="amount-currency">💎</text><text class="amount-value">{{ diamond(orderDisplayDiamonds(order)) }}</text></view><text v-if="renewalPaidDiamonds(order) > 0" class="amount-renewal-note">含续单 💎{{ diamond(renewalPaidDiamonds(order)) }}</text></view>
+              <view class="order-cover"><image class="cover-img" :src="orderCover(order)" mode="aspectFill" /></view>
+              <view class="order-main"><text class="order-title">{{ order.package_name || '套餐订单' }}</text></view>
+              <view class="order-amount"><view class="cover-status" :class="`cover-status--${coverStatusKey(order.status)}`"><text>{{ order.status }}</text></view><view class="order-amount-main"><text class="amount-currency">💎</text><text class="amount-value">{{ diamond(orderDisplayDiamonds(order)) }}</text></view><text v-if="renewalPaidDiamonds(order) > 0" class="amount-renewal-note">含续单 💎{{ diamond(renewalPaidDiamonds(order)) }}</text></view>
             </view>
-            <view class="order-meta"><view class="meta-item"><text class="meta-icon">●</text><text class="meta-text">{{ formatOrderTime(order.created_at) }}</text></view><view class="meta-item"><text class="meta-icon">●</text><text class="meta-text">{{ stageHint(order.status) }}</text></view></view>
+            <view class="order-meta"><text class="order-no">订单号 {{ order.order_no }}</text><view class="meta-item"><text class="meta-text">{{ formatOrderTime(order.created_at) }}</text></view><view class="meta-item"><text class="meta-text">{{ stageHint(order.status) }}</text></view></view>
             <view class="order-actions"><button class="club-btn club-btn--ghost" @tap.stop="goMain('order')">再来一单</button><button class="club-btn club-btn--primary" @tap.stop="openOrder(order)">{{ actionText(order.status) }}</button></view>
           </view>
         </view>
@@ -65,6 +65,7 @@ const payCount = computed(() => orders.value.filter(o => o.status === '待支付
 const readyCount = computed(() => orders.value.filter(o => o.status === '待开打').length)
 const runningCount = computed(() => orders.value.filter(o => o.status === '进行中').length)
 const doneCount = computed(() => orders.value.filter(o => o.status === '已完成').length)
+const cancelledCount = computed(() => orders.value.filter(o => o.status === '已取消').length)
 const cartSummaryText = computed(() => isLoggedIn.value ? `当前购物车 ${cartCount.value} 件商品，可继续点单或合并结算` : '登录后可查看购物车商品')
 const tabs = computed(() => [
   { key: 'all', label: '全部', count: orders.value.length || 0 },
@@ -72,7 +73,8 @@ const tabs = computed(() => [
   { key: '待支付', label: '待支付', count: payCount.value || 0 },
   { key: '待开打', label: '待开打', count: readyCount.value || 0 },
   { key: '进行中', label: '进行中', count: runningCount.value || 0 },
-  { key: '已完成', label: '已完成', count: doneCount.value || 0 }
+  { key: '已完成', label: '已完成', count: doneCount.value || 0 },
+  { key: '已取消', label: '已取消', count: cancelledCount.value || 0 }
 ])
 const filteredOrders = computed(() => activeTab.value === 'all' ? orders.value : orders.value.filter(o => o.status === activeTab.value))
 const fallbackCover = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'

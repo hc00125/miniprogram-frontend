@@ -11,7 +11,7 @@
       </view>
       <view class="balance-block">
         <text>可用钻石</text>
-        <view v-if="!overviewUnavailable"><text class="currency">💎</text><text>{{ diamonds(overview?.balance_diamonds) }}</text></view>
+        <view v-if="!overviewUnavailable"><image class="currency diamond-unit" :src="uiIcons.diamondLight" mode="aspectFit" /><text>{{ diamonds(overview?.balance_diamonds) }}</text></view>
         <view v-else class="balance-error" @tap="reloadAll"><text>加载失败 · 点击重试</text></view>
         <button class="recharge-btn" @tap="goRecharge">充值钻石</button>
       </view>
@@ -31,7 +31,7 @@
       <view v-for="item in transactions" :key="item.id" class="card record-card">
         <view class="record-main">
           <view class="record-icon" :class="isIncome(item) ? 'record-icon--in' : 'record-icon--out'">
-            {{ entryTypeText(item.entry_type).slice(0, 1) }}
+            <image class="record-pictogram" :src="walletRecordIcon(item.entry_type, isIncome(item))" mode="aspectFit" />
           </view>
           <view class="record-body">
             <view class="record-line">
@@ -57,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons, walletRecordIcon } from '@/utils/uiIcons'
 import { computed, ref } from 'vue'
 import { onReachBottom, onShow } from '@dcloudio/uni-app'
 import {
@@ -222,4 +223,14 @@ onReachBottom(() => {
 .empty-card { padding: 60rpx 24rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
 .list-foot { padding: 26rpx 0 10rpx; color: #9aa197; text-align: center; font-size: 21rpx; }
 .loading-state { padding: 50rpx 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
+</style>
+<style scoped>
+.record-icon { background: transparent; }
+.record-pictogram { width: 48rpx; height: 48rpx; }
+</style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
 </style>

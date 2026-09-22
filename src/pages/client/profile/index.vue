@@ -41,7 +41,7 @@
     </view>
 
     <view v-if="!isLoggedIn" class="guest-card">
-      <view class="guest-icon">游</view>
+      <view class="guest-icon"><image class="entry-icon" :src="uiIcons.guest" mode="aspectFit" /></view>
       <view class="guest-main">
         <text class="guest-title">当前为游客模式</text>
         <text class="guest-sub">无需登录即可浏览首页、商品、陪玩列表、服务条款和客服信息。</text>
@@ -70,19 +70,19 @@
 
     <view class="quick-grid">
       <view class="quick-item quick-item--primary" @tap="switchMainTab('order')">
-        <view class="quick-icon quick-icon--primary">点</view>
+        <view class="quick-icon"><image class="entry-icon" :src="uiIcons.order" mode="aspectFit" /></view>
         <view><text>我要点单</text><text>无需登录也可浏览商品</text></view>
       </view>
       <view class="quick-item" @tap="switchMainTab('query')">
-        <view class="quick-icon">查</view>
+        <view class="quick-icon"><image class="entry-icon" :src="uiIcons.query" mode="aspectFit" /></view>
         <view><text>我的订单</text><text>{{ isLoggedIn ? '查看服务记录' : '进入后可选择登录' }}</text></view>
       </view>
       <view class="quick-item" @tap="handlePlayerAction">
-        <view class="quick-icon">抢</view>
+        <view class="quick-icon"><image class="entry-icon" :src="uiIcons.grab" mode="aspectFit" /></view>
         <view><text>抢单大厅</text><text>{{ playerActionSub }}</text></view>
       </view>
       <view class="quick-item" @tap="handlePlayerCenterAction">
-        <view class="quick-icon">{{ profile?.player_status === 'approved' ? '评' : '陪' }}</view>
+        <view class="quick-icon"><image class="entry-icon" :src="profile?.player_status === 'approved' ? uiIcons.reviews : uiIcons.apply" mode="aspectFit" /></view>
         <view><text>{{ playerCenterTitle }}</text><text>{{ playerCenterSub }}</text></view>
       </view>
     </view>
@@ -93,7 +93,7 @@
         <button v-if="profile?.player_status === 'pending'" class="refresh-link" :loading="refreshing" :disabled="refreshing" @tap.stop="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新状态' }}</button>
       </view>
       <view class="player-empty">
-        <view class="empty-icon">陪</view>
+        <view class="empty-icon"><image class="entry-icon" :src="uiIcons.apply" mode="aspectFit" /></view>
         <text class="empty-title">{{ playerEmptyTitle }}</text>
         <text class="empty-sub">{{ playerEmptySub }}</text>
         <button class="apply-btn" @tap="handlePlayerAction">{{ playerActionTitle }}</button>
@@ -101,11 +101,11 @@
     </view>
 
     <view class="list-card">
-      <view v-if="isLoggedIn && profile?.player_status === 'approved'" class="list-item" @tap="go('/pages/player/kook-binding/index')"><text class="list-icon list-icon--green">通</text><text class="list-label">接单通知</text><text class="list-note">KOOK账号绑定</text><text class="chevron">›</text></view>
-      <view class="list-item" @tap="handleService"><text class="list-icon list-icon--green">服</text><text class="list-label">服务条款</text><text class="list-note">隐私政策与服务说明</text><text class="chevron">›</text></view>
-      <view class="list-item" @tap="go('/pages/client/customer-service/index')"><text class="list-icon list-icon--blue">客</text><text class="list-label">联系客服</text><text class="list-note">微信官方客服与人工客服</text><text class="chevron">›</text></view>
-      <view class="list-item" @tap="go('/pages/client/complaints/index')"><text class="list-icon list-icon--green">诉</text><text class="list-label">投诉与反馈</text><text class="list-note">平台内部反馈与处理进度</text><text class="chevron">›</text></view>
-      <view class="list-item" @tap="handleSettings"><text class="list-icon list-icon--gold">设</text><text class="list-label">设置</text><text class="list-note">{{ isLoggedIn ? '账号、资料与权限' : '登录后管理账号' }}</text><text class="chevron">›</text></view>
+      <view v-if="isLoggedIn && profile?.player_status === 'approved'" class="list-item" @tap="go('/pages/player/kook-binding/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.notification" mode="aspectFit" /></view><text class="list-label">接单通知</text><text class="list-note">KOOK账号绑定</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" @tap="handleService"><view class="list-icon"><image class="entry-icon" :src="uiIcons.terms" mode="aspectFit" /></view><text class="list-label">服务条款</text><text class="list-note">隐私政策与服务说明</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" @tap="go('/pages/client/customer-service/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.support" mode="aspectFit" /></view><text class="list-label">联系客服</text><text class="list-note">微信官方客服与人工客服</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" @tap="go('/pages/client/complaints/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.feedback" mode="aspectFit" /></view><text class="list-label">投诉与反馈</text><text class="list-note">平台内部反馈与处理进度</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" @tap="handleSettings"><view class="list-icon"><image class="entry-icon" :src="uiIcons.settings" mode="aspectFit" /></view><text class="list-label">设置</text><text class="list-note">{{ isLoggedIn ? '账号、资料与权限' : '登录后管理账号' }}</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
     </view>
 
     <MainBottomTabs active="profile" @select="handleMainTabSelect" />
@@ -118,6 +118,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import { updatePlayerOnlineStatus } from '@/api/player'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
+import { uiIcons } from '@/utils/uiIcons'
 import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { getClientProfile, normalizeAvatarUrl, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'
 import { formatDiamonds } from '@/utils/diamonds'
@@ -365,9 +366,9 @@ onShow(loadPage)
 .hero-top{position:relative;z-index:1;display:flex;align-items:center;gap:24rpx}.avatar-wrap{width:132rpx;height:132rpx;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:34rpx;color:#173426;background:linear-gradient(135deg,#f3d79b,#d8a144)}.avatar-img{width:100%;height:100%}.avatar-text{font-size:54rpx;font-weight:900}.hero-info{flex:1;min-width:0}.hero-name-row{display:flex;align-items:center;justify-content:space-between;gap:10rpx}.hero-name{overflow:hidden;color:#fffaf0;font-size:40rpx;font-weight:900;text-overflow:ellipsis;white-space:nowrap}.hero-arrow{color:#f3d79b;font-size:25rpx}.hero-id-row{display:flex;align-items:center;gap:12rpx;flex-wrap:wrap;margin-top:12rpx}.hero-id{color:rgba(255,255,255,.76);font-size:21rpx}.hero-status{display:flex;align-items:center;gap:7rpx;padding:5rpx 12rpx;border-radius:999rpx;color:#fff;font-size:20rpx;background:rgba(255,255,255,.16)}.status-dot{width:8rpx;height:8rpx;border-radius:50%;background:#5fb78a}.hero-status.guest .status-dot{background:#f3d79b}.hero-status.rejected .status-dot{background:#ef5b5b}
 .wallet-entry-card{margin-top:22rpx;padding:24rpx 26rpx;border-radius:26rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07);box-shadow:0 12rpx 30rpx rgba(38,69,54,.06)}
 .wallet-entry-head{display:flex;align-items:center;justify-content:space-between;gap:20rpx}.wallet-entry-eyebrow{display:block;color:#a87520;font-size:21rpx;font-weight:900}.wallet-entry-balance{margin-top:8rpx;display:flex;align-items:baseline;gap:6rpx;color:#172116}.wallet-entry-balance text:first-child{font-size:26rpx;font-weight:900}.wallet-entry-balance text:last-child{font-size:48rpx;line-height:1;font-weight:900}.wallet-entry-balance--error text:first-child,.wallet-entry-balance--error text:last-child{font-size:25rpx;line-height:1.4;font-weight:900;color:#a13d35;text-decoration:underline}.wallet-entry-recharge{flex-shrink:0;padding:14rpx 30rpx;border-radius:999rpx;color:#fff;font-size:25rpx;font-weight:900;background:linear-gradient(135deg,#4fc083,#1f7c4b);box-shadow:0 10rpx 22rpx rgba(31,124,75,.18)}.wallet-entry-recharge--disabled{color:#76504d;background:#f4d5d1;box-shadow:none}.wallet-entry-foot{margin-top:18rpx;padding-top:16rpx;display:flex;align-items:center;justify-content:space-between;gap:16rpx;border-top:1rpx solid rgba(39,61,42,.07);font-size:21rpx}.wallet-entry-foot text:first-child{color:#687665}.wallet-entry-foot text:last-child{color:#1f7c4b;font-weight:900}
-.guest-card,.player-summary-card,.player-card,.list-card{margin-top:22rpx;border-radius:26rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07);box-shadow:0 12rpx 30rpx rgba(38,69,54,.06)}.guest-card{padding:28rpx;display:grid;grid-template-columns:auto 1fr;gap:16rpx}.guest-icon{width:72rpx;height:72rpx;display:flex;align-items:center;justify-content:center;border-radius:22rpx;color:#173426;font-size:30rpx;font-weight:900;background:linear-gradient(135deg,#f3d79b,#d8a144)}.guest-main text{display:block}.guest-title{font-size:29rpx;font-weight:900}.guest-sub{margin-top:8rpx;color:#687665;font-size:22rpx;line-height:1.5}.guest-login-btn,.guest-browse-btn{grid-column:1/3;width:100%;height:78rpx;border-radius:22rpx;font-size:26rpx;font-weight:900}.guest-login-btn{margin-top:8rpx;color:#fff;background:#1f7c4b}.guest-browse-btn{color:#5a6b5b;background:#f6f8f4}.guest-login-btn::after,.guest-browse-btn::after{border:none}
+.guest-card,.player-summary-card,.player-card,.list-card{margin-top:22rpx;border-radius:26rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07);box-shadow:0 12rpx 30rpx rgba(38,69,54,.06)}.guest-card{padding:28rpx;display:grid;grid-template-columns:auto 1fr;gap:16rpx}.guest-icon{width:72rpx;height:72rpx;display:flex;align-items:center;justify-content:center;}.guest-main text{display:block}.guest-title{font-size:29rpx;font-weight:900}.guest-sub{margin-top:8rpx;color:#687665;font-size:22rpx;line-height:1.5}.guest-login-btn,.guest-browse-btn{grid-column:1/3;width:100%;height:78rpx;border-radius:22rpx;font-size:26rpx;font-weight:900}.guest-login-btn{margin-top:8rpx;color:#fff;background:#1f7c4b}.guest-browse-btn{color:#5a6b5b;background:#f6f8f4}.guest-login-btn::after,.guest-browse-btn::after{border:none}
 .player-summary-card{padding:24rpx}.card-head{display:flex;align-items:center;justify-content:space-between}.card-title{font-size:30rpx;font-weight:900}.online-toggle{display:flex;align-items:center;gap:7rpx;padding:8rpx 14rpx;border-radius:999rpx;color:#1f7c4b;font-size:21rpx;background:#eef8f1}.online-toggle.off,.online-toggle.disabled{color:#687665;background:#f1f3ef}.online-dot{width:8rpx;height:8rpx;border-radius:50%;background:#5fb78a}.online-toggle.off .online-dot,.online-toggle.disabled .online-dot{background:#aab1a5}.player-meta{display:flex;gap:14rpx;margin-top:16rpx;color:#687665;font-size:22rpx}.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10rpx;margin-top:18rpx}.stats-row view{padding:18rpx 6rpx;border-radius:18rpx;text-align:center;background:#f7faf4}.stats-row text{display:block}.stats-row text:first-child{color:#1f7c4b;font-size:34rpx;font-weight:900}.stats-row text:last-child{margin-top:5rpx;color:#687665;font-size:20rpx}.warning-banner{margin-top:14rpx;padding:14rpx;border-radius:14rpx;color:#8f4d35;font-size:22rpx;background:#fff5e4}
-.quick-grid{margin-top:22rpx;display:grid;grid-template-columns:1fr 1fr;gap:14rpx}.quick-item{min-height:138rpx;display:flex;align-items:center;gap:14rpx;padding:20rpx;border-radius:22rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07)}.quick-item--primary{background:#fffaf0;border-color:rgba(216,161,68,.3)}.quick-icon{width:68rpx;height:68rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:20rpx;color:#f3d79b;font-size:29rpx;font-weight:900;background:#1f7c4b}.quick-icon--primary{color:#173426;background:#d8a144}.quick-item view:last-child{min-width:0}.quick-item text{display:block}.quick-item text:first-child{font-size:27rpx;font-weight:900}.quick-item text:last-child{margin-top:5rpx;color:#687665;font-size:20rpx;line-height:1.35}
-.player-card{overflow:hidden}.player-card .card-head{padding:22rpx 26rpx;border-bottom:1rpx solid rgba(42,63,48,.07)}.refresh-link{margin:0;padding:0;color:#1f7c4b;font-size:22rpx;background:transparent}.refresh-link::after{border:none}.player-empty{padding:38rpx 24rpx;display:flex;flex-direction:column;align-items:center;text-align:center}.empty-icon{width:88rpx;height:88rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;color:#173426;font-size:38rpx;font-weight:900;background:#d8a144}.empty-title{margin-top:15rpx;font-size:29rpx;font-weight:900}.empty-sub{margin-top:8rpx;color:#687665;font-size:22rpx}.apply-btn{min-width:240rpx;height:76rpx;margin-top:18rpx;border-radius:22rpx;color:#fff;font-size:26rpx;font-weight:900;background:#1f7c4b}.apply-btn::after{border:none}
-.list-card{overflow:hidden}.list-item{min-height:104rpx;display:flex;align-items:center;gap:14rpx;padding:20rpx 24rpx;border-bottom:1rpx solid rgba(42,63,48,.07)}.list-item:last-child{border-bottom:0}.list-icon{width:56rpx;height:56rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:17rpx;color:#fff;font-size:24rpx;font-weight:900}.list-icon--green{background:#1f7c4b}.list-icon--blue{background:#2a6db4}.list-icon--gold{color:#173426;background:#d8a144}.list-label{min-width:110rpx;font-size:27rpx;font-weight:900}.list-note{flex:1;overflow:hidden;color:#8b9788;font-size:21rpx;text-align:right;text-overflow:ellipsis;white-space:nowrap}.chevron{color:#c4bba3;font-size:32rpx}
+.quick-grid{margin-top:22rpx;display:grid;grid-template-columns:1fr 1fr;gap:14rpx}.quick-item{min-height:138rpx;display:flex;align-items:center;gap:14rpx;padding:20rpx;border-radius:22rpx;background:#fff;border:1rpx solid rgba(42,63,48,.07)}.quick-item--primary{background:#fffaf0;border-color:rgba(216,161,68,.3)}.quick-icon{width:68rpx;height:68rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;}.quick-item view:last-child{min-width:0}.quick-item text{display:block}.quick-item text:first-child{font-size:27rpx;font-weight:900}.quick-item text:last-child{margin-top:5rpx;color:#687665;font-size:20rpx;line-height:1.35}
+.player-card{overflow:hidden}.player-card .card-head{padding:22rpx 26rpx;border-bottom:1rpx solid rgba(42,63,48,.07)}.refresh-link{margin:0;padding:0;color:#1f7c4b;font-size:22rpx;background:transparent}.refresh-link::after{border:none}.player-empty{padding:38rpx 24rpx;display:flex;flex-direction:column;align-items:center;text-align:center}.empty-icon{width:88rpx;height:88rpx;display:flex;align-items:center;justify-content:center;}.empty-title{margin-top:15rpx;font-size:29rpx;font-weight:900}.empty-sub{margin-top:8rpx;color:#687665;font-size:22rpx}.apply-btn{min-width:240rpx;height:76rpx;margin-top:18rpx;border-radius:22rpx;color:#fff;font-size:26rpx;font-weight:900;background:#1f7c4b}.apply-btn::after{border:none}
+.list-card{overflow:hidden}.list-item{min-height:104rpx;display:flex;align-items:center;gap:14rpx;padding:20rpx 24rpx;border-bottom:1rpx solid rgba(42,63,48,.07)}.list-item:last-child{border-bottom:0}.list-icon{width:56rpx;height:56rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;}.list-label{min-width:110rpx;font-size:27rpx;font-weight:900}.list-note{flex:1;overflow:hidden;color:#8b9788;font-size:21rpx;text-align:right;text-overflow:ellipsis;white-space:nowrap}.chevron{width:24rpx;height:24rpx;flex-shrink:0}.entry-icon{width:48rpx;height:48rpx;display:block}.list-icon .entry-icon{width:40rpx;height:40rpx}.empty-icon .entry-icon{width:56rpx;height:56rpx}
 </style>

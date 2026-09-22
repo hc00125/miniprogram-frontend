@@ -46,7 +46,7 @@
           <view v-else-if="!filteredProducts.length" class="state">暂无相关商品</view>
           <view v-else class="grid">
             <view v-for="product in filteredProducts" :key="product.id" class="card" @tap="openDetail(product.id)">
-              <ProductCover :image="productImage(product)" :title="product.name" :summary="product.description || '平台保障 · 快速匹配 · 服务留痕'" :badge="productBadge(product)" :sold-text="soldText(product)" :theme="productTheme(product)" />
+              <ProductCover :show-summary="false" :image="productImage(product)" :title="product.name" :summary="product.description || '平台保障 · 快速匹配 · 服务留痕'" :badge="productBadge(product)" :sold-text="soldText(product)" :theme="productTheme(product)" />
               <view class="info"><text class="desc">{{ product.description || '精选套餐，平台保障，快速匹配陪玩' }}</text><view class="bottom"><view class="price"><text v-if="product.specs?.length">起</text><b>💎{{ diamondPrice(product) }}</b><text>{{ product.product_type === 'guarantee' ? '/单' : '/时' }}</text></view><button @tap.stop="openDetail(product.id)">查看</button></view></view>
             </view>
           </view>

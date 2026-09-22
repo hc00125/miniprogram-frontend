@@ -5,7 +5,7 @@
 
     <view class="hero-card"><text class="hero-eyebrow">SERVICE PROGRESS</text><text class="hero-title">{{ heroTitle }}</text><view class="timer-card" :class="{ 'timer-card--replacement': replacementActive }"><text>{{ orderInfo?.status === '待开打' ? '当前阶段' : '服务时长' }}</text><text>{{ orderInfo?.status === '待开打' ? '等待开打' : duration }}</text><text>{{ durationStatus }}</text></view><view class="hero-meta"><view><text>订单号</text><text>{{ orderNo || '加载中' }}</text></view><view><text>开始时间</text><text>{{ startTimeText }}</text></view></view></view>
 
-    <view v-if="orderInfo?.paid" class="amount-card"><view><text>累计已支付钻石</text><text><text class="amount-currency">💎</text>{{ diamond(totalPaidDiamonds) }}</text><text>主订单 💎{{ diamond(paidDiamonds) }} · 续单 💎{{ diamond(renewalPaidDiamonds) }}</text></view><view class="shield">钻</view></view>
+    <view v-if="orderInfo?.paid" class="amount-card"><view><text>累计已支付钻石</text><view class="paid-amount"><image class="diamond-unit" :src="uiIcons.diamondLight" mode="aspectFit" /><text>{{ diamond(totalPaidDiamonds) }}</text></view><text>主订单 💎{{ diamond(paidDiamonds) }} · 续单 💎{{ diamond(renewalPaidDiamonds) }}</text></view><view class="shield"><image class="shield-diamond" :src="uiIcons.diamondLight" mode="aspectFit" /></view></view>
 
     <OrderReplacementCard :order-no="orderNo" :replacement="orderInfo?.replacement" @updated="checkOrder" />
 
@@ -16,11 +16,11 @@
       <template v-else>
         <text class="renewal-label">选择续单份数</text>
         <view class="unit-options"><view v-for="unit in renewalOptions" :key="unit" class="unit-option" :class="{ active: renewalUnits === unit }" @tap="renewalUnits = unit"><text>{{ unit }}份</text><text>+{{ formatHours(baseHours * unit) }}</text></view></view>
-        <view class="renewal-price-row"><view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view><view><text>续单钻石</text><text>💎{{ diamond(renewalDiamonds) }}</text></view></view>
+        <view class="renewal-price-row"><view><text>本次增加</text><text>{{ formatHours(baseHours * renewalUnits) }}</text></view><view><text>续单钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(renewalDiamonds) }}</text></view></view></view>
         <button class="renewal-btn" :disabled="renewing || !orderInfo.can_renew" @tap="handleRenewal">{{ renewing ? '正在创建续单...' : `立即续单 💎${diamond(renewalDiamonds)}` }}</button>
         <text class="renewal-tip">{{ orderInfo.can_renew ? '续单会生成独立支付订单，可使用已有钻石或微信即时支付；成功后时长自动计入本订单。' : '当前订单暂不能创建新续单，请刷新状态或先处理待支付续单。' }}</text>
       </template>
-      <view v-if="paidRenewals.length" class="renewal-history"><text class="renewal-history-title">续单记录</text><view v-for="item in paidRenewals" :key="item.order_no" class="renewal-history-row"><text>第{{ item.renewal_index }}次 · +{{ formatHours(Number(item.booked_hours || 0)) }}</text><text>💎{{ renewalItemDiamonds(item) }} · {{ item.status }}</text></view></view>
+      <view v-if="paidRenewals.length" class="renewal-history"><text class="renewal-history-title">续单记录</text><view v-for="item in paidRenewals" :key="item.order_no" class="renewal-history-row"><text>第{{ item.renewal_index }}次 · +{{ formatHours(Number(item.booked_hours || 0)) }}</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ renewalItemDiamonds(item) }} · {{ item.status }}</text></view></view></view>
     </view>
 
     <view v-if="orderInfo" class="card">
@@ -31,7 +31,7 @@
 
     <view v-if="orderInfo" class="card detail-card">
       <view class="card-head"><view><text class="card-title">订单信息</text><text class="card-sub">房间号和游戏ID分开显示</text></view><text class="order-status">{{ orderInfo.status }}</text></view>
-      <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view><view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view><view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view><view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view><view class="info-row"><text>原预订时长</text><text>{{ originalHoursText }}</text></view><view class="info-row"><text>累计服务时长</text><text>{{ totalHoursText }}</text></view><view class="info-row"><text>主订单钻石</text><text>💎{{ diamond(paidDiamonds) }}</text></view>
+      <view class="info-row"><text>套餐</text><text>{{ orderInfo.package_name_raw || orderInfo.package_name || '待确认' }}</text></view><view v-if="orderInfo.spec_display_name || orderInfo.spec_name" class="info-row"><text>规格</text><text>{{ orderInfo.spec_display_name || orderInfo.spec_name }}</text></view><view v-if="orderInfo.game_id_raw || orderInfo.game_id" class="info-row"><text>游戏ID/队伍码</text><text>{{ orderInfo.game_id_raw || orderInfo.game_id }}</text></view><view v-if="orderInfo.kook_room_number" class="info-row kook-row" @tap="copyRoom"><text>KOOK房间号</text><text>{{ orderInfo.kook_room_number }} · 复制</text></view><view class="info-row"><text>原预订时长</text><text>{{ originalHoursText }}</text></view><view class="info-row"><text>累计服务时长</text><text>{{ totalHoursText }}</text></view><view class="info-row"><text>主订单钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(paidDiamonds) }}</text></view></view>
     </view>
 
     <view v-if="orderInfo" class="card flow-card"><text class="card-title standalone-title">订单流程</text><view class="flow-list"><view class="flow-item done"><text>✓</text><view><text>1. 派单</text><text>订单已发布到抢单大厅</text></view></view><view class="flow-item" :class="stepClass('接单')"><text>{{ stepIcon('接单', '2') }}</text><view><text>2. 接单</text><text>{{ orderInfo.players?.length || 0 }}/{{ orderInfo.required_players }} 位陪玩已就位</text></view></view><view class="flow-item" :class="stepClass('付款')"><text>{{ stepIcon('付款', '3') }}</text><view><text>3. 钻石支付</text><text>{{ orderInfo.paid ? `已支付 💎${diamond(paidDiamonds)}` : '等待老板付款' }}</text></view></view><view class="flow-item" :class="stepClass('开打')"><text>{{ stepIcon('开打', '4') }}</text><view><text>4. 开打</text><text>{{ replacementActive ? '陪玩退出，正在处理补位' : orderInfo.status === '待开打' ? '等待陪玩确认开打' : orderInfo.status === '进行中' ? duration : '等待前序步骤完成' }}</text></view></view><view class="flow-item" :class="stepClass('完成')"><text>{{ stepIcon('完成', '5') }}</text><view><text>5. 完成</text><text>{{ orderInfo.status === '已完成' ? '服务已完成' : '服务结束后完成订单' }}</text></view></view></view></view>
@@ -41,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/create?order_no=${encodeURIComponent(orderNo.value)}` }) }
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
@@ -114,4 +115,15 @@ const goMain = (tab = 'home') => relaunch('/pages/boss/home/index', { tab })
 .player-track { white-space:nowrap; }.player-card { width:250rpx;display:inline-flex;align-items:center;gap:12rpx;margin-right:12rpx;padding:16rpx;border-radius:20rpx;background:#f7faf4;vertical-align:top;box-sizing:border-box; }.player-card--missing { border:1rpx dashed rgba(200,61,61,.25);background:#fff7f7; }.player-avatar { width:70rpx;height:70rpx;flex-shrink:0;border-radius:50%; }.player-avatar--empty { display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;background:#2f9b63; }.player-main { min-width:0; }.player-main text { display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }.player-main text:first-child { font-weight:900; }.player-main text:nth-child(2) { margin-top:4rpx;color:#879083;font-size:20rpx; }.entry-text { margin-top:5rpx;color:#a87520;font-size:18rpx; }.entry-confirmed,.entry-waived { color:#1f7c4b; }.entry-overdue,.entry-late_confirmed { color:#b33434; }.entry-alert { margin-top:18rpx;padding:16rpx;border-radius:16rpx;color:#8f4d35;background:#fff2ec; }.entry-alert text { display:block; }.entry-alert text:first-child { font-weight:900; }.entry-alert text:last-child { margin-top:5rpx;font-size:20rpx; }
 .info-row { min-height:68rpx;display:flex;align-items:center;justify-content:space-between;gap:20rpx;border-bottom:1rpx solid rgba(39,61,42,.07);font-size:24rpx; }.info-row text:first-child { color:#7d877a; }.info-row text:last-child { flex:1;text-align:right;font-weight:800; }.kook-row text:last-child { color:#1f7c4b; }.flow-list { display:flex;flex-direction:column;gap:14rpx; }.flow-item { display:flex;align-items:center;gap:14rpx;color:#9aa097; }.flow-item>text { width:48rpx;height:48rpx;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#eef1ec;font-weight:900; }.flow-item view text { display:block; }.flow-item view text:first-child { font-weight:900; }.flow-item view text:last-child { margin-top:4rpx;font-size:20rpx; }.flow-item.active,.flow-item.done { color:#1f7c4b; }.flow-item.active>text,.flow-item.done>text { color:#fff;background:#1f7c4b; }
 .footer-actions { position:fixed;left:24rpx;right:24rpx;bottom:calc(24rpx + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(2,1fr);gap:12rpx;z-index:20; }.footer-actions button { min-height:72rpx;border-radius:999rpx;font-size:24rpx;font-weight:900; }.ghost-btn { color:#687665;background:#fff; }.primary-btn { color:#fff;background:#1f7c4b; }.wide { grid-column:1 / -1; }
+</style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
+.amount-card .paid-amount { display: flex; align-items: center; gap: 8rpx; margin-top: 5rpx; }
+.amount-card > view:first-child .paid-amount text:first-child, .amount-card > view:first-child .paid-amount text:last-child { font-size: 54rpx; color: #fff; font-weight: 900; margin: 0; }
+.amount-card .paid-amount .diamond-unit { width: 32rpx; height: 32rpx; }
+.shield-diamond { width: 50rpx; height: 50rpx; }
+.info-row > .diamond-value { flex: 1; justify-content: flex-end; text-align: right; font-weight: 800; }
 </style>

@@ -10,8 +10,7 @@
           <view class="hero-note">{{ heroNote }}</view>
         </view>
         <view class="hero-mask"></view>
-        <view class="hero-float hero-float--left" @tap="goBack">‹</view>
-        <view class="hero-float hero-float--right">•••</view>
+        <view class="hero-float hero-float--left" @tap="goBack"><image class="back-pictogram" :src="uiIcons.back" mode="aspectFit" /></view>
         <view class="hero-sold">{{ soldCountText }}</view>
         <view v-if="rawProductImage" class="image-preview-tip" @tap="previewProductImage(rawProductImage)">点击查看大图</view>
       </view>
@@ -20,11 +19,11 @@
         <view class="price-line">
           <view class="price-wrap">
             <text v-if="displaySpecCount" class="price-prefix">起</text>
-            <text class="price-symbol">💎</text>
+            <image class="price-symbol diamond-unit" :src="uiIcons.diamond" mode="aspectFit" />
             <text class="price-value">{{ diamondFromYuan(productPrice) }}</text>
             <text class="price-unit">{{ hourlyService ? '/时' : '/单' }}</text>
           </view>
-          <text v-if="originalPrice > productPrice" class="origin-price">💎{{ diamondFromYuan(originalPrice) }}</text>
+          <view v-if="originalPrice > productPrice" class="origin-price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondFromYuan(originalPrice) }}</text></view>
         </view>
         <view class="product-title-row">
           <text class="product-name">{{ product.name }}</text>
@@ -36,7 +35,7 @@
           <text>{{ isGuaranteeProduct ? '查看规则 ›' : '了解更多 ›' }}</text>
         </view>
         <view v-if="isGuaranteeProduct" class="guarantee-overview">
-          <view class="overview-item"><text>起步钻石</text><text>💎{{ diamondFromYuan(productPrice) }}</text></view>
+          <view class="overview-item"><text>起步钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondFromYuan(productPrice) }}</text></view></view>
           <view class="overview-item"><text>规格档位</text><text>{{ displaySpecCount || 9 }}档</text></view>
           <view class="overview-item"><text>计价方式</text><text>按单</text></view>
         </view>
@@ -112,8 +111,8 @@
             <image v-if="getRawProductImage(item)" class="recommend-image" :src="getRawProductImage(item)" mode="aspectFill" />
             <view v-else class="recommend-image recommend-image--placeholder">{{ item.name.slice(0, 1) }}</view>
             <text class="recommend-name">{{ item.name }}</text>
-            <view class="recommend-price">💎{{ packageDiamonds(item) }}</view>
-            <text class="recommend-cart">🛒</text>
+            <view class="recommend-price"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" />{{ packageDiamonds(item) }}</view>
+            <image class="recommend-cart" :src="uiIcons.cart" mode="aspectFit" />
           </view>
         </view>
       </view>
@@ -126,8 +125,8 @@
     </view>
 
     <view v-if="product" class="bottom-bar">
-      <view class="bottom-icon" @tap="goHome"><text>⌂</text><text>首页</text></view>
-      <view v-if="!isPlayerServiceProduct" class="bottom-icon" @tap="openCart"><view class="cart-icon-wrap"><text>🛒</text><text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text></view><text>购物车</text></view>
+      <view class="bottom-icon" @tap="goHome"><image class="navigation-pictogram" :src="uiIcons.home" mode="aspectFit" /><text>首页</text></view>
+      <view v-if="!isPlayerServiceProduct" class="bottom-icon" @tap="openCart"><view class="cart-icon-wrap"><image class="navigation-pictogram" :src="uiIcons.cart" mode="aspectFit" /><text v-if="cartCount" class="cart-badge">{{ cartCount > 99 ? '99+' : cartCount }}</text></view><text>购物车</text></view>
       <button v-if="!isPlayerServiceProduct" class="cart-action" @tap="openSpecPopup('cart')">加入购物车</button>
       <button class="buy-action" @tap="openSpecPopup('buy')">{{ isPlayerServiceProduct ? '立即指定' : '立即购买' }}</button>
     </view>
@@ -137,7 +136,7 @@
         <view class="spec-popup-header">
           <image class="spec-popup-image" :src="specPopupImage" mode="aspectFill" @tap="previewProductImage(specPopupImage)" />
           <view class="spec-popup-info">
-            <view class="spec-popup-price">💎{{ diamondFromYuan(selectedTotalPrice) }}</view>
+            <view class="spec-popup-price"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" />{{ diamondFromYuan(selectedTotalPrice) }}</view>
             <text class="spec-popup-stock">{{ hourlyService ? `时长：${effectiveHours}小时` : '按单购买' }}</text>
             <text class="spec-popup-selected">{{ selectedSpec ? `已选：${getSpecDisplayName(selectedSpec)}` : '请选择规格' }}</text>
           </view>
@@ -189,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { computed, ref } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, getPlayerServiceProducts, type BossPackage, type BossPackageSpec } from '@/api/boss'
@@ -330,3 +330,9 @@ onShow(refreshCartCount)
 </script>
 
 <style lang="scss" src="./index.scss" scoped></style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
+</style>

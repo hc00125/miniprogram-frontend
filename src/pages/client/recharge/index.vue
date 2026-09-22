@@ -69,7 +69,7 @@
     </view>
 
     <view class="support-card" @tap="goCustomerService">
-      <view class="support-icon">客</view>
+      <view class="support-icon"><image class="support-pictogram" :src="uiIcons.support" mode="aspectFit" /></view>
       <view class="support-main">
         <text class="support-title">无法充值请联系客服</text>
         <text class="support-desc">微信已扣款但钻石未到账时，请勿重复充值。</text>
@@ -139,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import {
@@ -541,4 +542,6 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 .pay-button { min-height: 96rpx; box-shadow: 0 12rpx 28rpx rgba(21,147,76,.22); }
 .pay-support-link { display: block; padding: 18rpx 0 2rpx; color: #a87520; text-align: center; font-size: 22rpx; font-weight: 900; text-decoration: underline; }
 .mock-button { width: 100%; height: 72rpx; margin-top: 14rpx; border-radius: 999rpx; color: #a87520; font-size: 24rpx; background: #fff6df; }.loading-state { display: block; padding: 40rpx 20rpx; color: #8a9286; text-align: center; font-size: 23rpx; }
+.support-icon { background: transparent; }
+.support-pictogram { width: 48rpx; height: 48rpx; display: block; }
 </style>

@@ -47,7 +47,7 @@
 
       <view v-if="contacts.length" class="contact-list">
         <view v-for="contact in contacts" :key="contact.id" class="channel-card contact-card">
-          <view class="channel-icon">客</view>
+          <view class="channel-icon channel-icon--manual"><image class="support-pictogram" :src="uiIcons.support" mode="aspectFit" /></view>
           <view class="channel-main">
             <text class="channel-title">{{ contact.name }}</text>
             <text v-if="contact.description" class="channel-description">{{ contact.description }}</text>
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { getSupportCenter, type SupportContact } from '@/api/support'
@@ -173,4 +174,6 @@ onShow(loadSupportCenter)
 .support-tip { margin-top: 24rpx; display: flex; align-items: flex-start; gap: 12rpx; padding: 20rpx; border-radius: 20rpx; color: #687665; background: rgba(255,255,255,.72); }
 .support-tip text:first-child { flex-shrink: 0; color: #a87520; font-size: 21rpx; font-weight: 900; }
 .support-tip text:last-child { font-size: 20rpx; line-height: 1.55; }
+.channel-icon--manual { background: transparent; }
+.support-pictogram { width: 52rpx; height: 52rpx; display: block; }
 </style>

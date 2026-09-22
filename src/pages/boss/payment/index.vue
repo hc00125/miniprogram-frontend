@@ -12,16 +12,16 @@
 
     <view v-if="orderInfo" class="amount-card">
       <text class="amount-label">{{ amountCardLabel }}</text>
-      <view class="amount-row"><text>💎</text><text>{{ diamond(amountCardValue) }}</text></view>
+      <view class="amount-row"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(amountCardValue) }}</text></view>
       <text v-if="showRenewalSummary" class="amount-breakdown">
         主订单 💎{{ diamond(mainOrderAmount) }} · 续单 💎{{ diamond(renewalPaidAmount) }}
       </text>
-      <view class="secure-tip"><text>钻</text><text>平台统一钻石标价 · 人民币1元对应10钻石</text></view>
+      <view class="secure-tip"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>平台统一钻石标价 · 人民币1元对应10钻石</text></view>
     </view>
 
     <view v-if="showPaymentWindow" class="card virtual-pay-card">
       <view class="virtual-head">
-        <view class="wechat-icon">时</view>
+        <view class="wechat-icon functional-icon"><image class="payment-pictogram" :src="uiIcons.clock" mode="aspectFit" /></view>
         <view>
           <text>{{ isRenewal ? '续单支付窗口' : '服务阵容已为您保留' }}</text>
           <text>{{ paymentWindowSubtitle }}</text>
@@ -62,16 +62,16 @@
 
       <template v-if="isRenewal">
         <view v-if="orderInfo.booked_hours" class="info-row"><text>新增时长</text><text>{{ formatHours(orderInfo.booked_hours) }}</text></view>
-        <view class="info-row total-row"><text>续单钻石</text><text>💎{{ diamond(orderAmount) }}</text></view>
+        <view class="info-row total-row"><text>续单钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(orderAmount) }}</text></view></view>
       </template>
       <template v-else>
         <view v-if="orderInfo.booked_hours" class="info-row"><text>{{ showRenewalSummary ? '原预订时长' : '预订时长' }}</text><text>{{ originalBookedHours }}</text></view>
         <view v-if="showRenewalSummary" class="info-row"><text>续单时长</text><text>{{ renewalBookedHours }}</text></view>
         <view v-if="showRenewalSummary" class="info-row emphasis-row"><text>累计购买时长</text><text>{{ totalBookedHours }}</text></view>
         <view v-if="orderInfo.duration_minutes" class="info-row"><text>实际服务</text><text>{{ Math.floor(orderInfo.duration_minutes / 60) }}小时 {{ orderInfo.duration_minutes % 60 }}分钟</text></view>
-        <view v-if="showRenewalSummary" class="info-row"><text>主订单钻石</text><text>💎{{ diamond(mainOrderAmount) }}</text></view>
-        <view v-if="showRenewalSummary" class="info-row"><text>续单钻石</text><text>💎{{ diamond(renewalPaidAmount) }}</text></view>
-        <view class="info-row total-row"><text>{{ showRenewalSummary ? '累计钻石' : '订单钻石' }}</text><text>💎{{ diamond(amountCardValue) }}</text></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>主订单钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(mainOrderAmount) }}</text></view></view>
+        <view v-if="showRenewalSummary" class="info-row"><text>续单钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(renewalPaidAmount) }}</text></view></view>
+        <view class="info-row total-row"><text>{{ showRenewalSummary ? '累计钻石' : '订单钻石' }}</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(amountCardValue) }}</text></view></view>
       </template>
     </view>
 
@@ -84,7 +84,7 @@
         </view>
         <view class="renewal-record-grid">
           <view><text>新增时长</text><text>{{ formatHours(item.booked_hours) }}</text></view>
-          <view><text>支付钻石</text><text>💎{{ diamond(diamondsFrom(item.total_amount_diamonds, item.total_amount)) }}</text></view>
+          <view><text>支付钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamond(diamondsFrom(item.total_amount_diamonds, item.total_amount)) }}</text></view></view>
           <view><text>支付时间</text><text>{{ formatRenewalTime(item.payment_confirmed_at || item.created_at) }}</text></view>
         </view>
         <view class="renewal-order-no" @tap="copyText(item.order_no)">
@@ -107,7 +107,7 @@
 
     <view v-if="serverConfirming && !paymentConfirming" class="card virtual-pay-card">
       <view class="virtual-head">
-        <view class="wechat-icon">核</view>
+        <view class="wechat-icon functional-icon"><image class="payment-pictogram" :src="uiIcons.verification" mode="aspectFit" /></view>
         <view>
           <text>支付时间已结束</text>
           <text>系统正在向微信确认最终支付结果</text>
@@ -168,7 +168,7 @@
 
     <view v-if="showPayPanel" class="card virtual-pay-card">
       <view class="virtual-head">
-        <view class="wechat-icon">付</view>
+        <view class="wechat-icon functional-icon"><image class="payment-pictogram" :src="uiIcons.payment" mode="aspectFit" /></view>
         <view>
           <text>选择支付方式</text>
           <text>{{ isRenewal ? '续单使用钻石结算 · 成功后自动合并时长' : '平台服务统一以钻石标价和结算' }}</text>
@@ -188,7 +188,7 @@
           :class="{ active: payMethod === 'balance', disabled: !balanceSufficient }"
           @tap="selectPayMethod('balance')"
         >
-          <view class="pay-method-icon pay-method-icon--balance">钻</view>
+          <view class="pay-method-icon pay-method-icon--balance functional-icon"><image class="payment-pictogram" :src="uiIcons.diamond" mode="aspectFit" /></view>
           <view class="pay-method-main">
             <text>可用钻石支付</text>
             <text>{{ balanceOptionSub }}</text>
@@ -250,6 +250,7 @@
 </template>
 
 <script setup lang="ts">
+import { uiIcons } from '@/utils/uiIcons'
 function openOrderComplaint() { uni.navigateTo({ url: `/pages/client/complaints/create?order_no=${encodeURIComponent(orderNo.value)}` }) }
 import { computed, ref } from 'vue'
 import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
@@ -853,3 +854,18 @@ onUnload(() => {
 </script>
 
 <style lang="scss" src="./index.scss" scoped></style>
+
+<style scoped>
+.functional-icon { background: transparent; }
+.payment-pictogram { width: 52rpx; height: 52rpx; }
+.diamond-unit { display: inline-block; width: 32rpx; height: 32rpx; flex-shrink: 0; vertical-align: middle; }
+.amount-row .diamond-unit { width: 38rpx; height: 38rpx; align-self: center; }
+</style>
+
+<style scoped>
+.diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
+.diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
+.diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
+.info-row > .diamond-value { flex: 1; justify-content: flex-end; text-align: right; font-weight: 700; word-break: break-all; }
+.renewal-record-grid .diamond-value { margin-top: 5rpx; font-size: 21rpx; font-weight: 900; }
+</style>

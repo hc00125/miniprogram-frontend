@@ -1,0 +1,44 @@
+{
+  "client/customer-service": {
+    "script": "6caa7787616fbd8ebca8d919312959fe6b071d6bb5fda9708b69fbaa3030c570",
+    "bindings": "91338b319ef8e0886ed9973a092f7795272bad877261aa86df6d81215c8e6115",
+    "buttons": "520ef0571e2005c0416e435850b23f86318f94d3518046dd32a9b715db0b4b6d",
+    "expressions": "55b823fabef0930118fc34c5f33feec657c9d6f30d0b4fd6f11b1df020b9b170"
+  },
+  "client/recharge": {
+    "script": "a197e3c060e6855ff5e9accdce7d1bba84e97f752d8a85b4d541ef7a1d9dfe44",
+    "bindings": "ca6137a03045e0d3ba7be580787889e21bccee36249334cbe27e8be26886844b",
+    "buttons": "54637efd1395cc1bd9ff1f325e5fa69694937c7cc5a9e870bb605ef34bc5ccd9",
+    "expressions": "76195cf711e90df53f9ce6052277877a9a6f2ffaa6660ad5024defc7105fd0dc"
+  },
+  "player/my-orders": {
+    "script": "01ee194f7745c7dd257905882854e083a90c176307a019e031ff4b73c4dc98f8",
+    "bindings": "3f21e4c2caaac5450b39fd7261a83b2c9970079d254be0e60ff9cf22fbb90040",
+    "buttons": "4368cb744470faa289e3ba8ffd0e4d10918ece0d6d272662093d668f49e0393d",
+    "expressions": "6d98ef99d235d9253e663dadfb9291ad56a7a792c208d2802e8161f8254aaa22"
+  },
+  "player/profile-settings": {
+    "script": "259a1c4a02905d126f3c9fef9db863163c24e0ec3a964ef682701674eda9dbcb",
+    "bindings": "07e68425eabd10eac372349dad7238020910788bf2c68a68f343f6b0ba296fc8",
+    "buttons": "2d3d70a7df11e56ecfbee3c18ebed41d677472a5ca4caa3b03aa171963785041",
+    "expressions": "0ad1462c824eac7f3089b00ae9161f917cb3fadef43367bdd3a52c1801fdd442"
+  },
+  "player/apply": {
+    "script": "ac6dcacef6b79ae6daf196312535634f5af73e39aa1a146ae319159971ee9ac0",
+    "bindings": "45f3c644f1d9e3da552f283c274009729ec94385afc351f40dd5069351c6da1e",
+    "buttons": "3bf24c81c4575e8246d507145e72e3fddeb5c2a877d266b06b7e3d9a1100a01e",
+    "expressions": "bdadc82dea2fd33586541c1bf91a2f278bef26ab74c801ac2e2c2e7a233a3efe"
+  },
+  "shop/detail": {
+    "script": "b789acf87bbc2bbbefccd47933fe1b0c4ae852bd167a83babf7e6d66dd50cbbe",
+    "bindings": "ff1bcb4b40a8b4e437a3f3f011ae63edd1147eb62fd0d9bc850ac582a997444e",
+    "buttons": "0dc3d26b39b721db775290ed9da64db33478639c914f05dc4f994f8be5724ce7",
+    "expressions": "7ba77c79080619100d5501f7342e5f0dabcb43063fd2e87447c5397b54f7bfbf"
+  },
+  "shop/cart": {
+    "script": "9145d67f6694274d2e3491db37612843f13f2aab256caec85da7242b7054d3f8",
+    "bindings": "87dfc55dd7273fcc9b0e262e74c79067dc22c1ec33aadbaf1b6d2d0e9ff80c7a",
+    "buttons": "e5120147ef6b7158c3fff39c12aed5691490e0531c79002aefb9a3761e330eb6",
+    "expressions": "a46966b455abf6effd7b83a0870ca20633f4fa1891f5ad693a0c69c94bac5ad8"
+  }
+}
