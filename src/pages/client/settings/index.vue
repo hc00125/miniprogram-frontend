@@ -25,6 +25,9 @@
           {{ phoneBinding ? '处理中' : (phoneBound ? '更换' : '绑定') }}
         </button>
       </view>
+      <view v-if="profile" class="setting-row" @tap="go('/pages/client/history-claim/index')">
+        <view><text>认领历史订单</text><text>关联客服登记的服务记录</text></view><text>›</text>
+      </view>
       <view v-if="profile?.player" class="setting-row notice-row">
         <view>
           <text>微信接单提醒</text>

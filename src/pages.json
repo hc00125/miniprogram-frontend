@@ -1,6 +1,8 @@
 {
   "pages": [
     { "path": "pages/boss/home/index", "style": { "navigationBarTitleText": "偷吃电竞", "navigationBarBackgroundColor": "#fbf7ef", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/history-claim/index", "style": { "navigationBarTitleText": "认领历史订单" } },
+    { "path": "pages/client/history-order/index", "style": { "navigationBarTitleText": "客服订单详情" } },
     { "path": "pages/client/complaints/index", "style": { "navigationBarTitleText": "投诉与反馈" } },
     { "path": "pages/client/complaints/create", "style": { "navigationBarTitleText": "提交投诉" } },
     { "path": "pages/client/complaints/detail", "style": { "navigationBarTitleText": "反馈详情" } },
@@ -17,6 +19,7 @@
     { "path": "pages/boss/waiting/index", "style": { "navigationBarTitleText": "等待接单" } },
     { "path": "pages/boss/in-progress/index", "style": { "navigationBarTitleText": "服务进行中" } },
     { "path": "pages/boss/payment/index", "style": { "navigationBarTitleText": "订单支付" } },
+    { "path": "pages/boss/surcharge-payment/index", "style": { "navigationBarTitleText": "整单合计付款", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/client/login/index", "style": { "navigationBarTitleText": "微信登录" } },
     { "path": "pages/legal/privacy/index", "style": { "navigationBarTitleText": "隐私政策", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },
     { "path": "pages/legal/user-agreement/index", "style": { "navigationBarTitleText": "用户服务协议", "navigationBarBackgroundColor": "#f7f3ea", "navigationBarTextStyle": "black" } },

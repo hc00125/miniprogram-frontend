@@ -13,31 +13,44 @@
           <view class="hero-meta"><view class="hero-dots"><text v-for="(banner, index) in heroBanners" :key="banner.id" :class="{ active: currentHeroIndex === index }"></text></view></view>
         </view>
 
-        <view class="action-card-row">
-          <view class="action-card" @tap="goShopCategory"><view class="action-icon"><image class="action-icon-image" :src="uiIcons.order" mode="aspectFit" /></view><view class="action-main"><text>点单大厅</text><text>快速下单\n找到心仪陪玩</text></view><image class="action-arrow" :src="uiIcons.chevron" mode="aspectFit" /></view>
-          <view class="action-card" @tap="goQuery"><view class="action-icon"><image class="action-icon-image" :src="uiIcons.query" mode="aspectFit" /></view><view class="action-main"><text>订单进度</text><text>实时追踪\n订单状态</text></view><image class="action-arrow" :src="uiIcons.chevron" mode="aspectFit" /></view>
+        <view class="game-section">
+          <view class="section-head"><text class="section-title">选择游戏</text><button class="section-link" @tap="goOrderNotice">下单须知 ›</button></view>
+          <view v-if="featuredGame" class="game-card" @tap="goFeaturedGame">
+            <image v-if="featuredGame.icon_url && !failedGameIcons[featuredGame.id]" class="game-icon" :src="featuredGame.icon_url" mode="aspectFill" @error="failedGameIcons[featuredGame.id] = true" />
+            <view v-else class="game-icon game-icon--fallback"><image :src="uiIcons.order" mode="aspectFit" /></view>
+            <view class="game-copy"><text class="game-name">{{ featuredGame.name }}</text><text class="game-sub">选择服务，轻松开局</text></view>
+            <button class="game-order" @tap.stop="goFeaturedGame">去点单</button>
+          </view>
+          <view v-else class="section-empty" @tap="fetchHomeData">{{ catalogLoading ? '游戏加载中…' : catalogLoadFailed ? '游戏加载失败，点击重试' : '暂无已上架游戏' }}</view>
+          <view class="more-games" @tap="goShopCategory"><text>更多游戏</text><image :src="uiIcons.chevron" mode="aspectFit" /></view>
         </view>
 
-        <view class="order-notice-banner" @tap="goOrderNotice"><image class="order-notice-image" :src="orderNoticeBannerUrl" mode="widthFix" /></view>
-
-        <view class="section-head"><view><text>已入驻陪玩</text><text>精选在线阵容</text></view><button @tap="goPlayerList">全部陪玩 ›</button></view>
-        <scroll-view v-if="featuredPlayers.length" scroll-x class="player-showcase" show-scrollbar="false">
-          <view v-for="player in featuredPlayers" :key="player.id" class="player-mini-card">
-            <image class="player-mini-avatar" :src="player.avatar_url" mode="aspectFill" />
-            <view class="player-mini-main"><view class="player-mini-name-row"><text class="player-mini-name">{{ player.name }}</text><text class="player-mini-badge">TC</text></view><view class="player-mini-type">{{ player.type_name || '优质陪玩' }}</view><view class="player-mini-status" :class="{ off: !player.is_online }"><text></text>{{ player.is_online ? '在线' : '离线' }}</view></view>
+        <view class="wallet-card">
+          <view class="wallet-copy">
+            <view class="wallet-title"><image :src="uiIcons.diamondLight" mode="aspectFit" /><text>我的钻石</text></view>
+            <text v-if="!isLoggedIn" class="wallet-note">登录后查看余额</text>
+            <text v-else-if="walletLoadFailed" class="wallet-retry" @tap="loadWallet">加载失败 · 点击重试</text>
+            <view v-else class="wallet-balance"><text>{{ walletLoading ? '--' : walletBalance }}</text><text class="wallet-unit">钻石</text></view>
           </view>
-        </scroll-view>
-        <view v-else class="player-showcase-empty">暂无已上传头像的陪玩</view>
-
-        <view class="section-head package-head"><view><text>热门套餐</text><text>高频选择，快速开局</text></view><button @tap="goShopCategory">更多套餐 ›</button></view>
-        <view v-if="hotPackages.length" class="hot-packages">
-          <view v-for="pkg in hotPackages" :key="pkg.id" class="hot-package" @tap="goShopDetail(pkg.id)">
-            <view class="package-media"><image v-if="pkg.cover_url && failedPackageCovers[pkg.id] !== pkg.cover_url" class="package-bg" :src="pkg.cover_url" mode="aspectFit" @error="failedPackageCovers[pkg.id] = pkg.cover_url" /></view>
-            <view class="hot-copy"><text>{{ pkg.name }}</text></view>
-            <view class="hot-price"><text>💎{{ packageDiamonds(pkg) }}</text><text>/时/人</text></view>
-          </view>
+          <button class="wallet-recharge" @tap="goRecharge">{{ !isLoggedIn ? '登录查看' : accountRestricted ? '账户受限' : '充值钻石' }}</button>
         </view>
-        <view v-else class="player-showcase-empty">暂无套餐</view>
+
+        <view class="players-section">
+          <view class="section-head"><text class="section-title">陪玩推荐</text><button class="section-link" @tap="goPlayerList">更多陪玩 ›</button></view>
+          <view class="player-filters"><button v-for="type in playerFilters" :key="type" class="player-filter" :class="{ active: activePlayerType === type }" @tap="activePlayerType = type">{{ type }}</button></view>
+          <view v-if="featuredPlayers.length" class="player-grid">
+            <view v-for="player in featuredPlayers" :key="player.id" class="player-card">
+              <view class="player-card-head" @tap="openPlayerDetail(player)">
+                <image v-if="!failedAvatars[player.id]" class="player-avatar" :src="player.avatar_url" mode="aspectFill" @error="failedAvatars[player.id] = true" />
+                <view v-else class="player-avatar player-avatar--fallback">{{ player.name.slice(0, 1) }}</view>
+                <view class="player-copy"><text class="player-name">{{ player.name }}</text><text class="player-type">{{ player.type_name }}</text></view>
+              </view>
+              <view class="player-meta"><view class="player-status" :class="{ off: !player.presence_online }"><text></text>{{ player.presence_online ? '在线' : '离线' }}</view><text class="player-rating">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'}` : '暂无评分' }}</text></view>
+              <GiftHost :recipient-id="player.id" :recipient-name="player.name" />
+            </view>
+          </view>
+          <view v-else class="section-empty" @tap="fetchHomeData">{{ playersLoading ? '陪玩加载中…' : playersLoadFailed ? '陪玩加载失败，点击重试' : '暂无可推荐的陪玩' }}</view>
+        </view>
       </view>
     </scroll-view>
     <MainBottomTabs active="home" @select="handleMainTabSelect" />
@@ -45,23 +58,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
+import { computed, onScopeDispose, ref } from 'vue'
+import { onHide, onShareAppMessage, onShareTimeline, onShow } from '@dcloudio/uni-app'
 import { getPackages, getPlayerList, type BossPackage, type OnlinePlayer } from '@/api/boss'
+import { getCatalogNavigation, type GameService } from '@/api/catalog'
+import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
+import GiftHost from '@/components/gifts/GiftHost.vue'
 import { uiIcons } from '@/utils/uiIcons'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
-import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
+import { getStorage } from '@/utils/storage'
+import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
+import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
+import { formatDiamonds } from '@/utils/diamonds'
 import { toast } from '@/utils/feedback'
 
 type HeroTarget = 'shop' | number
 type HeroBanner = { id: string; image: string; target: HeroTarget }
-
 const homeHero = 'https://api.huc125.cn/media/banners/hero-lounge.jpg'
-const orderNoticeBannerUrl = 'https://api.huc125.cn/media/order-notice/order-guide-banner.jpg'
-// 仅选现有五套四弹/六套五弹单人商品，图片和点击始终来自同一商品。
-// API 失败或商品不再返回时不回退到本地占位商品/海报。
+const currentHeroIndex = ref(0)
+const packages = ref<BossPackage[]>([])
+const failedPackageCovers = ref<Record<number, string>>({})
+// 原有真实商品轮播保留：图片与点击始终绑定同一商品，接口失败不补假商品。
 const heroBanners = computed<HeroBanner[]>(() => [
   { id: 'lounge', image: homeHero, target: 'shop' },
   ...[16, 22].flatMap(id => {
@@ -71,40 +90,128 @@ const heroBanners = computed<HeroBanner[]>(() => [
       : []
   })
 ])
-
 onShareAppMessage(() => ({ title: '偷吃电竞｜专业游戏陪练服务', path: '/pages/boss/home/index', imageUrl: homeHero }))
 onShareTimeline(() => ({ title: '偷吃电竞｜专业游戏陪练服务', query: '', imageUrl: homeHero }))
 
-const currentHeroIndex = ref(0)
-const packages = ref<BossPackage[]>([])
-const failedPackageCovers = ref<Record<number, string>>({})
-const players = ref<OnlinePlayer[]>([])
-// 首页推荐单独排除已确认海报 404 的 ID 11；不影响目录、排序或可购买状态。
-// 图片运行时失败后继续按 API 原顺序补位，URL 更新后可重新展示。
-const hotPackages = computed(() => packages.value.filter(pkg => pkg.id !== 11 && Boolean(pkg.cover_url?.trim()) && failedPackageCovers.value[pkg.id] !== pkg.cover_url).slice(0, 2))
-const featuredPlayers = computed(() => players.value.filter(hasUserAvatar).slice(0, 6))
+const games = ref<GameService[]>([]), catalogLoading = ref(false), catalogLoadFailed = ref(false)
+const featuredGame = computed(() => games.value[0] || null)
+const failedGameIcons = ref<Record<number, boolean>>({})
+const players = ref<OnlinePlayer[]>([]), playersLoading = ref(false), playersLoadFailed = ref(false)
+const failedAvatars = ref<Record<number, boolean>>({})
+const activePlayerType = ref('全部')
+const playerFilters = computed(() => ['全部', ...['技术陪', '娱乐陪'].filter(type => players.value.some(player => player.type_name === type))])
+const featuredPlayers = computed(() => players.value.filter(player => hasUserAvatar(player) && (activePlayerType.value === '全部' || player.type_name === activePlayerType.value)).slice(0, 4))
+const isLoggedIn = ref(false), accountRestricted = ref(false), walletLoading = ref(false), walletLoadFailed = ref(false)
+const walletOverview = ref<WalletOverview | null>(null)
+const walletBalance = computed(() => { if (!walletOverview.value) return '--'; try { return formatDiamonds(walletOverview.value.balance_diamonds) } catch { return '--' } })
+let visible = true, generation = 0, walletGeneration = 0
 
 function hasUserAvatar(player: OnlinePlayer) { return Boolean(String(player.avatar_url || '').trim()) }
-function toSafeNumber(value: unknown, fallback: number) { const numberValue = Number(value); return Number.isFinite(numberValue) ? numberValue : fallback }
-function getPackageBasePrice(pkg: BossPackage | null | undefined) { const item = pkg as (BossPackage & Record<string, unknown>) | null | undefined; const price = item ? item.price : undefined; const basePrice = item ? item.base_price : undefined; return Math.max(0, toSafeNumber(price !== undefined ? price : (basePrice !== undefined ? basePrice : 0), 0)) }
-function packageDiamonds(pkg: BossPackage) { const raw = pkg as BossPackage & Record<string, unknown>; try { return formatDiamonds(diamondsFrom(raw.base_price_diamonds ?? raw.price_diamonds, getPackageBasePrice(pkg))) } catch { return '--' } }
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 function normalizePlayer(player: OnlinePlayer): OnlinePlayer { const isOnline = normalizeOnlineValue(player.is_online); return { ...player, is_online: isOnline, type_name: player.player_type?.name || player.type_name || '优质陪玩', price_extra: player.player_type?.price_extra || player.price_extra || 0, status: isOnline ? '在线' : '离线' } }
 function goShopCategory() { go('/pages/shop/category/index') }
+function goFeaturedGame() { if (!featuredGame.value) return; uni.setStorageSync('catalog:requested-game-id', featuredGame.value.id); goShopCategory() }
 function goShopDetail(packageId: number) { go('/pages/shop/detail/index', { packageId }) }
 function goOrderNotice() { go('/pages/boss/order-notice/index') }
-function goQuery() { goMain('query') }
 function goPlayerList() { goMain('players') }
-function goProfile() { if (!getClientProfile()) { go('/pages/client/login/index'); return } goMain('profile') }
+function openPlayerDetail(player: OnlinePlayer) { if (player.can_be_designated === false) return toast('该陪玩当前不接受指定'); go('/pages/player/detail/index', { playerId: player.id }) }
+function goRecharge() {
+  if (!getStorage<string>('token')) { clearWallet(); go('/pages/client/login/index'); return }
+  const profile = getClientProfile()
+  if (getAccountRestrictionView(profile).restricted) { void showAccountRestrictionModal(profile); return }
+  go('/pages/client/recharge/index')
+}
 function handleHeroChange(event: { detail?: { current?: number } }) { currentHeroIndex.value = event.detail?.current || 0 }
 function handleHeroImageError(banner: HeroBanner) { if (typeof banner.target === 'number') failedPackageCovers.value[banner.target] = banner.image }
 function handleHeroBannerTap(target: HeroTarget) { if (typeof target === 'number') return goShopDetail(target); goShopCategory() }
 function handleMainTabSelect(tab: MainTab) { if (tab === 'home') return; if (tab === 'order') return goShopCategory(); if (tab === 'query' || tab === 'players' || tab === 'profile') navigateToTab(tab) }
-async function fetchHomeData() { try { packages.value = await getPackages() } catch { packages.value = []; toast('套餐加载失败，请稍后重试') } try { players.value = (await getPlayerList() || []).map(normalizePlayer) } catch { players.value = [] } }
-onShow(fetchHomeData)
+function clearWallet() { walletGeneration++; isLoggedIn.value = false; accountRestricted.value = false; walletOverview.value = null; walletLoadFailed.value = false; walletLoading.value = false }
+function expire(scope: string) { if (scope === 'token') clearWallet() }
+async function loadWallet() {
+  const ticket = ++walletGeneration, sent = getStorage<string>('token') || ''
+  isLoggedIn.value = Boolean(sent); accountRestricted.value = getAccountRestrictionView(getClientProfile()).restricted
+  walletOverview.value = null; walletLoadFailed.value = false; walletLoading.value = Boolean(sent)
+  if (!sent || !visible) { walletLoading.value = false; return }
+  const current = () => visible && ticket === walletGeneration && sent === getStorage<string>('token')
+  try { const result = await getWalletOverview(); if (current()) walletOverview.value = result }
+  catch { if (current()) walletLoadFailed.value = true }
+  finally { if (current()) walletLoading.value = false }
+}
+async function fetchHomeData() {
+  const ticket = ++generation
+  catalogLoading.value = true; catalogLoadFailed.value = false; playersLoading.value = true; playersLoadFailed.value = false
+  const current = () => visible && ticket === generation
+  await Promise.all([
+    (async () => { try { const result = await getPackages(); if (current()) packages.value = result } catch { if (current()) packages.value = [] } })(),
+    (async () => { try { const result = await getCatalogNavigation(); if (current()) games.value = result.games || [] } catch { if (current()) { games.value = []; catalogLoadFailed.value = true } } finally { if (current()) catalogLoading.value = false } })(),
+    (async () => { try { const result = await getPlayerList(); if (current()) { players.value = (result || []).map(normalizePlayer); if (!playerFilters.value.includes(activePlayerType.value)) activePlayerType.value = '全部' } } catch { if (current()) { players.value = []; playersLoadFailed.value = true } } finally { if (current()) playersLoading.value = false } })(),
+    loadWallet()
+  ])
+}
+function hide() { visible = false; generation++; clearWallet() }
+onShow(() => { visible = true; return fetchHomeData() })
+onHide(hide)
+uni.$on(SESSION_EXPIRED_EVENT, expire)
+onScopeDispose(() => { hide(); uni.$off(SESSION_EXPIRED_EVENT, expire) })
+function applyOwnPresence(reply: { player_id: number; presence_online: boolean }) {
+  const target = (players.value).find(item => item.id === reply.player_id)
+  if (target && reply.presence_online === true) target.presence_online = true
+}
+uni.$on('player-presence-updated', applyOwnPresence)
+onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 </script>
 
 <style lang="scss" scoped>
 @import '@/styles/theme.scss';
-.home-page{min-height:100vh;padding-bottom:calc(150rpx + env(safe-area-inset-bottom));background:radial-gradient(ellipse at 12% 0%,rgba(47,155,99,.12),transparent 38%),radial-gradient(ellipse at 88% 16%,rgba(216,161,68,.10),transparent 32%),linear-gradient(180deg,#f7f3ea 0%,#faf8f2 48%,#fffaf2 100%);box-sizing:border-box}.home-scroll{height:100vh}.landing{padding:16rpx 24rpx 40rpx}.hero-section{margin-top:6rpx}.hero-swiper{height:332rpx}.hero-slide{position:relative;height:100%;overflow:hidden;border-radius:28rpx;background:#15261b}.hero-slide__image{position:absolute;inset:0;width:100%;height:100%}.hero-meta{display:flex;align-items:center;justify-content:center;margin-top:14rpx;padding:0 6rpx}.hero-dots{display:flex;gap:10rpx}.hero-dots text{width:22rpx;height:6rpx;border-radius:999rpx;background:rgba(47,155,99,.18)}.hero-dots text.active{width:40rpx;background:#2f9b63}.action-card-row{display:grid;grid-template-columns:repeat(2,1fr);gap:18rpx;margin-top:24rpx}.action-card{min-height:138rpx;display:flex;align-items:center;gap:18rpx;padding:22rpx 20rpx;border-radius:20rpx;background:rgba(255,255,255,.86);border:1rpx solid rgba(61,97,74,.10);box-shadow:0 12rpx 30rpx rgba(31,55,40,.06);box-sizing:border-box}.action-icon{width:74rpx;height:74rpx;flex-shrink:0;display:flex;align-items:center;justify-content:center}.action-icon-image{width:52rpx;height:52rpx;display:block}.action-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:8rpx}.action-main text:first-child{font-size:30rpx;font-weight:900}.action-main text:last-child{color:#858575;font-size:22rpx;line-height:1.35;white-space:pre-line}.action-arrow{width:20rpx;height:20rpx;flex-shrink:0}.order-notice-banner{overflow:hidden;margin-top:18rpx;border-radius:26rpx;background:#fffaf0;box-shadow:0 14rpx 30rpx rgba(35,42,30,.08)}.order-notice-image{width:100%;display:block}.section-head{display:flex;align-items:flex-end;justify-content:space-between;margin-top:30rpx;margin-bottom:16rpx}.section-head>view{display:flex;align-items:baseline;gap:14rpx}.section-head text:first-child{font-size:34rpx;font-weight:900}.section-head text:last-child{color:#8d8a80;font-size:23rpx}.section-head button{padding:0;margin:0;color:#3d614a;font-size:24rpx;background:transparent}.section-head button::after{border:none}.player-showcase{white-space:nowrap}.player-mini-card{display:inline-flex;align-items:center;gap:14rpx;width:236rpx;min-height:104rpx;padding:16rpx;margin-right:14rpx;border-radius:18rpx;background:rgba(255,255,255,.90);border:1rpx solid rgba(61,97,74,.10);vertical-align:top}.player-mini-avatar{width:64rpx;height:64rpx;flex-shrink:0;border-radius:50%}.player-mini-main{flex:1;min-width:0}.player-mini-name-row{display:flex;align-items:center;gap:8rpx}.player-mini-name{max-width:106rpx;font-size:25rpx;font-weight:900;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.player-mini-badge{padding:2rpx 7rpx;border-radius:5rpx;color:#5d704d;font-size:18rpx;background:#eef5e7}.player-mini-type{margin-top:6rpx;color:#555;font-size:21rpx}.player-mini-status{display:flex;align-items:center;gap:6rpx;margin-top:6rpx;color:#2f9b63;font-size:21rpx;font-weight:800}.player-mini-status text{width:9rpx;height:9rpx;border-radius:50%;background:#2f9b63}.player-mini-status.off{color:#999}.player-mini-status.off text{background:#bbb}.player-showcase-empty{padding:50rpx 20rpx;border-radius:18rpx;color:#888;font-size:26rpx;text-align:center;background:rgba(255,255,255,.72)}.hot-packages{display:grid;grid-template-columns:repeat(2,1fr);gap:18rpx}.hot-package{overflow:hidden;border-radius:16rpx;background:#fff}.package-media{height:320rpx;background:#f3f2ef}.package-bg{display:block;width:100%;height:100%}.hot-copy{padding:18rpx 20rpx 0}.hot-copy text{color:#262626;font-size:28rpx;font-weight:900}.hot-price{display:flex;align-items:baseline;gap:4rpx;padding:12rpx 20rpx 20rpx;color:#91651d}.hot-price text:first-child{font-size:36rpx;font-weight:900}.hot-price text:last-child{font-size:21rpx}
+.home-page { min-height: 100vh; background: #f7f5ee; box-sizing: border-box; }
+.home-scroll { height: 100vh; }
+.landing { padding: 20rpx 24rpx calc(160rpx + env(safe-area-inset-bottom)); }
+.hero-section { margin-top: 4rpx; }
+.hero-swiper { height: 332rpx; }
+.hero-slide { position: relative; height: 100%; overflow: hidden; border-radius: 28rpx; background: #15261b; }
+.hero-slide__image { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero-meta { display: flex; justify-content: center; margin-top: 14rpx; }
+.hero-dots { display: flex; gap: 10rpx; }
+.hero-dots text { display: block; width: 18rpx; height: 6rpx; border-radius: 999rpx; background: rgba(31,124,75,.18); }
+.hero-dots text.active { width: 36rpx; background: #1f7c4b; }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 28rpx 0 18rpx; }
+.section-title { color: #253b2f; font-size: 32rpx; font-weight: 800; }
+.section-link { padding: 8rpx 0 8rpx 12rpx; margin: 0; color: #738176; background: transparent; font-size: 22rpx; line-height: 1.5; }
+.section-link::after, .game-order::after, .wallet-recharge::after, .player-filter::after { border: 0; }
+.game-card { display: flex; align-items: center; gap: 20rpx; min-height: 156rpx; padding: 24rpx; border: 1rpx solid #e5ebe2; border-radius: 24rpx; background: #fffefa; box-sizing: border-box; }
+.game-icon { flex-shrink: 0; width: 92rpx; height: 92rpx; border-radius: 20rpx; background: #eef9ef; }
+.game-icon--fallback { display: flex; align-items: center; justify-content: center; }
+.game-icon--fallback image { width: 58rpx; height: 58rpx; }
+.game-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10rpx; }
+.game-name { overflow: hidden; color: #253b2f; font-size: 29rpx; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.game-sub { color: #8a9489; font-size: 22rpx; }
+.game-order { display: flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 126rpx; min-height: 72rpx; margin: 0; padding: 14rpx 22rpx; border-radius: 36rpx; background: #1f7c4b; color: #fffefa; font-size: 25rpx; line-height: 1.4; box-sizing: border-box; }
+.more-games { display: flex; align-items: center; justify-content: center; gap: 10rpx; min-height: 76rpx; margin-top: 12rpx; border: 1rpx dashed #cad9c8; border-radius: 18rpx; color: #71806f; font-size: 24rpx; background: rgba(255,255,255,.45); }
+.more-games image { width: 18rpx; height: 18rpx; }
+.wallet-card { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 26rpx; padding: 28rpx; border-radius: 26rpx; background: #1f7c4b; color: #fffefa; }
+.wallet-copy { flex: 1; min-width: 0; }
+.wallet-title { display: flex; align-items: center; gap: 10rpx; font-size: 26rpx; font-weight: 700; }
+.wallet-title image { width: 34rpx; height: 34rpx; }
+.wallet-balance { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10rpx; margin-top: 12rpx; font-size: 43rpx; font-weight: 800; overflow-wrap: anywhere; }
+.wallet-unit { color: #d3ecd9; font-size: 21rpx; font-weight: 400; }
+.wallet-note, .wallet-retry { display: block; margin-top: 16rpx; color: #d3ecd9; font-size: 23rpx; }
+.wallet-recharge { display: flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 164rpx; min-height: 74rpx; margin: 0; padding: 16rpx 24rpx; border-radius: 40rpx; color: #1f7c4b; background: #eef9ef; font-size: 25rpx; font-weight: 700; line-height: 1.4; box-sizing: border-box; }
+.player-filters { display: flex; flex-wrap: wrap; gap: 14rpx; margin-bottom: 18rpx; }
+.player-filter { display: flex; align-items: center; justify-content: center; min-width: 110rpx; min-height: 58rpx; margin: 0; padding: 10rpx 24rpx; border-radius: 30rpx; color: #778273; background: #eaece3; font-size: 23rpx; line-height: 1.4; box-sizing: border-box; }
+.player-filter.active { background: #1f7c4b; color: #fffefa; font-weight: 700; }
+.player-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; }
+.player-card { min-width: 0; padding: 22rpx 18rpx; border: 1rpx solid #e5ebe2; border-radius: 24rpx; background: #fffefa; box-sizing: border-box; }
+.player-card-head { display: flex; align-items: center; gap: 14rpx; min-width: 0; }
+.player-avatar { width: 82rpx; height: 82rpx; flex-shrink: 0; border-radius: 50%; background: #edf3e8; }
+.player-avatar--fallback { display: flex; align-items: center; justify-content: center; color: #1f7c4b; font-size: 32rpx; font-weight: 700; }
+.player-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 9rpx; }
+.player-name { color: #2b3b2e; font-size: 27rpx; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-type { color: #88907e; font-size: 21rpx; }
+.player-meta { display: flex; align-items: center; justify-content: space-between; gap: 6rpx; margin-top: 20rpx; margin-bottom: 18rpx; }
+.player-status { display: flex; align-items: center; gap: 7rpx; color: #1f7c4b; font-size: 20rpx; }
+.player-status text { width: 9rpx; height: 9rpx; border-radius: 50%; background: #4ca467; }
+.player-status.off { color: #999f91; }
+.player-status.off text { background: #afb4a6; }
+.player-rating { color: #8b8e78; font-size: 20rpx; }
+.section-empty { padding: 38rpx 20rpx; border: 1rpx solid #e5ebe2; border-radius: 22rpx; background: #fffefa; color: #929985; font-size: 24rpx; text-align: center; }
 </style>

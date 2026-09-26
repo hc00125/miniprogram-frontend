@@ -7,6 +7,11 @@ test('mutating a quoted object or exceeding daily cap cannot dispatch a charge',
  const {calls,d,a}=setup(),c=a.createGiftCheckout(d);const quoted=await c.quote(q,cap);quoted.total_diamonds=1;await assert.rejects(c.pay(quoted,cap));assert.equal(calls.length,0)
  const c2=a.createGiftCheckout(d),fresh=await c2.quote(q,{...cap,daily_diamonds:5});await assert.rejects(c2.pay(fresh,{...cap,daily_diamonds:5}));assert.equal(calls.length,0)
 })
+test('explicitly unlimited daily cap permits the same diamond purchase contract',async()=>{
+ const {calls,d,a}=setup(),c=a.createGiftCheckout(d),unlimited={...cap,daily_diamonds:null}
+ const quoted=await c.quote(q,unlimited);await assert.rejects(c.pay(quoted,unlimited),/lost response/)
+ assert.equal(calls.length,1);assert.equal(calls[0][0],'post')
+})
 test('local iOS refusal before dispatch never creates an unknown financial journal',async()=>{
  const u=platform();u.store.client_profile={id:1};u.login=options=>options.success({code:'fresh'})
  const api={'@/utils/purchaseAvailability':{getClientPlatform:()=> 'ios',isIOSPurchaseEnabled:()=>false}},a=load('src/utils/giftCheckout.ts',u,api),c=a.createGiftCheckout()

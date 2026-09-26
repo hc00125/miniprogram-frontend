@@ -1,5 +1,5 @@
 <template>
-  <view class="surcharge-read">
+  <view v-if="commerceRelease.orderSurchargeReadSupported" class="surcharge-read">
     <button data-action="refresh" :disabled="loading || !orderNo" @tap.stop="refresh()">{{ loading ? '读取中…' : '查看整单加价记录' }}</button>
     <text v-if="error" class="note">{{ error }}</text>
     <view v-if="data">
@@ -21,6 +21,7 @@
   </view>
 </template>
 <script setup lang="ts">
+import { commerceRelease } from '@/utils/commerceRelease'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { readOrderSurcharge, type OrderSurchargeRead } from '@/api/commerceRead'
@@ -39,7 +40,7 @@ function sync() {
 }
 async function refresh(target = 1) {
   sync()
-  if (!visible || loading.value || !props.orderNo) return
+  if (!commerceRelease.orderSurchargeReadSupported || !visible || loading.value || !props.orderNo) return
   if (!accountId.value) { error.value = '请先登录后查看本人加价记录'; return }
   const ticket = ++generation, order = props.orderNo, token = activeToken
   loading.value = true; error.value = ''; open.value = false; detailMessage.value = ''; detailBusy.value = false

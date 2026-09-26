@@ -17,7 +17,7 @@
 
     <view class="section">
       <view class="section-head"><view><text>公开抢单大厅</text><text>指定陪玩预留名额不会被其他人占用</text></view><button class="refresh-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button></view>
-      <view v-if="orders.length" class="order-list"><view v-for="order in orders" :key="order.order_no" class="order-card"><view class="order-time-row"><text class="order-time-label">发布时间</text><text class="order-time-value">{{ formatPublishedAt(order.created_at) }}</text></view><view class="meta-grid order-meta-grid"><view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view><view><text>陪玩类型</text><text class="order-type-value">{{ orderPlayerTypeText(order) }}</text></view></view><text class="boss-note">老板备注：{{ bossNote(order.boss_note) || '无' }}</text><button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button></view></view>
+      <view v-if="orders.length" class="order-list"><view v-for="order in orders" :key="order.order_no" class="order-card"><view class="order-time-row"><text class="order-time-label">发布时间</text><text class="order-time-value">{{ formatPublishedAt(order.created_at) }}</text></view><view class="meta-grid order-meta-grid"><view><text>人数</text><text>{{ order.current_players || 0 }}/{{ order.required_players }}人</text></view><view><text>陪玩类型</text><text class="order-type-value">{{ orderPlayerTypeText(order) }}</text></view></view><view v-if="commerceRelease.orderSurchargeHallContractVerified && hallSurcharge(order)" class="surcharge-reward"><text>整单加价 {{ hallSurcharge(order)?.wholeOrderDiamonds }} 钻石</text><text>每人加价净收益 {{ hallSurcharge(order)?.netDiamonds }} 钻石等值（待结算，按要求人数均分）</text></view><text class="boss-note">老板备注：{{ bossNote(order.boss_note) || '无' }}</text><button class="grab-btn" :disabled="order.grabbing || !order.can_grab" @tap="grab(order)">{{ order.grabbing ? '抢单中...' : '立即抢单' }}</button></view></view>
       <view v-else class="empty-card">{{ emptyReason }}</view>
     </view>
 
@@ -43,6 +43,8 @@ import { getClientProfile, isApprovedPlayer, normalizeAvatarUrl, setPlayerOnline
 import { diamondsFrom, formatDiamonds } from '@/utils/diamonds'
 import { formatHours } from '@/utils/format'
 import { createOrderAlert } from '@/utils/orderAlert'
+import { hallSurcharge } from '@/utils/surchargePresentation'
+import { commerceRelease } from '@/utils/commerceRelease'
 
 const kookNotice = ref('')
 let kookGeneration = 0, kookVisible = true
@@ -121,4 +123,5 @@ onUnmounted(() => { disposeKookNotice(); stopRefresh(); if (clockTimer) clearInt
 .diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
 .diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
 .meta-grid .diamond-value { margin-top: 5rpx; font-size: 24rpx; font-weight: 900; }
+.surcharge-reward { display:flex; flex-direction:column; gap:5rpx; margin-top:14rpx; padding:14rpx; border-radius:16rpx; background:#eef8f1; color:#1f7c4b; font-size:23rpx; font-weight:800; }
 </style>

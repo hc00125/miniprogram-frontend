@@ -50,7 +50,7 @@ export function parseGiftCatalog(value: unknown): GiftCatalogPage {
     if (!item || typeof item.code !== 'string' || !item.code.trim() || codes.has(item.code)
       || typeof item.name !== 'string' || !item.name.trim() || typeof item.image_url !== 'string'
       || typeof item.description !== 'string' || !Number.isSafeInteger(item.price_diamonds)
-      || item.price_diamonds <= 0) throw new Error('礼物目录格式无效')
+      || item.price_diamonds < 0) throw new Error('礼物目录格式无效')
     codes.add(item.code)
     return { code: item.code, name: item.name, image_url: item.image_url,
       price_diamonds: item.price_diamonds, description: item.description }

@@ -38,16 +38,13 @@ function page() {
   vm.runInNewContext(ts.transpileModule(descriptor().scriptSetup.content + '\nmodule.exports = {' + names + '}', { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports, require: n => mocks[n], uni: { $on() {}, $off() {} } })
   return { state: { ...module.exports, uiIcons: mocks['@/utils/uiIcons'].uiIcons }, calls }
 }
-test('home real SFC shares order/query assets while retaining its existing action structure', async () => {
-  const { template } = parse(read('src/pages/boss/home/index.vue')).descriptor
-  const section = template.content.match(/<view class="action-card-row">([\s\S]*?)\n        <\/view>/)[0]
-  const render = new Function('Vue', compile(section, { mode: 'function', prefixIdentifiers: true, isCustomElement: t => ['view','text','image'].includes(t) }).code)(vue)
-  const html = await renderToString(vue.createSSRApp({ setup: () => ({ uiIcons: icons(), goShopCategory() {}, goQuery() {} }), render }))
-  for (const name of ['order','query','chevron']) assert.ok(html.includes('/icons/duotone/' + name + '.png'), 'home must share ' + name)
-  assert.equal((html.match(/class="action-card"/g) || []).length, 2)
-  assert.ok(html.includes('点单大厅') && html.includes('订单进度'))
-  assert.match(section, /@tap="goShopCategory"/)
-  assert.match(section, /@tap="goQuery"/)
+test('reference homepage retains approved local pictograms in game, balance and navigation', async () => {
+  const { homeHarness } = require('./home-reference-harness.cjs')
+  const h = homeHarness({ games: [{ id: 1, name: '实际游戏', icon_url: '', groups: [] }] })
+  await h.load(); const html = await h.html()
+  for (const name of ['order','diamond-light','chevron']) assert.ok(html.includes('/icons/duotone/' + name + '.png'))
+  assert.ok(html.includes('选择游戏') && html.includes('我的钻石'))
+  h.scope.stop()
 })
 test('fixed resources contain real transparent PNGs and original token-colored SVGs; native tab states remain complete', () => {
   const map = icons()

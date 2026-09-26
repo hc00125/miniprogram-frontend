@@ -46,6 +46,21 @@
         <view><text class="field-label">订单备注</text><textarea v-model="form.note" class="textarea" maxlength="80" placeholder="其他需求（选填）" :cursor-spacing="100" @focus="handleFieldFocus" @blur="handleFieldBlur" /></view>
       </view>
 
+      <view v-if="commerceRelease.orderSurchargeQuoteSupported && hasData && !isCartCheckout && !isTargetedPlayerProduct" class="card surcharge-choice">
+        <text class="title">整单额外加价（选填）</text>
+        <text class="muted">按订单要求人数均分，固定抽成25%；不填为0钻石，不改变原套餐。</text>
+        <input data-action="surcharge-input" type="number" :value="surchargeInput" placeholder="0 钻石（整单，不是每人）" @input="inputSurcharge" />
+        <text v-if="surchargeError" class="surcharge-alert">{{ surchargeError }}</text>
+        <text v-if="surchargePending" class="muted">正在核对整单加价报价…</text>
+        <view v-if="surchargeQuote && surchargeAmount" class="surcharge-breakdown">
+          <view class="row amount"><text>原套餐</text><text>{{ surchargeQuote.base_amount_diamonds }} 钻石</text></view>
+          <view class="row amount"><text>整单加价</text><text>{{ surchargeQuote.surcharge.amount_diamonds }} 钻石</text></view>
+          <view class="row total"><text>报价总额</text><text>{{ surchargeQuote.total_amount_diamonds }} 钻石</text></view>
+          <text class="muted">{{ surchargeQuote.required_players }}人均分；每人毛额 {{ surchargeQuote.surcharge.per_person_gross_diamonds }} 钻石等值，抽成 {{ surchargeQuote.surcharge.per_person_commission_diamonds }} 钻石等值，净额 {{ surchargeQuote.surcharge.per_person_net_diamonds }} 钻石等值（尚未结算为鱼干）</text>
+          <text v-if="!surchargeQuote.can_submit || surchargeQuote.blockers.length" class="surcharge-alert">加价付款尚未开放：{{ surchargeQuote.blockers.join(' · ') || '服务端暂不可提交' }}</text>
+        </view>
+      </view>
+
       <view v-if="hasData" class="card amounts">
         <text class="title">钻石明细</text>
         <view v-if="selectedSpec && !isCartCheckout" class="row amount"><text>{{ isTargetedPlayerProduct ? '指定服务规格' : '基础规格' }}</text><text>{{ selectedSpec.name }}</text></view>
@@ -60,15 +75,22 @@
 
     <view v-if="hasData && !fieldEditing" class="bottom">
       <view class="grow"><text class="muted">{{ isCartCheckout ? `共${cartOrderCount}个订单` : isTargetedPlayerProduct ? '支付成功后立即通知陪玩师' : hourlyCurrent ? `${effectiveHours}小时服务` : '预计总钻石' }}</text><view class="price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(totalAmount) }}</text></view></view>
-      <button class="submit" :disabled="submitting || Boolean(blockReason)" @tap="submit">{{ submitting ? '提交中...' : isTargetedPlayerProduct ? '确认指定并支付' : isCartCheckout ? `发布${cartOrderCount}个订单` : '立即下单' }}</button>
+      <button data-action="submit-order" class="submit" :disabled="submitting || Boolean(blockReason) || (commerceRelease.orderSurchargeQuoteSupported && surchargeAmount !== 0 && !positiveQuoteReady)" @tap="submit">{{ submitting ? '提交中...' : isTargetedPlayerProduct ? '确认指定并支付' : isCartCheckout ? `发布${cartOrderCount}个订单` : '立即下单' }}</button>
+      <button v-if="commerceRelease.orderSurchargeQuoteSupported && recoveryAvailable" data-action="recover-surcharge" @tap="recoverOriginal">查询原加价订单</button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { uiIcons } from '@/utils/uiIcons'
-import { computed, reactive, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { computed, reactive, ref, watch, onScopeDispose } from 'vue'
+import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
+import { commerceRelease } from '@/utils/commerceRelease'
+import { parseWholeOrderAmount } from '@/utils/surchargePresentation'
+import { quoteOrderSurcharge, type SurchargeQuote, type SurchargeQuoteRequest } from '@/api/surchargeQuote'
+import { makeSurchargeIntent } from '@/utils/surchargeCheckoutIntent'
+import { SESSION_CHANGED_EVENT } from '@/utils/storage'
+import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
 import { createOrder, getPackages, getPlayerServiceProducts, type BossPackage, type BossPackageSpec, type OrderCreatePayload } from '@/api/boss'
 import { createCartOrderBatch } from '@/api/orderBatch'
 import { createSharedListingOrder } from '@/api/serviceListings'
@@ -93,6 +115,64 @@ const product = ref<BossPackage | null>(null)
 const selectedSpec = ref<BossPackageSpec | null>(null)
 const cartItems = ref<ShopCartItem[]>([])
 const form = reactive({ contact: '', gameId: '', note: '' })
+const surchargeInput = ref(''), surchargeQuote = ref<SurchargeQuote | null>(null), surchargeError = ref(''), surchargePending = ref(false)
+const surchargeAmount = computed(() => parseWholeOrderAmount(surchargeInput.value).amount)
+let quoteGeneration = 0, quoteTimer: ReturnType<typeof setTimeout> | null = null, quoteVisible = true
+let quotedSelection = ''
+let checkoutIntent = makeSurchargeIntent(() => ({ account: String(getClientProfile()?.id || ''), token: String(getStorage<string>('token') || '') }))
+const recoveryVersion = ref(0)
+const recoveryAvailable = computed(() => { recoveryVersion.value; try { const d=checkoutIntent.state(); return Boolean(d && d.status !== 'paid' && d.cancelled_verified !== true) } catch { return false } })
+const positiveQuoteReady = computed(() => Boolean(quoteVisible && !recoveryAvailable.value && !isCartCheckout.value && !isTargetedPlayerProduct.value && surchargeAmount.value && surchargeQuote.value?.can_submit
+  && !surchargeQuote.value.blockers.length && !surchargePending.value && !surchargeError.value
+  && quotedSelection === JSON.stringify(quotePayload(bossOpenid()))
+  && surchargeQuote.value.surcharge.amount_diamonds === surchargeAmount.value
+  && Number.isFinite(totalAmount.value) && surchargeQuote.value.base_amount_yuan === totalAmount.value.toFixed(2)
+  && surchargeQuote.value.required_players === requiredPlayers.value))
+function quotePayload(openid: string): SurchargeQuoteRequest { return { boss_wechat: openid, game_id: form.gameId.trim(), package_id: product.value?.id,
+  spec_id: Number(selectedSpec.value?.id || 0) || null, quantity: effectiveHours.value, required_players: requiredPlayers.value,
+  addon_details: null, boss_note: note(), booked_hours: effectiveHours.value, surcharge_diamonds: surchargeAmount.value || 0 } }
+function clearQuote(clearInput = false) {
+  quoteGeneration++
+  if (quoteTimer) clearTimeout(quoteTimer)
+  quoteTimer = null; surchargeQuote.value = null; quotedSelection = ''; surchargePending.value = false; surchargeError.value = ''
+  if (clearInput) surchargeInput.value = ''
+}
+function inputSurcharge(event: { detail?: { value?: string } }) {
+  surchargeInput.value = String(event.detail?.value ?? '')
+  clearQuote()
+  if (!commerceRelease.orderSurchargeQuoteSupported || !quoteVisible || isCartCheckout.value || isTargetedPlayerProduct.value) return
+  if (surchargeAmount.value === null) { surchargeError.value = '请输入整单非负整数钻石'; return }
+  if (!surchargeAmount.value) return
+  const generation = quoteGeneration, amount = surchargeAmount.value
+  const token = String(getStorage<string>('token') || ''), account = String(getClientProfile()?.id || '')
+  if (!token || !account) { surchargeError.value = '请先登录后再报价'; return }
+  surchargePending.value = true
+  quoteTimer = setTimeout(async () => {
+    quoteTimer = null
+    try {
+      const openid = await ensureOpenid()
+      if (generation !== quoteGeneration || !quoteVisible || !sameQuoteSession(token, account)) return
+      if (!openid) throw new Error('微信身份获取失败，未发起报价')
+      const payload = quotePayload(openid)
+      const selection = JSON.stringify(payload)
+      const result = await quoteOrderSurcharge(payload)
+      if (generation !== quoteGeneration || !quoteVisible || !sameQuoteSession(token, account) || selection !== JSON.stringify(quotePayload(openid)) || surchargeAmount.value !== amount) return
+      surchargeQuote.value = JSON.parse(JSON.stringify(result))
+      quotedSelection = selection
+    } catch (error: any) {
+      if (generation === quoteGeneration && quoteVisible && sameQuoteSession(token, account)) surchargeError.value = getErrorMessage(error, '加价报价失败，请重新确认')
+    } finally { if (generation === quoteGeneration) surchargePending.value = false }
+  }, 280)
+}
+function sameQuoteSession(token: string, account: string) { return token === String(getStorage<string>('token') || '') && account === String(getClientProfile()?.id || '') }
+function clearCheckoutIntent() { quoteVisible = false; clearQuote(true); checkoutIntent.close(); recoveryVersion.value++ }
+function changedCheckoutSession() { clearQuote(true); checkoutIntent.close(); checkoutIntent = makeSurchargeIntent(() => ({ account: String(getClientProfile()?.id || ''), token: String(getStorage<string>('token') || '') })); recoveryVersion.value++ }
+function expiredCheckoutSession(scope: string) { if (scope === 'token') changedCheckoutSession() }
+onShow(() => { quoteVisible = true; clearQuote(true); checkoutIntent = makeSurchargeIntent(() => ({ account: String(getClientProfile()?.id || ''), token: String(getStorage<string>('token') || '') })); recoveryVersion.value++ })
+onHide(clearCheckoutIntent); onUnload(clearCheckoutIntent)
+uni.$on(SESSION_CHANGED_EVENT, changedCheckoutSession)
+uni.$on(SESSION_EXPIRED_EVENT, expiredCheckoutSession)
+onScopeDispose(() => { clearCheckoutIntent(); uni.$off(SESSION_CHANGED_EVENT, changedCheckoutSession); uni.$off(SESSION_EXPIRED_EVENT, expiredCheckoutSession) })
 let fieldBlurTimer: ReturnType<typeof setTimeout> | null = null
 
 const isCartCheckout = computed(() => cartItemIds.value.length > 0)
@@ -107,6 +187,9 @@ const hourlyCurrent = computed(() => isHourlyService(product.value))
 const effectiveHours = computed(() => hourlyCurrent.value ? normalizeServiceHours(requestedHours.value) : 1)
 const cartOrderCount = computed(() => cartItems.value.length)
 const totalAmount = computed(() => isCartCheckout.value ? cartItems.value.reduce((sum, item) => sum + itemAmount(item), 0) : basePrice.value * effectiveHours.value)
+watch(() => [product.value?.id, selectedSpec.value?.id, effectiveHours.value, form.gameId, form.note], () => {
+  if (surchargeAmount.value && quoteVisible) inputSurcharge({detail:{value:surchargeInput.value}})
+}, { flush:'sync' })
 const blockReason = computed(() => {
   if (!hasData.value) return ''
   if (isCartCheckout.value && cartItems.value.length !== cartItemIds.value.length) return '部分购物车商品已变化，请返回购物车重新选择。'
@@ -155,12 +238,26 @@ async function fetchCart() { loading.value = true; try { const ids = new Set(car
 function note() { const lines: string[] = []; if (hourlyCurrent.value) lines.push(`预订时长：${effectiveHours.value}小时`); if (selectedSpec.value) lines.push(`规格：${selectedSpec.value.name}，预计总价：💎${diamondAmount(totalAmount.value)}`); if (form.note.trim()) lines.push(form.note.trim()); return lines.join('\n') || null }
 
 async function submit() {
+  if (submitting.value) return
   if (blockReason.value) return toast(blockReason.value)
+  if (commerceRelease.orderSurchargeQuoteSupported && surchargeAmount.value !== 0 && !positiveQuoteReady.value) return toast(surchargeAmount.value === null ? '请输入整单非负整数钻石' : '加价报价不可提交：服务端尚未开放、金额或选择已变化，请重新报价')
   if (!getStorage<string>('token')) { toast('请先微信登录'); go('/pages/client/login/index'); return }
   if (!form.contact.trim() || !form.gameId.trim()) return toast('请填写联系昵称和游戏ID/队伍码')
-  const openid = await ensureOpenid(); if (!openid) return toast('微信身份获取失败')
   submitting.value = true
+  const positive = Boolean(commerceRelease.orderSurchargeQuoteSupported && surchargeAmount.value)
+  const generation = quoteGeneration, token = String(getStorage<string>('token') || ''), account = String(getClientProfile()?.id || '')
   try {
+    const openid = await ensureOpenid(); if (!openid) { toast('微信身份获取失败'); return }
+    if (positive) {
+      if (generation !== quoteGeneration || !quoteVisible || !sameQuoteSession(token,account)
+        || !positiveQuoteReady.value || quotedSelection !== JSON.stringify(quotePayload(openid))) return toast('报价或会话已变化，请重新确认，未创建订单')
+      const quote = surchargeQuote.value!
+      const res = await checkoutIntent.create(quotePayload(openid), quote)
+      if (generation !== quoteGeneration || !quoteVisible || !sameQuoteSession(token,account)) return
+      recoveryVersion.value++
+      replace('/pages/boss/surcharge-payment/index', { key: res.checkout.idempotency_key })
+      return
+    }
     setStorage('boss_wechat', form.contact.trim())
     if (isCartCheckout.value) {
       const result = await createCartOrderBatch({ boss_wechat: openid, game_id: form.gameId.trim(), cart_item_ids: cartItems.value.map(item => Number(item.id)), boss_note: form.note.trim() || null })
@@ -175,7 +272,17 @@ async function submit() {
       : await createOrder(payload)
     success(isTargetedPlayerProduct.value ? '指定订单已创建，请完成支付' : '下单成功')
     replace('/pages/boss/waiting/index', { orderNo: res.order_no })
-  } catch (error) { toast(getErrorMessage(error, '创建订单失败')) } finally { submitting.value = false }
+  } catch (error) { toast(getErrorMessage(error, '创建订单失败')) } finally { if (positive) recoveryVersion.value++; submitting.value = false }
+}
+async function recoverOriginal() {
+  if (submitting.value || !commerceRelease.orderSurchargeQuoteSupported) return
+  submitting.value = true
+  try {
+    const item = checkoutIntent.state()
+    if (!item) return toast('无原加价订单')
+    // Route holds only the opaque original key; never personal fields or wx.login code.
+    replace('/pages/boss/surcharge-payment/index', { key: item.key })
+  } catch (e) { toast(getErrorMessage(e, '原单查询失败')) } finally { submitting.value = false }
 }
 
 onLoad(query => {
@@ -196,4 +303,8 @@ onLoad(query => {
 .diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
 .diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
 .diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
+.surcharge-choice { background: #fffdf6; }
+.surcharge-choice input { margin-top: 18rpx; min-height: 84rpx; padding: 0 22rpx; border: 1rpx solid #dceadd; border-radius: 18rpx; background: #f7faf4; color: #172116; }
+.surcharge-breakdown { margin-top: 18rpx; }
+.surcharge-alert { display: block; margin-top: 12rpx; color: #9a6a16; font-size: 24rpx; }
 </style>

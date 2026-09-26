@@ -1,5 +1,5 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),vue=require('vue')
-const {harness,nodes}=require('./commerce-hosts.test.cjs')
+const {harness,nodes}=require('./commerce-sfc-harness.cjs')
 const cap={catalog_read:true,purchase_enabled:true,purchase_supported:true,quote_supported:true,recipient_eligible:true,max_quantity:2,max_diamonds:20,daily_diamonds:100,policy_version:'v1',blockers:[]}
 const q={gift_code:'rose',quantity:1,mode:'direct',recipient_id:12,price_version:'a'.repeat(64),commission_version:0,total_diamonds:10,available_diamonds:'10.50',policy_version:'v1',can_submit:true,blockers:[]}
 const tick=()=>new Promise(setImmediate)

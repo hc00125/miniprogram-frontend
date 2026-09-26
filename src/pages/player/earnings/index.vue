@@ -94,6 +94,7 @@
         <view class="record-head">
           <view>
             <text class="record-title">{{ item.package_name || '陪玩服务' }}</text>
+            <text class="record-no">{{ item.source === 'surcharge' ? '加价收益' : '原单收益' }}{{ item.surcharge_no ? ` · ${item.surcharge_no}` : '' }}</text>
             <text class="record-no">老板：{{ item.boss_name || '未设置昵称' }}</text>
             <text class="record-no">订单：{{ item.order_no }}</text>
           </view>

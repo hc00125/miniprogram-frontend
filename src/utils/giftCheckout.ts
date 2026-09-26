@@ -8,7 +8,7 @@ const defaults = {
 }
 export function giftGate(s: GiftSelection, c: Capabilities) {
   if (!c.purchase_enabled || !c.purchase_supported || !c.quote_supported || !c.policy_version || c.blockers.length
-    || !integer(c.max_quantity,1) || !integer(c.max_diamonds,1) || !integer(c.daily_diamonds,1)
+    || !integer(c.max_quantity,1) || !integer(c.max_diamonds,1) || (c.daily_diamonds !== null && !integer(c.daily_diamonds,1))
     || s.quantity > c.max_quantity || (s.mode === 'direct' && c.recipient_eligible !== true)) throw new Error('服务端限制尚未满足，禁止购买')
 }
 /** Instance-bound confirmation; durable journal is account-bound, never token/code-bound.
@@ -39,10 +39,10 @@ export function createGiftCheckout(deps = defaults) {
       session(); noPending(); giftGate(q,c)
       if (getClientPlatform() === 'ios' && !isIOSPurchaseEnabled()) throw new Error('iOS端虚拟支付当前未启用，未发起付款')
       if (busy || !approved || JSON.stringify(q) !== approved || !q.can_submit || q.blockers.length
-        || c.policy_version !== q.policy_version || q.total_diamonds > c.max_diamonds! || q.total_diamonds > c.daily_diamonds! || !hasDiamonds(q.available_diamonds,q.total_diamonds)) throw new Error('请重新报价并确认可用余额与限制')
+        || c.policy_version !== q.policy_version || q.total_diamonds > c.max_diamonds! || (c.daily_diamonds !== null && q.total_diamonds > c.daily_diamonds!) || !hasDiamonds(q.available_diamonds,q.total_diamonds)) throw new Error('请重新报价并确认可用余额与限制')
       busy = true; const ticket = generation
       try {
-        const code = await deps.login()
+        const code = q.total_diamonds === 0 ? '' : await deps.login()
         session(); noPending(); if (ticket !== generation) throw new Error('面板已关闭，未发起付款')
         const original: CommerceRecovery = {kind:'gift',idempotency_key:deps.key(),business_no:'',state:'unknown'}
         saveRecovery(account,original) // Read-back verified before any money request.

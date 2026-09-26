@@ -76,6 +76,7 @@ export interface ClientProfile {
     audio_intro_url?: string
     audio_intro_title?: string
     is_online: boolean
+    presence_online?: boolean
     total_orders: number
     avg_rating: number
     rating_count?: number

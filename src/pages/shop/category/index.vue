@@ -150,7 +150,16 @@ async function load(silent = false) {
 function refreshData() { refreshing.value = true; load(true) }
 function selectMainTab(tab: MainTab) { if (tab === 'order') return; if (tab === 'query' || tab === 'players' || tab === 'profile') return navigateToTab(tab); goMain(tab) }
 onLoad(() => { try { statusBarHeight.value = uni.getSystemInfoSync().statusBarHeight || 20 } catch { statusBarHeight.value = 20 } })
-onShow(() => { if (!loaded.value) load() })
+onShow(async () => {
+  if (!loaded.value) await load()
+  if (!loaded.value) return
+  // Native tab navigation drops query parameters; consume only an explicit homepage choice.
+  const requested = uni.getStorageSync('catalog:requested-game-id')
+  if (requested === '' || requested === undefined || requested === null) return
+  uni.removeStorageSync('catalog:requested-game-id')
+  const selected = games.value.find(game => game.id === Number(requested))
+  if (selected) { keyword.value = ''; selectGame(selected) }
+})
 </script>
 
 <style lang="scss" scoped>

@@ -585,6 +585,10 @@ async function fetchOrder() {
   loadError.value = ''
   try {
     orderInfo.value = await getOrder(orderNo.value)
+    if (!orderInfo.value?.paid && orderInfo.value?.status === '待支付' && orderInfo.value?.checkout?.contract_version === 'surcharge-v2' && Number(orderInfo.value.checkout.surcharge?.amount_diamonds) > 0) {
+      replace('/pages/boss/surcharge-payment/index', { key: orderInfo.value.checkout.idempotency_key })
+      return false
+    }
     syncPaymentClock()
     if (isPaid.value) {
       payError.value = null

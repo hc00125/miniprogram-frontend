@@ -1,16 +1,17 @@
 <template>
   <view v-if="enabled" @tap.stop>
-    <button data-action="open-gift" class="gift-entry" @tap.stop="show">送礼物</button>
+    <button data-action="open-gift" class="gift-entry" @tap.stop="show">{{ browseOnly ? '查看礼物' : '送礼物' }}</button>
     <GiftLiveSheet v-if="open" :key="sessionKey" :recipient="recipient" @close="close" />
   </view>
 </template>
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import GiftLiveSheet from '@/components/gifts/GiftLiveSheet.vue'
 import { readGiftCapabilities } from '@/api/giftCommerce'
 import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
 const props = defineProps<{ recipientId: number | string; recipientName: string }>()
+const browseOnly = ref(true)
 const enabled = ref(false), open = ref(false), sessionKey = ref('')
 const recipient = computed(() => ({ id: String(props.recipientId), name: props.recipientName }))
 let generation = 0, visible = true, token = ''
@@ -24,12 +25,14 @@ async function refresh() {
   close(); enabled.value=false; token=String(uni.getStorageSync('token') || '')
   if (!visible || !token) return
   const ticket=generation, sent=token
-  try { const c=await readGiftCapabilities(Number(props.recipientId)); if(ticket===generation && visible && sent===String(uni.getStorageSync('token') || '')) enabled.value=c.catalog_read || c.records_read || c.inventory_read }
+  try { const c=await readGiftCapabilities(Number(props.recipientId)); if(ticket===generation && visible && sent===String(uni.getStorageSync('token') || '')) { enabled.value=c.catalog_read || c.records_read || c.inventory_read; browseOnly.value=!(c.purchase_enabled && c.purchase_supported && c.quote_supported) } }
   catch { if(ticket===generation) enabled.value=false }
 }
 function hide() { visible=false; close(); enabled.value=false }
 function expire(scope:string){if(scope==='token')hide()}
 onShow(()=>{visible=true;return refresh()});onHide(hide);onUnload(hide)
+// Async recommendation cards can mount after the page's first onShow.
+onMounted(()=>{if(!token)return refresh()})
 uni.$on(SESSION_EXPIRED_EVENT,expire)
 onScopeDispose(()=>{hide();uni.$off(SESSION_EXPIRED_EVENT,expire)})
 watch(()=>props.recipientId,()=>{void refresh()},{flush:'sync'})

@@ -87,6 +87,7 @@ export interface OnlinePlayer {
   total_orders: number
   status: string
   is_online?: boolean
+  presence_online?: boolean
   avatar_url?: string
   bio?: string
   audio_intro_url?: string
@@ -114,6 +115,8 @@ export interface PackageGroup {
 }
 
 export interface BossOrderListItem {
+  source?: 'self' | 'staff' | 'legacy'
+  payment_method?: string
   order_no: string
   package_name: string
   item_count?: number
@@ -275,6 +278,8 @@ export function createRenewal(orderNo: string, units = 1) { return api.post<Rene
 
 export async function getOrder(orderNo: string) {
   let order = normalizeBossOrderDisplay(await api.get<any>(`/boss/order/${orderNo}`))
+  // Guarded combined checkout must never run the legacy virtual-payment reconciliation.
+  if (order?.checkout?.contract_version === 'surcharge-v2' && Number(order.checkout.surcharge?.amount_diamonds) > 0) return order
   const pendingPayment = !order?.paid && ['待支付', 'pending_payment'].includes(String(order?.status || ''))
   if (!pendingPayment) return order
 

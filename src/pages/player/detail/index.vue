@@ -6,7 +6,7 @@
           <image v-if="player.avatar_url" class="avatar" :src="player.avatar_url" mode="aspectFill" />
           <view v-else class="avatar avatar--placeholder">{{ player.name?.[0] || '陪' }}</view>
           <view class="profile-main">
-            <view class="name-row"><text class="player-name">{{ player.name }}</text><text class="status-pill" :class="{ off: !player.is_online }">{{ player.is_online ? '在线' : '离线' }}</text></view>
+            <view class="name-row"><text class="player-name">{{ player.name }}</text><text class="status-pill" :class="{ off: !player.presence_online }">{{ player.presence_online ? '在线' : '离线' }}</text></view>
             <text class="player-type">{{ player.type_name || '优质陪玩' }}</text>
           </view>
         </view>
@@ -19,9 +19,9 @@
       </view>
 
       <view v-if="player" class="detail-card service-card" :class="{ blocked: !canDesignate }">
-        <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : !player.is_online ? '当前离线' : '暂不接受指定' }}</text>
-        <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : !player.is_online ? '该陪玩师当前离线，暂时不能发起指定订单；上线后会自动恢复。' : '该陪玩师当前未开放专属服务。' }}</text>
-        <text class="service-state">{{ player.is_online ? '在线，可查看服务并指定' : '离线，暂不可指定' }}</text>
+        <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</text>
+        <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : !player.is_online ? '该陪玩师暂未开启接单，当前不能发起指定订单；开启接单后恢复。' : '该陪玩师当前未开放专属服务。' }}</text>
+        <text class="service-state">{{ player.is_online ? '接单已开启，可查看服务' : '休息中，暂不可指定' }}</text>
       </view>
 
       <view v-if="player" class="detail-card">
@@ -42,13 +42,13 @@
       <view class="bottom-space"></view>
     </scroll-view>
 
-    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : !player.is_online ? '当前离线' : '暂不接受指定' }}</button></view>
+    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</button></view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getPlayerList, getPlayerServiceProducts, type OnlinePlayer } from '@/api/boss'
 import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult } from '@/api/player'
 import { getErrorMessage, toast } from '@/utils/feedback'
@@ -97,8 +97,15 @@ async function openPlayerProduct() {
   } catch (error) { toast(getErrorMessage(error, 'TA 的服务暂不可用')) } finally { openingProduct.value = false }
 }
 function goBack() { uni.navigateBack({ delta: 1 }) }
-onLoad(query => { const id = Number(query?.playerId); playerId.value = Number.isFinite(id) ? id : null; void fetchPlayer() })
+onLoad(query => { const id = Number(query?.playerId); playerId.value = Number.isFinite(id) ? id : null })
+onShow(() => { if (playerId.value) return fetchPlayer() })
 onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.destroy(); audioContext = null } })
+function applyOwnPresence(reply: { player_id: number; presence_online: boolean }) {
+  const target = (player.value ? [player.value] : []).find(item => item.id === reply.player_id)
+  if (target && reply.presence_online === true) target.presence_online = true
+}
+uni.$on('player-presence-updated', applyOwnPresence)
+onBeforeUnmount(() => uni.$off('player-presence-updated', applyOwnPresence))
 </script>
 
 <style lang="scss" scoped>

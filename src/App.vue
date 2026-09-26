@@ -1,5 +1,11 @@
 <script lang="ts">
-export default {}
+import { playerPresence } from './utils/playerPresence'
+
+export default {
+  onLaunch() { playerPresence.launch() },
+  onShow() { playerPresence.show() },
+  onHide() { playerPresence.hide() }
+}
 </script>
 
 <style lang="scss">

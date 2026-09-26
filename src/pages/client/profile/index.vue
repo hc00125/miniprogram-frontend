@@ -54,11 +54,11 @@
       <view class="card-head">
         <text class="card-title">陪玩师信息</text>
         <view class="online-toggle" :class="{ off: !isPlayerOnline, disabled: !canAcceptOrders }" @tap="togglePlayerOnline">
-          <text>{{ onlineUpdating ? '同步中' : (!canAcceptOrders ? '接单暂停' : (isPlayerOnline ? '在线' : '离线')) }}</text>
+          <text>{{ onlineUpdating ? '同步中' : (!canAcceptOrders ? '接单暂停' : (isPlayerOnline ? '接单已开启' : '休息中')) }}</text>
           <view class="online-dot"></view>
         </view>
       </view>
-      <view class="player-meta"><text>{{ profile.player.type_name || '陪玩师' }}</text><text>TC: {{ profile.player.id }}</text></view>
+      <view class="player-meta"><text>{{ profile.player.type_name || '陪玩师' }}</text><text>TC: {{ profile.player.id }}</text><text>{{ profile.player.presence_online ? '在线（自动）' : '离线（自动）' }}</text></view>
       <view class="stats-row">
         <view><text>{{ profile.player.total_orders || 0 }}</text><text>接单</text></view>
         <view><text>{{ playerRatingText }}</text><text>综合评分</text></view>
@@ -303,9 +303,9 @@ async function togglePlayerOnline() {
     const result = await updatePlayerOnlineStatus(!isPlayerOnline.value)
     profile.value = { ...profile.value, player: { ...profile.value.player, is_online: Boolean(result.is_online) } }
     setPlayerOnlineStatus(Boolean(result.is_online))
-    toast(result.is_online ? '已上线，开始接单' : '已离线，停止接单')
+    toast(result.is_online ? '已开启接单' : '已停止接单，进入休息')
   } catch (error) {
-    toast(getErrorMessage(error, '在线状态更新失败'))
+    toast(getErrorMessage(error, '接单状态更新失败'))
   } finally {
     onlineUpdating.value = false
   }
@@ -357,6 +357,12 @@ function handleMainTabSelect(tab: MainTab) {
 }
 
 onShow(loadPage)
+function applyOwnPresence(reply: { player_id: number; presence_online: boolean }) {
+  const target = (profile.value?.player ? [profile.value.player] : []).find(item => item.id === reply.player_id)
+  if (target && reply.presence_online === true) target.presence_online = true
+}
+uni.$on('player-presence-updated', applyOwnPresence)
+onUnmounted(() => uni.$off('player-presence-updated', applyOwnPresence))
 </script>
 
 <style lang="scss" scoped>

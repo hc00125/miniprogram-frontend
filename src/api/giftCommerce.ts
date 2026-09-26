@@ -48,7 +48,7 @@ export function readGiftCapabilities(recipientId?: number): Promise<Capabilities
       inventory_quote_supported: d.inventory_quote_supported === true, recipient_eligible: typeof d.recipient_eligible === 'boolean' ? d.recipient_eligible : null,
       max_quantity: integer(d.max_quantity, 1) ? d.max_quantity : null, max_diamonds: integer(d.max_diamonds, 1) ? d.max_diamonds : null,
       daily_diamonds: integer(d.daily_diamonds, 1) ? d.daily_diamonds : null, policy_version: typeof d.policy_version === 'string' ? d.policy_version : null,
-      blockers: strings(d.blockers) ? d.blockers : ['CAPABILITY_UNCONFIRMED'] }
+      blockers: strings(d.blockers) && (d.daily_diamonds === null || integer(d.daily_diamonds,1)) ? d.blockers : ['CAPABILITY_UNCONFIRMED'] }
   })
 }
 export interface GiftSelection { gift_code: string; quantity: number; mode: 'direct' | 'inventory'; recipient_id?: number | null }
@@ -67,24 +67,24 @@ export function quoteGift(s: GiftSelection): Promise<GiftQuote> {
   return commerceRequest('/gifts/quotes/', 'POST', request, d => {
     if (!d || d.gift_code !== s.gift_code || d.quantity !== s.quantity || d.mode !== s.mode
       || (d.recipient_id ?? null) !== (s.recipient_id ?? null) || !/^[a-f0-9]{64}$/.test(d.price_version)
-      || !integer(d.total_diamonds, 1) || !decimal(d.available_diamonds)
+      || !integer(d.total_diamonds) || !decimal(d.available_diamonds)
       || !(d.commission_version === null || integer(d.commission_version)) || (s.mode === 'direct' && !integer(d.commission_version))
       || typeof d.policy_version !== 'string' || !d.policy_version || typeof d.can_submit !== 'boolean' || !strings(d.blockers)) throw new Error('报价格式无效')
     return d
   })
 }
 
-export interface Purchase { purchase_no: string; payment_status: string; amount_diamonds: number; blockers: string[] }
+export interface Purchase { gift_name?: string; image_url?: string; quantity?: number; mode?: string; recipient_name?: string | null; created_at?: string; purchase_no: string; payment_status: string; amount_diamonds: number; blockers: string[] }
 const statuses = ['created','processing','unknown','paid','failed','cancelled','partially_refunded','refunded']
 export function parsePurchase(d: any): Purchase {
   if (!d || typeof d.purchase_no !== 'string' || !d.purchase_no || !statuses.includes(d.payment_status)
-    || !integer(d.amount_diamonds, 1) || !strings(d.blockers)) throw new Error('购买记录格式无效')
+    || !integer(d.amount_diamonds) || !strings(d.blockers)) throw new Error('购买记录格式无效')
   return d
 }
 function validKey(key: string) { if (typeof key !== 'string' || !key.trim() || key.length > 100) throw new Error('原交易键无效'); return encodeURIComponent(key) }
 export function purchaseGift(q: GiftQuote, key: string, code: string): Promise<Purchase> {
   validKey(key)
-  if (!/^[a-f0-9]{64}$/.test(q.price_version) || !code || (q.mode === 'direct' && !integer(q.commission_version))) throw new Error('请重新报价确认')
+  if (!/^[a-f0-9]{64}$/.test(q.price_version) || (!code && q.total_diamonds !== 0) || (q.mode === 'direct' && !integer(q.commission_version))) throw new Error('请重新报价确认')
   return commerceRequest('/gifts/purchases/', 'POST', { ...selection(q), price_version: q.price_version,
     ...(q.mode === 'direct' ? { commission_version: q.commission_version } : {}), idempotency_key: key, code }, parsePurchase)
 }
@@ -93,9 +93,47 @@ export function readGiftPurchase(no: string) {
   if (!no) throw new Error('原购买单号缺失')
   return commerceRequest(`/gifts/purchases/${encodeURIComponent(no)}/`, 'GET', {}, parsePurchase)
 }
-export interface Lot { lot_id: number; gift_code: string; name: string; remaining: number; available: number; status: string }
-export interface Transfer { transfer_no: string; gift_code: string; quantity: number; status: string; created_at: string }
-export interface Earning { id: number; status: string; monetary_accrual: boolean; blockers: string[]; net_amount: string; available_amount: string }
+export interface Lot { image_url?: string; created_at?: string; lot_id: number; gift_code: string; name: string; remaining: number; available: number; status: string }
+export interface Transfer { image_url?: string; transfer_no: string; gift_code: string; gift_name?: string; sender_name?: string; recipient_name?: string; quantity: number; status: string; created_at: string }
+export interface Earning { gift_name?: string; sender_name?: string; quantity?: number; image_url?: string; credited_at?: string | null; earnings_eligible?: boolean; id: number; status: string; monetary_accrual: boolean; blockers: string[]; net_amount: string; available_amount: string; currency?: string; wallet_destination?: string; credited_amount?: string; debt_offset_amount?: string }
+export interface InventorySelection { gift_code: string; quantity: number; recipient_id: number }
+export interface InventoryQuote extends InventorySelection {
+  commission_version: number; available_quantity: number; payment_diamonds: 0
+  policy_version: string; can_submit: boolean; blockers: string[]
+}
+function inventorySelection(s: InventorySelection) {
+  if (!s || typeof s.gift_code !== 'string' || !s.gift_code || !integer(s.quantity,1) || !integer(s.recipient_id,1)) throw new Error('库存赠送选择无效')
+  return {gift_code:s.gift_code,quantity:s.quantity,recipient_id:s.recipient_id}
+}
+export function quoteInventorySend(s: InventorySelection): Promise<InventoryQuote> {
+  const request = inventorySelection(s)
+  return commerceRequest('/gifts/inventory/quotes/', 'POST', request, d => {
+    if (!d || d.gift_code !== request.gift_code || d.quantity !== request.quantity || d.recipient_id !== request.recipient_id
+      || !integer(d.commission_version,1) || !integer(d.available_quantity) || d.payment_diamonds !== 0
+      || typeof d.policy_version !== 'string' || !d.policy_version || typeof d.can_submit !== 'boolean' || !strings(d.blockers)
+      || (d.can_submit && (d.available_quantity < d.quantity || d.blockers.length))) throw new Error('库存报价格式无效；禁止提交')
+    return {...d,blockers:[...d.blockers]}
+  })
+}
+function parseTransfer(d: any): Transfer {
+  if (!d || typeof d.transfer_no !== 'string' || !d.transfer_no || typeof d.gift_code !== 'string' || !d.gift_code
+    || !integer(d.quantity,1) || !['created','processing','unknown','delivered','failed','reversed','cancelled'].includes(d.status)
+    || typeof d.created_at !== 'string' || !Number.isFinite(Date.parse(d.created_at))) throw new Error('赠送记录格式无效')
+  return d
+}
+export function sendInventoryGift(q: InventoryQuote, key: string): Promise<Transfer> {
+  validKey(key)
+  if (!integer(q.commission_version,1) || q.payment_diamonds !== 0) throw new Error('请重新确认库存赠送')
+  const request=inventorySelection(q)
+  return commerceRequest('/gifts/transfers/', 'POST', {...request,commission_version:q.commission_version,idempotency_key:key}, d => {
+    const result=parseTransfer(d)
+    if(result.gift_code!==request.gift_code || result.quantity!==request.quantity)throw new Error('赠送记录与原意图不一致')
+    return result
+  })
+}
+export function readInventorySendByKey(key: string): Promise<Transfer> {
+  return commerceRequest(`/gifts/transfers/by-key/?idempotency_key=${validKey(key)}`, 'GET', {}, parseTransfer)
+}
 export interface RecordPage { count: number; next: string | null; previous: string | null; results: (Lot | Purchase | Transfer | Earning)[] }
 export type RecordKind = 'inventory' | 'purchase-records' | 'sent' | 'received' | 'earnings'
 export function readGiftRecords(kind: RecordKind, page = 1): Promise<RecordPage> {
@@ -113,7 +151,15 @@ export function readGiftRecords(kind: RecordKind, page = 1): Promise<RecordPage>
     return d
   })
 }
-export function earningLabel(e: Earning) { return e.monetary_accrual ? `已计提 ${e.net_amount}；可用 ${e.available_amount}（服务端金额）` : '待计提（尚未形成可提现收益）' }
-export function paymentLabel(status: string) {
+export function earningLabel(e: Earning) {
+  if (!e.monetary_accrual) return '待计提（尚未形成可提现收益）'
+  if (e.currency === 'fish' && e.wallet_destination === 'player_wallet' && decimal(e.credited_amount)) {
+    const debt = decimal(e.debt_offset_amount) && /[1-9]/.test(e.debt_offset_amount) ? `；抵扣待抵扣余额 ${e.debt_offset_amount} 鱼干` : ''
+    return `净收益 ${e.net_amount} 鱼干；已入钱包 ${e.credited_amount} 鱼干${debt}`
+  }
+  return `已计提 ${e.net_amount}；可用 ${e.available_amount}（服务端金额）`
+}
+export function paymentLabel(status: string, amountDiamonds?: number) {
+  if (status === 'paid' && amountDiamonds === 0) return '已完成（免费）'
   return ({ created:'已创建，待核对',processing:'付款确认中，勿重复支付',unknown:'付款结果未知，请人工核对，勿重复支付',paid:'已付款',failed:'未完成',cancelled:'已取消',partially_refunded:'部分退回',refunded:'已退回' } as Record<string,string>)[status] || '状态待核对'
 }

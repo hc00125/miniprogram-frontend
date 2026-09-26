@@ -27,11 +27,11 @@
       <view v-for="player in filteredPlayers" :key="player.id" class="player-card" @tap="openPlayerDetail(player)">
         <view class="portrait"><image v-if="player.avatar_url" class="portrait-img" :src="player.avatar_url" mode="aspectFill" /><view v-else class="portrait-empty">{{ player.name?.slice(0, 1) || '陪' }}</view></view>
         <view class="player-main">
-          <view class="name-row"><text>{{ player.name }}</text><text class="club-pill" :class="player.is_online ? '' : 'pill-offline'">{{ player.status || (player.is_online ? '在线' : '离线') }}</text></view>
+          <view class="name-row"><text>{{ player.name }}</text><text class="club-pill" :class="player.presence_online ? '' : 'pill-offline'">{{ player.presence_online ? '在线' : '离线' }}</text></view>
           <view class="tags"><text>{{ player.type_name || '优质陪玩' }}</text><text class="rating-tag">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'} · ${player.rating_count}条评价` : '暂无评分' }}</text><text>接单 {{ player.total_orders || 0 }}</text><text v-if="player.audio_intro_url" class="audio-tag">语音介绍</text></view>
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
           <GiftHost :recipient-id="player.id" :recipient-name="player.name" />
-          <view class="card-actions"><view><text class="designate-price">{{ player.can_be_designated === false ? '暂不接受指定' : !player.is_online ? '当前离线' : '查看专属服务和规格' }}</text><text class="designate-state">{{ player.is_online ? '在线，可直接下单邀请' : '离线，暂不可指定' }}</text></view><button class="club-btn" :disabled="player.can_be_designated === false || !player.is_online" @tap.stop="openPlayerDetail(player)">{{ player.can_be_designated === false ? '暂不可指定' : !player.is_online ? '当前离线' : '查看服务' }}</button></view>
+          <view class="card-actions"><view><text class="designate-price">{{ player.can_be_designated === false ? '暂不接受指定' : !player.is_online ? '休息中' : '查看专属服务和规格' }}</text><text class="designate-state">{{ player.is_online ? '接单已开启，可查看服务' : '休息中，暂不可指定' }}</text></view><button class="club-btn" :disabled="player.can_be_designated === false || !player.is_online" @tap.stop="openPlayerDetail(player)">{{ player.can_be_designated === false ? '暂不可指定' : !player.is_online ? '休息中' : '查看服务' }}</button></view>
         </view>
       </view>
     </view>
@@ -42,7 +42,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import GiftHost from '@/components/gifts/GiftHost.vue'
@@ -62,7 +63,7 @@ let fetchSequence = 0
 const visiblePlayers = computed(() => players.value)
 const filteredPlayers = computed(() => {
   if (activeFilter.value === '全部') return visiblePlayers.value
-  if (activeFilter.value === '在线') return visiblePlayers.value.filter(player => player.is_online)
+  if (activeFilter.value === '在线') return visiblePlayers.value.filter(player => player.presence_online)
   return visiblePlayers.value.filter(player => player.type_name === activeFilter.value)
 })
 const normalizedSearchKeyword = computed(() => searchKeyword.value.trim())
@@ -86,11 +87,17 @@ async function fetchPlayers() {
 async function handleManualRefresh() { if (refreshing.value) return; refreshing.value = true; try { if (await fetchPlayers()) success('刷新成功') } finally { refreshing.value = false } }
 function clearSearch() { searchKeyword.value = '' }
 watch(searchKeyword, () => { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(fetchPlayers, 300) })
-onMounted(fetchPlayers)
+onShow(fetchPlayers)
 onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer) })
 function openPlayerDetail(player: OnlinePlayer) { if (player.can_be_designated === false) return toast('该陪玩当前不接受指定'); go('/pages/player/detail/index', { playerId: player.id }) }
 function handleMainTabSelect(tab: MainTab) { if (tab === 'home' || tab === 'order') { relaunch('/pages/boss/home/index', { tab }); return }; if (tab === 'players') return; navigateToTab(tab as 'query' | 'profile') }
 function goMain(tab: MainTab = 'home') { handleMainTabSelect(tab) }
+function applyOwnPresence(reply: { player_id: number; presence_online: boolean }) {
+  const target = (players.value).find(item => item.id === reply.player_id)
+  if (target && reply.presence_online === true) target.presence_online = true
+}
+uni.$on('player-presence-updated', applyOwnPresence)
+onUnmounted(() => uni.$off('player-presence-updated', applyOwnPresence))
 </script>
 
 <style lang="scss" scoped>

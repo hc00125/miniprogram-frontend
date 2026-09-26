@@ -25,10 +25,10 @@
             <view class="order-head">
               <view class="order-cover"><image class="cover-img" :src="orderCover(order)" mode="aspectFill" /></view>
               <view class="order-main"><text class="order-title">{{ order.package_name || '套餐订单' }}</text></view>
-              <view class="order-amount"><view class="cover-status" :class="`cover-status--${coverStatusKey(order.status)}`"><text>{{ order.status }}</text></view><view class="order-amount-main"><text class="amount-currency">💎</text><text class="amount-value">{{ diamond(orderDisplayDiamonds(order)) }}</text></view><text v-if="renewalPaidDiamonds(order) > 0" class="amount-renewal-note">含续单 💎{{ diamond(renewalPaidDiamonds(order)) }}</text></view>
+              <view class="order-amount"><view class="cover-status" :class="`cover-status--${coverStatusKey(order.status)}`"><text>{{ order.status }}</text></view><view class="order-amount-main"><text class="amount-currency">{{ order.source === 'staff' ? '¥' : '💎' }}</text><text class="amount-value">{{ order.source === 'staff' ? Number(order.total_amount || 0).toFixed(2) : diamond(orderDisplayDiamonds(order)) }}</text></view><text v-if="renewalPaidDiamonds(order) > 0" class="amount-renewal-note">含续单 💎{{ diamond(renewalPaidDiamonds(order)) }}</text></view>
             </view>
-            <view class="order-meta"><text class="order-no">订单号 {{ order.order_no }}</text><view class="meta-item"><text class="meta-text">{{ formatOrderTime(order.created_at) }}</text></view><view class="meta-item"><text class="meta-text">{{ stageHint(order.status) }}</text></view></view>
-            <view @tap.stop><OrderSurchargeHost :order-no="order.order_no" /></view>
+            <view class="order-meta"><text class="order-no">订单号 {{ order.order_no }}</text><view class="meta-item"><text class="meta-text">{{ formatOrderTime(order.created_at) }}</text></view><view class="meta-item"><text class="meta-text">{{ order.source === 'staff' ? '客服代派 · 线下已收款' : stageHint(order.status) }}</text></view></view>
+            <view @tap.stop><OrderSurchargeHost v-if="order.source !== 'staff'" :order-no="order.order_no" /></view>
             <view class="order-actions"><button class="club-btn club-btn--ghost" @tap.stop="goMain('order')">再来一单</button><button class="club-btn club-btn--primary" @tap.stop="openOrder(order)">{{ actionText(order.status) }}</button></view>
           </view>
         </view>
@@ -90,7 +90,7 @@ function renewalPaidDiamonds(order: BossOrderListItem) { const raw = order as Bo
 function orderDisplayDiamonds(order: BossOrderListItem) { return baseOrderDiamonds(order) + renewalPaidDiamonds(order) }
 function diamond(value: unknown) { try { return formatDiamonds(value ?? 0) } catch { return '--' } }
 function formatOrderTime(value: string) { return formatDateTimeValue(value) }
-function openOrder(order: BossOrderListItem) { if (order.status === '待接单') go('/pages/boss/waiting/index', { orderNo: order.order_no }); else if (order.status === '待支付' || order.status === '已完成') go('/pages/boss/payment/index', { orderNo: order.order_no }); else if (order.status === '待开打' || order.status === '进行中') go('/pages/boss/in-progress/index', { orderNo: order.order_no }); else go('/pages/boss/payment/index', { orderNo: order.order_no }) }
+function openOrder(order: BossOrderListItem) { if (order.source === 'staff') { go('/pages/client/history-order/index', { orderNo: order.order_no }); return } if (order.status === '待接单') go('/pages/boss/waiting/index', { orderNo: order.order_no }); else if (order.status === '待支付' || order.status === '已完成') go('/pages/boss/payment/index', { orderNo: order.order_no }); else if (order.status === '待开打' || order.status === '进行中') go('/pages/boss/in-progress/index', { orderNo: order.order_no }); else go('/pages/boss/payment/index', { orderNo: order.order_no }) }
 function syncLoginState() { const token = getStorage<string>('token'); isLoggedIn.value = Boolean(token); return token }
 function resetOrderCenter() { orders.value = []; cartCount.value = 0; activeTab.value = 'all' }
 function openCart() { if (!syncLoginState()) { go('/pages/client/login/index'); return } go('/pages/shop/cart/index') }
