@@ -5,6 +5,9 @@ const LOGIN_PAGE = '/pages/client/login/index'
 const RETURN_KEY = 'session_login_return'
 const PROFILE_PAGE = '/pages/client/profile/index'
 const expiredScopes = new Set<string>()
+// Non-secret, process-local epoch: same-account/same-token login invalidates async work.
+let clientSessionGeneration = 0
+export function getClientSessionGeneration() { return String(clientSessionGeneration) }
 
 export function isAuthenticationFailure(statusCode: number, data: any) {
   if (statusCode === 401) return true
@@ -59,6 +62,7 @@ export function clearSessionReturn() {
 }
 
 export function finishSessionLogin() {
+  clientSessionGeneration++
   expiredScopes.clear()
   const target = uni.getStorageSync(RETURN_KEY) || PROFILE_PAGE
   clearSessionReturn()

@@ -18,6 +18,8 @@
         </view>
       </view>
 
+      <PatronageCrowns v-if="player" :player-id="player.id" />
+
       <view v-if="player" class="detail-card service-card" :class="{ blocked: !canDesignate }">
         <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</text>
         <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : !player.is_online ? '该陪玩师暂未开启接单，当前不能发起指定订单；开启接单后恢复。' : '该陪玩师当前未开放专属服务。' }}</text>
@@ -54,6 +56,7 @@ import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go } from '@/utils/nav'
 import GiftHost from '@/components/gifts/GiftHost.vue'
+import PatronageCrowns from '@/components/PatronageCrowns.vue'
 
 const playerId = ref<number | null>(null)
 const player = ref<OnlinePlayer | null>(null)
