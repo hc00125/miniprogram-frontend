@@ -211,7 +211,8 @@ export function getWalletTransactions(page = 1, pageSize = 20) {
  * 钻石余额支付。每次都获取 fresh wx.login code：
  * - 纯历史/人工余额时后端会忽略 code；
  * - short_series_coin 充值形成的余额会先同步 pending 退款，再 currency_pay 扣官方 coin。
- * 40163 时自动换新 code 重试，后端使用确定性 coin order_id 保证远端幂等。
+ * 仅明确可恢复的登录错误/既有40163允许换新code，最多提交3次。
+ * POST网络异常或5xx不能证明未扣款，交由页面核验，禁止自动重提。
  */
 export async function payOrderWithBalance(orderNo: string) {
   let previousCode = ''
@@ -223,15 +224,23 @@ export async function payOrderWithBalance(orderNo: string) {
       return await api.post<BalancePaymentResult>('/pay/balance/create', { order_no: orderNo, code })
     } catch (error: any) {
       lastError = error
-      if (!isWechatLoginCodeUsed(error)) throw error
+      const statusCode = Number(error?.statusCode || 0)
+      if (error?.code === 'ORDER_PAYMENT_PENDING' || error?.status === 'unknown' || error?.status === 'processing') {
+        throw { ...error, balancePaymentUncertain: true }
+      }
+      if (statusCode < 500 && (
+        (statusCode === 400 && error?.code === 'WECHAT_LOGIN_RETRYABLE')
+        || isWechatLoginCodeUsed(error)
+      )) continue
+      // Only the POST boundary knows that a failed transport may hide a debit.
+      // A wx.login failure happens above this try block and remains safe to retry.
+      if (!statusCode || statusCode >= 500) {
+        throw { ...error, balancePaymentUncertain: true }
+      }
+      throw error
     }
   }
-  throw {
-    ...(lastError || {}),
-    code: 'WECHAT_LOGIN_CODE_USED',
-    wechat_code: 40163,
-    detail: '微信连续返回已使用的登录凭证，请关闭并重新进入小程序后重试'
-  }
+  throw lastError
 }
 
 export function mockRechargeSuccess(rechargeNo: string) {

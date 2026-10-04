@@ -8,7 +8,7 @@ export interface PatronagePackage {
 }
 export interface PatronageCatalog {
   contract_version: '1.0'; purchase_enabled: boolean; commission_rate: string
-  player: { id: number; name: string; avatar_url: string; hourly_rate_yuan: string | null } | null
+  player: { id: number; name: string; is_archived?: boolean; avatar_url: string; hourly_rate_yuan: string | null } | null
   packages: PatronagePackage[]
 }
 export interface PatronageQuote {
@@ -156,7 +156,7 @@ export function parsePatronageCatalog(value: unknown): PatronageCatalog {
   const player = v.player === null ? null : object(v.player)
   return {
     contract_version: version(v.contract_version), purchase_enabled: bool(v.purchase_enabled), commission_rate: rate(v.commission_rate),
-    player: player === null ? null : { id: integer(player.id, 1), name: text(player.name), avatar_url: text(player.avatar_url), hourly_rate_yuan: optionalAmount(player.hourly_rate_yuan) },
+    player: player === null ? null : { id: integer(player.id, 1), name: text(player.name), is_archived: player.is_archived === true, avatar_url: text(player.avatar_url), hourly_rate_yuan: optionalAmount(player.hourly_rate_yuan) },
     packages: list(v.packages).map(raw => {
       const p = object(raw), packageCode = code(p.code), available = bool(p.available)
       if (p.kind !== (packageCode === 'day_pass' ? 'day_pass' : 'naming')) invalid()

@@ -1,6 +1,6 @@
 <template>
   <view v-if="enabled" @tap.stop>
-    <button data-action="open-gift" class="gift-entry" @tap.stop="show">{{ browseOnly ? '查看礼物' : '送礼物' }}</button>
+    <button data-action="open-gift" class="gift-entry" :class="{ 'gift-entry--compact': compact }" @tap.stop="show">{{ browseOnly ? '查看礼物' : '送礼物' }}</button>
     <GiftLiveSheet v-if="open" :key="sessionKey" :recipient="recipient" @close="close" />
   </view>
 </template>
@@ -10,7 +10,7 @@ import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import GiftLiveSheet from '@/components/gifts/GiftLiveSheet.vue'
 import { readGiftCapabilities } from '@/api/giftCommerce'
 import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
-const props = defineProps<{ recipientId: number | string; recipientName: string }>()
+const props = defineProps<{ recipientId: number | string; recipientName: string; compact?: boolean }>()
 const browseOnly = ref(true)
 const enabled = ref(false), open = ref(false), sessionKey = ref('')
 const recipient = computed(() => ({ id: String(props.recipientId), name: props.recipientName }))
@@ -39,4 +39,5 @@ watch(()=>props.recipientId,()=>{void refresh()},{flush:'sync'})
 </script>
 <style scoped>
 .gift-entry{display:flex;align-items:center;justify-content:center;min-height:88rpx;min-width:140rpx;padding:16rpx 24rpx;border-radius:22rpx;background:#eef9ef;color:#1f7c4b;font-size:25rpx}.gift-entry::after{border:0}
+.gift-entry--compact{width:100%;min-width:0;min-height:68rpx;margin:0;padding:12rpx 4rpx;border:1rpx solid #cad9c8;border-radius:18rpx;background:#fffefa;font-size:22rpx;line-height:1.4;white-space:nowrap;box-sizing:border-box}
 </style>

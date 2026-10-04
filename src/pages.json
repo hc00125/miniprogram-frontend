@@ -1,6 +1,7 @@
 {
   "pages": [
     { "path": "pages/boss/home/index", "style": { "navigationBarTitleText": "偷吃电竞", "navigationBarBackgroundColor": "#fbf7ef", "navigationBarTextStyle": "black" } },
+    { "path": "pages/client/announcements/index", "style": { "navigationBarTitleText": "动态通报", "navigationBarBackgroundColor": "#fbf7ef" } },
     { "path": "pages/client/history-claim/index", "style": { "navigationBarTitleText": "认领历史订单" } },
     { "path": "pages/client/history-order/index", "style": { "navigationBarTitleText": "客服订单详情" } },
     { "path": "pages/client/complaints/index", "style": { "navigationBarTitleText": "投诉与反馈" } },

@@ -11,7 +11,7 @@ test('homepage follows approved reference order with real wallet and two-column 
  assert.equal((html.match(/class="player-card"/g)||[]).length,2)
  for(const id of [91,92])assert.ok(html.includes('data-recipient-id="'+id+'"'))
  assert.match(descriptor.styles[0].content,/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
- assert.doesNotMatch(html,/冠名|包天|通报|热门套餐|订单进度|暂未开放/)
+ assert.match(html,/冠名\/包天/);assert.doesNotMatch(html,/热门套餐|订单进度|暂未开放/)
  h.state.goFeaturedGame();assert.equal(h.storage['catalog:requested-game-id'],5);assert.deepEqual(h.calls.at(-1),['/pages/shop/category/index'])
  h.state.goRecharge();assert.deepEqual(h.calls.at(-1),['/pages/client/recharge/index'])
 })

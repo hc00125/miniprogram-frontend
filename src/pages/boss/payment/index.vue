@@ -126,15 +126,15 @@
 
     <view v-if="paymentConfirming" class="card virtual-pay-card">
       <view class="virtual-head">
-        <view class="wechat-icon">✓</view>
+        <view class="wechat-icon">{{ pendingPaymentKind === 'balance' ? '…' : '✓' }}</view>
         <view>
-          <text>微信付款已完成</text>
+          <text>{{ pendingPaymentKind === 'balance' ? '钻石支付结果正在确认' : '微信付款已完成' }}</text>
           <text>订单状态正在同步，请勿重复支付</text>
         </view>
       </view>
       <view class="virtual-notice">
         <text></text>
-        <text>微信收银台已经返回成功。本次购买的等额钻石将直接用于当前订单，不会重复计入可用钻石余额。</text>
+        <text>{{ pendingPaymentKind === 'balance' ? '暂未确认最终扣款结果，请勿再次支付。请刷新订单状态；若长时间未确认，请联系客服核验。' : '微信收银台已经返回成功。本次购买的等额钻石将直接用于当前订单，不会重复计入可用钻石余额。' }}</text>
       </view>
       <button class="pay-button" :disabled="confirmationRefreshing" @tap="refreshPaymentStatus(false)">
         {{ confirmationRefreshing ? '正在同步订单状态...' : '刷新订单状态' }}
@@ -276,6 +276,7 @@ type PendingPaymentState = {
   orderNo: string
   paymentNo: string
   createdAt: number
+  kind?: 'wechat' | 'balance'
 }
 
 const PENDING_PAYMENT_STORAGE_KEY = 'virtual_payment_confirmation_pending'
@@ -295,6 +296,7 @@ const walletBalance = ref<number | null>(null)
 const walletLoadFailed = ref(false)
 const payError = ref<PayErrorState | null>(null)
 const paymentConfirming = ref(false)
+const pendingPaymentKind = ref<'wechat' | 'balance'>('wechat')
 const confirmationRefreshing = ref(false)
 const ratings = ref<Record<number, number>>({})
 const existingRatings = ref<Record<number, OrderRatingRecord>>({})
@@ -326,6 +328,7 @@ const confirmationRemainingSeconds = computed(() => Math.max(0, confirmationRema
 const canStartPayment = computed(() => Boolean(
   orderInfo.value?.status === '待支付'
   && !isPaid.value
+  && !paymentConfirming.value
   && paymentPhase.value === 'open'
   && paymentRemainingSeconds.value > 0
   && orderInfo.value?.can_start_payment !== false
@@ -356,6 +359,7 @@ const showRenewalSummary = computed(() => renewalPaidAmount.value > 0)
 const cumulativePaidAmount = computed(() => mainOrderAmount.value + renewalPaidAmount.value)
 const amountCardValue = computed(() => isRenewal.value ? orderAmount.value : (isPaid.value ? cumulativePaidAmount.value : orderAmount.value))
 const amountCardLabel = computed(() => {
+  if (paymentConfirming.value && pendingPaymentKind.value === 'balance') return '钻石支付核验中'
   if (paymentConfirming.value || serverConfirming.value) return '微信支付核验中'
   if (!isPaid.value) return '待支付钻石'
   if (showRenewalSummary.value) return '累计已支付钻石'
@@ -379,7 +383,7 @@ const balanceOptionSub = computed(() => {
   return walletLoadFailed.value ? '钻石余额加载失败，点击重试' : '钻石余额加载中...'
 })
 const payButtonText = computed(() => {
-  if (paying.value) return payMethod.value === 'balance' ? '正在扣除可用钻石...' : '正在拉起微信支付...'
+  if (paying.value) return payMethod.value === 'balance' ? '正在确认钻石支付…' : '正在拉起微信支付...'
   return payMethod.value === 'balance'
     ? `使用 💎${diamond(orderAmount.value)} 支付`
     : `微信即时支付 💎${diamond(orderAmount.value)}`
@@ -415,6 +419,7 @@ const payStatusText = computed(() => {
 })
 const stripText = computed(() => {
   if (!orderInfo.value) return '订单加载中'
+  if (paymentConfirming.value && pendingPaymentKind.value === 'balance') return '钻石支付结果正在确认，请勿重复支付'
   if (paymentConfirming.value) return '微信已付款，订单确认中'
   if (serverConfirming.value) return '支付窗口已结束，正在核验微信结果'
   if (timeoutCancelled.value) return '订单已超时，服务阵容已释放'
@@ -548,11 +553,23 @@ function clearConfirmationTimer() {
   confirmationTimer = null
 }
 
+function readPendingPaymentStates(): PendingPaymentState[] {
+  const stored = uni.getStorageSync(PENDING_PAYMENT_STORAGE_KEY)
+  if (!stored || typeof stored !== 'object') return []
+  // Read the legacy singleton as well; adding another order must not erase it.
+  const items = stored.version === 2 && Array.isArray(stored.items) ? stored.items : [stored]
+  return items.filter((item: any) => item && typeof item.orderNo === 'string' && item.orderNo)
+}
+
+function writePendingPaymentStates(items: PendingPaymentState[]) {
+  if (items.length) uni.setStorageSync(PENDING_PAYMENT_STORAGE_KEY, { version: 2, items })
+  else uni.removeStorageSync(PENDING_PAYMENT_STORAGE_KEY)
+}
+
 function clearPendingPaymentState() {
   clearConfirmationTimer()
   paymentConfirming.value = false
-  const stored = uni.getStorageSync(PENDING_PAYMENT_STORAGE_KEY) as PendingPaymentState | ''
-  if (!stored || stored.orderNo === orderNo.value) uni.removeStorageSync(PENDING_PAYMENT_STORAGE_KEY)
+  writePendingPaymentStates(readPendingPaymentStates().filter(item => item.orderNo !== orderNo.value))
 }
 
 function scheduleConfirmationRefresh() {
@@ -561,21 +578,26 @@ function scheduleConfirmationRefresh() {
   confirmationTimer = setTimeout(() => { void refreshPaymentStatus(true) }, 2500)
 }
 
-function enterConfirmationPending(paymentNo = '') {
+function enterConfirmationPending(paymentNo = '', kind: 'wechat' | 'balance' = 'wechat') {
+  pendingPaymentKind.value = kind
   paymentConfirming.value = true
   payError.value = null
   const pendingState: PendingPaymentState = {
     orderNo: orderNo.value,
     paymentNo,
+    kind,
     createdAt: Date.now()
   }
-  uni.setStorageSync(PENDING_PAYMENT_STORAGE_KEY, pendingState)
+  writePendingPaymentStates([
+    ...readPendingPaymentStates().filter(item => item.orderNo !== orderNo.value), pendingState
+  ])
   scheduleConfirmationRefresh()
 }
 
 function restorePendingPaymentState() {
-  const stored = uni.getStorageSync(PENDING_PAYMENT_STORAGE_KEY) as PendingPaymentState | ''
-  if (!stored || stored.orderNo !== orderNo.value) return
+  const stored = readPendingPaymentStates().find(item => item.orderNo === orderNo.value)
+  if (!stored) return
+  pendingPaymentKind.value = stored.kind || 'wechat'
   paymentConfirming.value = true
 }
 
@@ -733,24 +755,31 @@ async function payByBalance() {
     toast('可用钻石不足，请先充值或使用微信即时支付')
     return
   }
-  const ok = await confirm(`确认使用💎${diamond(orderAmount.value)}支付吗？支付后可用钻石立即扣减。`, '钻石支付')
-  if (!ok) return
-  payError.value = null
   paying.value = true
   try {
+    const ok = await confirm(`确认使用💎${diamond(orderAmount.value)}支付吗？支付后可用钻石立即扣减。`, '钻石支付')
+    if (!ok || !canStartPayment.value || cancelling.value) return
+    payError.value = null
     const result = await payOrderWithBalance(orderNo.value)
-    walletBalance.value = result.balance_diamonds
+    if (result.status === 'failed') throw new Error('钻石支付失败，请重新支付')
+    if (result.status === 'paid') walletBalance.value = result.balance_diamonds
+    enterConfirmationPending(result.payment_no || '', 'balance')
     await fetchOrder()
     if (!isPaid.value) {
-      enterConfirmationPending(result.payment_no || '')
-      toast('钻石已扣除，订单状态正在确认，请稍候')
+      toast('钻石支付结果正在确认，请勿重复支付')
       return
     }
     success(isRenewal.value ? '续单支付完成，时长已合并' : '支付完成，等待陪玩开打')
-  } catch (error) {
-    toast(getErrorMessage(error, '钻石支付失败，请稍后重试'))
-    void loadWalletBalance()
-    await fetchOrder()
+  } catch (error: any) {
+    // A completed, rejected request must not keep the button spinning behind a read.
+    paying.value = false
+    if (error?.balancePaymentUncertain) {
+      enterConfirmationPending('', 'balance')
+      toast('钻石支付结果正在确认，请勿重复支付')
+      return
+    }
+    payError.value = classifyPayError(error)
+    toast(payError.value.detail)
   } finally {
     paying.value = false
   }

@@ -13,6 +13,8 @@
           <view class="hero-meta"><view class="hero-dots"><text v-for="(banner, index) in heroBanners" :key="banner.id" :class="{ active: currentHeroIndex === index }"></text></view></view>
         </view>
 
+        <HomeAnnouncements :active="announcementsActive" />
+
         <view class="game-section">
           <view class="section-head"><text class="section-title">选择游戏</text><button class="section-link" @tap="goOrderNotice">下单须知 ›</button></view>
           <view v-if="featuredGame" class="game-card" @tap="goFeaturedGame">
@@ -46,7 +48,10 @@
                 <view class="player-copy"><text class="player-name">{{ player.name }}</text><text class="player-type">{{ player.type_name }}</text></view>
               </view>
               <view class="player-meta"><view class="player-status" :class="{ off: !player.presence_online }"><text></text>{{ player.presence_online ? '在线' : '离线' }}</view><text class="player-rating">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'}` : '暂无评分' }}</text></view>
-              <GiftHost :recipient-id="player.id" :recipient-name="player.name" />
+              <view class="player-actions">
+                <button class="player-patronage" @tap.stop="openPlayerPatronage(player)">冠名/包天</button>
+                <view class="player-gift"><GiftHost compact :recipient-id="player.id" :recipient-name="player.name" /></view>
+              </view>
             </view>
           </view>
           <view v-else class="section-empty" @tap="fetchHomeData">{{ playersLoading ? '陪玩加载中…' : playersLoadFailed ? '陪玩加载失败，点击重试' : '暂无可推荐的陪玩' }}</view>
@@ -65,6 +70,7 @@ import { getCatalogNavigation, type GameService } from '@/api/catalog'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import GiftHost from '@/components/gifts/GiftHost.vue'
+import HomeAnnouncements from '@/components/HomeAnnouncements.vue'
 import { uiIcons } from '@/utils/uiIcons'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
 import { getClientProfile } from '@/utils/client'
@@ -104,6 +110,7 @@ const featuredPlayers = computed(() => players.value.filter(player => hasUserAva
 const isLoggedIn = ref(false), accountRestricted = ref(false), walletLoading = ref(false), walletLoadFailed = ref(false)
 const walletOverview = ref<WalletOverview | null>(null)
 const walletBalance = computed(() => { if (!walletOverview.value) return '--'; try { return formatDiamonds(walletOverview.value.balance_diamonds) } catch { return '--' } })
+const announcementsActive = ref(false)
 let visible = true, generation = 0, walletGeneration = 0
 
 function hasUserAvatar(player: OnlinePlayer) { return Boolean(String(player.avatar_url || '').trim()) }
@@ -115,6 +122,7 @@ function goShopDetail(packageId: number) { go('/pages/shop/detail/index', { pack
 function goOrderNotice() { go('/pages/boss/order-notice/index') }
 function goPlayerList() { goMain('players') }
 function openPlayerDetail(player: OnlinePlayer) { if (player.can_be_designated === false) return toast('该陪玩当前不接受指定'); go('/pages/player/detail/index', { playerId: player.id }) }
+function openPlayerPatronage(player: OnlinePlayer) { go('/pages/client/patronage/index', { playerId: player.id }) }
 function goRecharge() {
   if (!getStorage<string>('token')) { clearWallet(); go('/pages/client/login/index'); return }
   const profile = getClientProfile()
@@ -148,8 +156,8 @@ async function fetchHomeData() {
     loadWallet()
   ])
 }
-function hide() { visible = false; generation++; clearWallet() }
-onShow(() => { visible = true; return fetchHomeData() })
+function hide() { visible = false; announcementsActive.value = false; generation++; clearWallet() }
+onShow(() => { visible = true; announcementsActive.value = true; return fetchHomeData() })
 onHide(hide)
 uni.$on(SESSION_EXPIRED_EVENT, expire)
 onScopeDispose(() => { hide(); uni.$off(SESSION_EXPIRED_EVENT, expire) })
@@ -213,5 +221,9 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .player-status.off { color: #999f91; }
 .player-status.off text { background: #afb4a6; }
 .player-rating { color: #8b8e78; font-size: 20rpx; }
+.player-actions { display: flex; align-items: center; gap: 10rpx; }
+.player-patronage, .player-gift { flex: 1; min-width: 0; }
+.player-patronage { display: flex; align-items: center; justify-content: center; min-height: 68rpx; margin: 0; padding: 12rpx 4rpx; border: 1rpx solid #cad9c8; border-radius: 18rpx; background: #fffefa; color: #1f7c4b; font-size: 22rpx; line-height: 1.4; white-space: nowrap; box-sizing: border-box; }
+.player-patronage::after { border: 0; }
 .section-empty { padding: 38rpx 20rpx; border: 1rpx solid #e5ebe2; border-radius: 22rpx; background: #fffefa; color: #929985; font-size: 24rpx; text-align: center; }
 </style>

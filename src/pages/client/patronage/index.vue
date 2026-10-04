@@ -7,7 +7,7 @@
         <view><text class="title">{{ catalog.player.name }}</text><text class="muted">为喜欢的陪玩留下你的支持</text></view>
       </view>
       <text v-else class="title">冠名与包天</text>
-      <text class="notice">{{ catalog?.purchase_enabled === true ? '使用现有钻石余额，确认后购买。' : '购买尚未开放，仅可查看套餐与报价。' }}</text>
+      <text class="notice">{{ catalog?.player?.is_archived ? '该陪玩已离开，不能新购；历史记录及原交易核对保留。' : catalog?.purchase_enabled === true ? '使用现有钻石余额，确认后购买。' : '购买尚未开放，仅可查看套餐与报价。' }}</text>
     </view>
 
     <view v-if="loading" class="card muted">正在加载套餐…</view>
@@ -171,9 +171,10 @@ function initController() {
 }
 function message(e: any) { return typeof e?.detail === 'string' ? e.detail : e?.message || '交易状态暂不可确认，请查询原单或联系客服' }
 const platformBlocked = () => getClientPlatform() === 'ios' && !isIOSPurchaseEnabled()
-const ready = computed(() => controllerReady.value && selected.value?.available === true && !selected.value.blockers.length && loggedIn.value && catalog.value?.purchase_enabled === true && quote.value?.can_submit === true && !quote.value.blockers.length && pendingCount.value === 0 && !quoting.value && !loading.value && !platformBlocked())
+const ready = computed(() => !catalog.value?.player?.is_archived && controllerReady.value && selected.value?.available === true && !selected.value.blockers.length && loggedIn.value && catalog.value?.purchase_enabled === true && quote.value?.can_submit === true && !quote.value.blockers.length && pendingCount.value === 0 && !quoting.value && !loading.value && !platformBlocked())
 const canPurchase = computed(() => ready.value && !busy.value && (!intent.value || !intent.value.dispatch_started))
 const purchaseReason = computed(() => {
+  if (catalog.value?.player?.is_archived) return '该陪玩已离开，不能新购'
   if (!loggedIn.value) return '请先登录'
   if (!controllerReady.value) return '交易恢复记录尚未就绪，请重新进入或联系客服'
   if (platformBlocked()) return 'iOS端虚拟支付当前未启用'

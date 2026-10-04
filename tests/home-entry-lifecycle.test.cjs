@@ -20,3 +20,11 @@ test('gift entry mounted after asynchronous homepage cards reads existing capabi
  assert.deepEqual(calls,[12]);const button=tree().find(n=>n.props?.['data-action']==='open-gift');assert.ok(button);button.props.onTap({stopPropagation(){}});assert.ok(tree().some(n=>n.props?.recipient?.id==='12'))
  h.hooks.hide[0]();assert.ok(!tree().some(n=>n.props?.recipient?.id==='12'));scope.stop()
 })
+test('compact gift entry fits a paired card action and retains real recipient and capability gates',async()=>{
+ const mounted=[],h=harness({vue:{...vue,onMounted:f=>mounted.push(f)},'@/api/giftCommerce':{readGiftCapabilities:async()=>({catalog_read:true,purchase_enabled:true,purchase_supported:true,quote_supported:true})}})
+ const C=h.load('src/components/gifts/GiftHost.vue').default,scope=vue.effectScope(),props={recipientId:34,recipientName:'陪玩乙',compact:true},draw=scope.run(()=>C.setup(props,{expose(){}})),tree=()=>nodes(draw(props,[]))
+ try{for(const f of mounted)await f();await tick();const button=tree().find(n=>n.props?.['data-action']==='open-gift');assert.ok(button.props.class.includes('gift-entry--compact'));button.props.onTap({stopPropagation(){}});assert.ok(tree().some(n=>n.props?.recipient?.id==='34'))
+ const css=parse(fs.readFileSync(require.resolve('../src/components/gifts/GiftHost.vue'),'utf8')).descriptor.styles[0].content;assert.match(css,/\.gift-entry--compact\s*\{[^}]*width:\s*100%/);assert.match(css,/\.gift-entry--compact\s*\{[^}]*min-width:\s*0/)
+ h.hooks.hide[0]();assert.ok(!tree().some(n=>n.props?.['data-action']==='open-gift'))
+ }finally{scope.stop()}
+})

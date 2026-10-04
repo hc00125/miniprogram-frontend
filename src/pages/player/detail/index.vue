@@ -6,11 +6,11 @@
           <image v-if="player.avatar_url" class="avatar" :src="player.avatar_url" mode="aspectFill" />
           <view v-else class="avatar avatar--placeholder">{{ player.name?.[0] || '陪' }}</view>
           <view class="profile-main">
-            <view class="name-row"><text class="player-name">{{ player.name }}</text><text class="status-pill" :class="{ off: !player.presence_online }">{{ player.presence_online ? '在线' : '离线' }}</text></view>
+            <view class="name-row"><text class="player-name">{{ player.name }}</text><text class="status-pill" :class="{ off: !player.presence_online }">{{ player.is_archived ? '已离开' : player.presence_online ? '在线' : '离线' }}</text></view>
             <text class="player-type">{{ player.type_name || '优质陪玩' }}</text>
           </view>
         </view>
-        <GiftHost :recipient-id="player.id" :recipient-name="player.name" />
+        <GiftHost v-if="!player.is_archived" :recipient-id="player.id" :recipient-name="player.name" />
         <view class="stats-row">
           <view><text>{{ player.total_orders || 0 }}</text><text>接单数</text></view>
           <view><text>{{ ratingSummary.rating_count ? ratingSummary.average_rating : '-' }}</text><text>{{ ratingSummary.rating_count }}条评价</text></view>
@@ -18,9 +18,10 @@
         </view>
       </view>
 
-      <PatronageCrowns v-if="player" :player-id="player.id" />
+      <view v-if="player?.is_archived" class="detail-card">该陪玩已离开，不能发起新订单、送礼或冠名/包天。历史订单与记录不受影响。</view>
+      <PatronageCrowns v-if="player && !player.is_archived" :player-id="player.id" />
 
-      <view v-if="player" class="detail-card service-card" :class="{ blocked: !canDesignate }">
+      <view v-if="player && !player.is_archived" class="detail-card service-card" :class="{ blocked: !canDesignate }">
         <text class="card-title">{{ canDesignate ? 'TA 的专属服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</text>
         <text class="card-subtitle">{{ canDesignate ? '选择装备套餐与服务时长后正常下单；支付成功才会通知 TA 确认服务。' : !player.is_online ? '该陪玩师暂未开启接单，当前不能发起指定订单；开启接单后恢复。' : '该陪玩师当前未开放专属服务。' }}</text>
         <text class="service-state">{{ player.is_online ? '接单已开启，可查看服务' : '休息中，暂不可指定' }}</text>
@@ -44,14 +45,14 @@
       <view class="bottom-space"></view>
     </scroll-view>
 
-    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</button></view>
+    <view v-if="player" class="bottom-bar"><button class="back-btn" @tap="goBack">返回列表</button><button class="order-btn" :disabled="!canDesignate || openingProduct" @tap="openPlayerProduct">{{ player.is_archived ? '已离开' : openingProduct ? '加载服务中...' : canDesignate ? '选择 TA 的服务' : !player.is_online ? '休息中' : '暂不接受指定' }}</button></view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
-import { getPlayerList, getPlayerServiceProducts, type OnlinePlayer } from '@/api/boss'
+import { getPublicPlayerDetail, getPlayerServiceProducts, type OnlinePlayer } from '@/api/boss'
 import { getPublicPlayerRatings, type PlayerRatingItem, type PlayerRatingsResult } from '@/api/player'
 import { getErrorMessage, toast } from '@/utils/feedback'
 import { go } from '@/utils/nav'
@@ -67,7 +68,7 @@ const isPlaying = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
 
 const ratings = computed<PlayerRatingItem[]>(() => ratingData.value?.results || [])
-const canDesignate = computed(() => Boolean(player.value?.is_online) && player.value?.can_be_designated !== false)
+const canDesignate = computed(() => !player.value?.is_archived && Boolean(player.value?.is_online) && player.value?.can_be_designated !== false)
 const ratingSummary = computed(() => ratingData.value?.summary || { average_rating: Number(player.value?.avg_rating || 0), rating_count: Number(player.value?.rating_count || 0), total_orders: Number(player.value?.total_orders || 0) })
 
 function starText(value: number) { const count = Math.max(1, Math.min(5, Number(value || 0))); return `${'★'.repeat(count)}${'☆'.repeat(5 - count)}` }
@@ -75,8 +76,8 @@ function formatReviewDate(value: string) { const date = new Date(value); return 
 async function fetchPlayer() {
   loaded.value = false
   try {
-    player.value = (await getPlayerList()).find(item => Number(item.id) === Number(playerId.value)) || null
-    if (player.value) { try { ratingData.value = await getPublicPlayerRatings(player.value.id) } catch { ratingData.value = null } }
+    player.value = await getPublicPlayerDetail(Number(playerId.value))
+    if (player.value && !player.value.is_archived) { try { ratingData.value = await getPublicPlayerRatings(player.value.id) } catch { ratingData.value = null } }
   } catch { player.value = null; toast('陪玩详情加载失败') } finally { loaded.value = true }
 }
 function getAudioContext() {

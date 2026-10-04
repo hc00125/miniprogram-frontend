@@ -1,0 +1,13 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path')
+const {homeHarness,source}=require('./home-reference-harness.cjs')
+test('approved homepage inserts announcements strictly between hero and games with visibility bound',async t=>{
+ assert.ok(source.indexOf('<HomeAnnouncements')>source.indexOf('class="hero-section"'))
+ assert.ok(source.indexOf('<HomeAnnouncements')<source.indexOf('class="game-section"'))
+ const h=homeHarness({guest:true});t.after(()=>h.scope.stop())
+ assert.equal(h.state.announcementsActive.value,false);await h.load();assert.equal(h.state.announcementsActive.value,true)
+ h.hide();assert.equal(h.state.announcementsActive.value,false)
+ const pages=JSON.parse(fs.readFileSync(path.join(__dirname,'../src/pages.json'),'utf8'))
+ assert.equal(pages.pages[0].path,'pages/boss/home/index')
+ assert.ok(pages.pages.some(p=>p.path==='pages/client/announcements/index'))
+ assert.equal(pages.tabBar.list.length,5)
+})

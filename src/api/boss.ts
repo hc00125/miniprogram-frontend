@@ -76,6 +76,7 @@ export interface PlayerType {
 }
 
 export interface OnlinePlayer {
+  is_archived?: boolean
   id: number
   name: string
   type_id: number
@@ -271,6 +272,7 @@ export function getPackageGroups() {
 
 export function getAddons() { return api.get<BossAddon[]>('/boss/addons') }
 export function getPlayerTypes() { return api.get<PlayerType[]>('/boss/player-types').then(list => list.filter(t => !isTestEntry(t.name))) }
+export function getPublicPlayerDetail(id: number) { return api.get<OnlinePlayer>(`/player/${id}/detail`) }
 export function getOnlinePlayers() { return api.get<OnlinePlayer[]>('/boss/online-players') }
 export function getPlayerList(params: PlayerListParams = {}) { return api.get<OnlinePlayer[]>('/player/list', params) }
 export function createOrder(payload: OrderCreatePayload) { return api.post<{ order_no: string }>('/boss/order', payload) }

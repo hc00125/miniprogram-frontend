@@ -59,7 +59,9 @@ function stripCheckoutV2(source) {
 test('phase2 all original scripts, directives, button text and monetary interpolations are preserved',()=>{
  const {contract,files}=require('./secondary-icons-phase2-helpers.cjs'),expected=require('./secondary-icons-phase2-contracts.json');
  // Approved commerce host additions are covered by commerce-hosts.test.cjs.
- // Strip only those exact additions; keep all historical service/payment hashes.
+ // Strip only those exact additions; keep the service/payment contract hashes.
+ // Payment script/status expressions include the approved login-recovery fix;
+ // real API/SFC behavior is guarded by order-balance-payment*.test.cjs.
  for(const p of files){
    let source=read(p).replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
      .replace('    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />\n','')

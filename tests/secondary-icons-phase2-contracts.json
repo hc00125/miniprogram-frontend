@@ -1,9 +1,9 @@
 {
   "src/pages/boss/payment/index.vue": {
-    "script": "a8334ecfc4cbeea9e2d5382b21f62cb582961302b6010ec84f89b47e3c59756e",
+    "script": "1d215eacefbbdb2c49ce136d6e2d2025a4c8323ed85b9e925db355b4b3ef18d9",
     "bindings": "15b64c115e8f5c452e9fe21f20feac456aa3ffd21b43255d75a1d7b71f2be9fe",
     "buttons": "a118b7130a0309db216f76115bdabac2c8830ed807ee2db75cc6e9ed377cd1c6",
-    "expressions": "6c8383babd71dc7f367f40b147cef4e5b2fa4fde1fa44ef98ee3417603b9de34"
+    "expressions": "cec32c87fa0e2477b1a1e969973c945863b7c754820329136f9fb96b00b08760"
   },
   "src/pages/client/wallet/index.vue": {
     "script": "9c872d6bcd3a33793d21247311701416e7b2f700c3821915a4ded23ac6d8cc43",
