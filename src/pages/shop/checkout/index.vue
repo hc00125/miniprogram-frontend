@@ -1,5 +1,5 @@
 <template>
-  <view class="checkout-page">
+  <view :style="$appThemeStyle" class="checkout-page">
     <view class="checkout-scroll">
       <view v-if="isCartCheckout" class="card">
         <view class="head"><text class="title">购物车结算</text><text class="pill">{{ cartOrderCount }}单</text></view>
@@ -303,8 +303,8 @@ onLoad(query => {
 .diamond-value.diamond-value { display: inline-flex; align-items: center; gap: 4rpx; vertical-align: middle; padding: 0; border-radius: 0; background: transparent; }
 .diamond-value.diamond-value > text { display: inline; color: inherit; font-size: inherit; font-weight: inherit; margin: 0; }
 .diamond-unit, .diamond-value .diamond-unit { display: inline-block; width: 26rpx; height: 26rpx; flex-shrink: 0; vertical-align: middle; border-radius: 0; }
-.surcharge-choice { background: #fffdf6; }
-.surcharge-choice input { margin-top: 18rpx; min-height: 84rpx; padding: 0 22rpx; border: 1rpx solid #dceadd; border-radius: 18rpx; background: #f7faf4; color: #172116; }
+.surcharge-choice { background: var(--ui-surface, #fffdf6); }
+.surcharge-choice input { margin-top: 18rpx; min-height: 84rpx; padding: 0 22rpx; border: 1rpx solid var(--ui-line, #dceadd); border-radius: 18rpx; background: var(--ui-soft, #f7faf4); color: var(--ui-text, #172116); }
 .surcharge-breakdown { margin-top: 18rpx; }
-.surcharge-alert { display: block; margin-top: 12rpx; color: #9a6a16; font-size: 24rpx; }
+.surcharge-alert { display: block; margin-top: 12rpx; color: var(--ui-gold, #9a6a16); font-size: 24rpx; }
 </style>

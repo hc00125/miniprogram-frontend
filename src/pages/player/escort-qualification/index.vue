@@ -1,5 +1,5 @@
 <template>
-  <view class="escort-page">
+  <view :style="$appThemeStyle" class="escort-page">
     <view class="hero">
       <text class="eyebrow">ESCORT QUALIFICATION</text>
       <text class="title">护航资格申请</text>
@@ -111,9 +111,9 @@ onShow(async () => {
 </script>
 
 <style lang="scss" scoped>
-.escort-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: #172116; background: #f7f3ea; }
-.hero, .card, .status-card, .review-card, .complete-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: #fff; border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.hero { color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
+.escort-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: var(--ui-soft, #f7f3ea); }
+.hero, .card, .status-card, .review-card, .complete-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, #fff); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
+.hero { color: #fff; background: var(--ui-gradient); }
 .eyebrow, .title, .subtitle { display: block; }
 .eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
 .title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
@@ -122,24 +122,24 @@ onShow(async () => {
 .status-head text { display: block; }
 .card-title { font-size: 29rpx; font-weight: 900; }
 .status-name { margin-top: 8rpx; font-size: 25rpx; font-weight: 800; }
-.status-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 20rpx; font-weight: 900; background: #eef8f1; }
-.status-note, .status-time { display: block; margin-top: 12rpx; color: #687665; font-size: 21rpx; line-height: 1.5; }
+.status-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 20rpx; font-weight: 900; background: var(--ui-soft, #eef8f1); }
+.status-note, .status-time { display: block; margin-top: 12rpx; color: var(--ui-muted, #687665); font-size: 21rpx; line-height: 1.5; }
 .review-card text { display: block; }
 .review-card text:first-child { font-size: 27rpx; font-weight: 900; }
 .review-card text:not(:first-child) { margin-top: 7rpx; font-size: 21rpx; line-height: 1.5; }
-.pending { color: #7b5a1f; background: #fff8e8; }
-.rejected, .suspended { color: #8f2929; background: #fff4f2; }
-.rule { display: flex; gap: 14rpx; margin-top: 16rpx; color: #687665; font-size: 22rpx; line-height: 1.55; }
-.rule text:first-child { width: 38rpx; height: 38rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; background: #2f9b63; }
+.pending { color: var(--ui-gold, #7b5a1f); background: var(--ui-surface, #fff8e8); }
+.rejected, .suspended { color: var(--ui-danger, #8f2929); background: var(--ui-surface, #fff4f2); }
+.rule { display: flex; gap: 14rpx; margin-top: 16rpx; color: var(--ui-muted, #687665); font-size: 22rpx; line-height: 1.55; }
+.rule text:first-child { width: 38rpx; height: 38rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; color: #fff; background: var(--ui-primary, #2f9b63); }
 .field-label { display: block; margin-top: 22rpx; margin-bottom: 10rpx; font-size: 24rpx; font-weight: 900; }
-.card-head > text:last-child { color: #879083; font-size: 20rpx; }
-.textarea, .material-input { width: 100%; padding: 18rpx; border-radius: 18rpx; border: 1rpx solid rgba(39,61,42,.1); background: #f7faf4; box-sizing: border-box; font-size: 24rpx; line-height: 1.6; }
+.card-head > text:last-child { color: var(--ui-muted, #879083); font-size: 20rpx; }
+.textarea, .material-input { width: 100%; padding: 18rpx; border-radius: 18rpx; border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.1)); background: var(--ui-soft, #f7faf4); box-sizing: border-box; font-size: 24rpx; line-height: 1.6; }
 .textarea { min-height: 260rpx; }
 .material-input { min-height: 160rpx; }
-.field-tip { display: block; margin-top: 8rpx; color: #879083; font-size: 20rpx; }
-.submit-btn { width: 100%; height: 84rpx; margin-top: 24rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: linear-gradient(135deg, #5fc68a, #1f7c4b); }
+.field-tip { display: block; margin-top: 8rpx; color: var(--ui-muted, #879083); font-size: 20rpx; }
+.submit-btn { width: 100%; height: 84rpx; margin-top: 24rpx; border-radius: 999rpx; color: #fff; font-size: 27rpx; font-weight: 900; background: var(--ui-gradient); }
 .submit-btn::after { border: none; }
 .submit-btn[disabled] { opacity: .55; }
-.complete-card { color: #1f7c4b; font-size: 24rpx; font-weight: 800; text-align: center; background: #eef8f1; }
-.loading { padding: 48rpx; color: #879083; text-align: center; }
+.complete-card { color: var(--ui-accent, #1f7c4b); font-size: 24rpx; font-weight: 800; text-align: center; background: var(--ui-soft, #eef8f1); }
+.loading { padding: 48rpx; color: var(--ui-muted, #879083); text-align: center; }
 </style>

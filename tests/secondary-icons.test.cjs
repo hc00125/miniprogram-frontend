@@ -9,12 +9,8 @@ const { parse } = require('@vue/compiler-sfc')
 const { baseParse, compile } = require('@vue/compiler-dom')
 const { renderToString } = require('@vue/server-renderer')
 const root = path.join(__dirname, '..')
-const read = p => fs.readFileSync(path.join(root, p), 'utf8')
-function icons() {
-  const module = { exports: {} }
-  vm.runInNewContext(ts.transpileModule(read('src/utils/uiIcons.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports })
-  return module.exports.uiIcons
-}
+const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '\n')
+function icons() { return require('./theme-icons-harness.cjs').loadIcons() }
 function fragment(page, cls) {
   const template = parse(read('src/pages/' + page + '/index.vue')).descriptor.template.content
   let found
@@ -45,7 +41,7 @@ test('player SFC semantic icons preserve notice count, income label and voice co
 test('shop SFC keeps home/cart/badge and designated product visibility without fake more action', async () => {
   for (const designated of [false, true]) {
     const bar = await render('shop/detail', 'bottom-bar', { product: {}, isPlayerServiceProduct: designated, cartCount: 102, goHome() {}, openCart() {}, openSpecPopup() {} })
-    asset(bar, 'home'); assert.equal(bar.includes('/icons/duotone/cart.png'), !designated)
+    asset(bar, 'home'); assert.equal(bar.includes('/icons/themes/mist/cart.png'), !designated)
     assert.equal(bar.includes('99+'), !designated); assert.ok(bar.includes(designated ? '立即指定' : '立即购买'))
   }
   asset(await render('shop/detail', 'hero-float--left', { goBack() {} }), 'back')
@@ -59,7 +55,7 @@ test('all seven real SFCs preserve business scripts, directives, button markup a
   const hash = s => require('node:crypto').createHash('sha256').update(s).digest('hex')
   const contracts = require('./secondary-icons-contracts.json')
   for (const [page, expected] of Object.entries(contracts)) {
-    const d = parse(read('src/pages/' + page + '/index.vue')).descriptor
+    const d = parse(read('src/pages/' + page + '/index.vue').replace(' :style="$appThemeStyle"', '')).descriptor
     const bindings = [], buttons = [], expressions = []
     function walk(n) {
       if (n.type === 5) expressions.push(n.content.content)
@@ -91,7 +87,7 @@ test('real profile settings script still enforces approval and plays/pauses the 
   module.exports.toggleAudio(); assert.equal(context.src, 'voice.m4a'); assert.equal(module.exports.isPlaying.value, true)
   module.exports.toggleAudio(); assert.equal(module.exports.isPlaying.value, false); assert.deepEqual(calls.slice(-2), ['play','pause'])
 })
-function asset(html, name) { assert.ok(html.includes('/icons/duotone/' + name + '.png'), name + ' pictogram missing'); assert.match(html, /mode="aspectFit"/) }
+function asset(html, name) { assert.ok(html.includes((/-light|-red/.test(name) ? '/icons/duotone/' : '/icons/themes/mist/') + name + '.png'), name + ' pictogram missing'); assert.match(html, /mode="aspectFit"/) }
 test('support SFC renders shared support pictograms and preserves official contact branding', async () => {
   const html = await render('client/customer-service', 'contact-list', { contacts: [{id: 1, name: '人工客服', wechat_id: 'support'}], copyWechat() {} })
   asset(html, 'support'); assert.doesNotMatch(html, />客</)

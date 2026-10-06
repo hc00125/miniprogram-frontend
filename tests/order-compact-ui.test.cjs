@@ -95,9 +95,9 @@ test('header is compact and empty cart remains discoverable without a large prom
   for (const name of ['loading', 'disabled']) assert.ok(refresh.props.some(p => p.name === 'bind' && p.arg?.content === name && p.exp.content === 'refreshing'))
 })
 
-test('order tab renders a small left cover, readable package/spec title and right status with amount', () => {
+test('order page remains registered and renders a small left cover, readable package/spec title and right status with amount', () => {
   const pages = JSON.parse(fs.readFileSync(path.join(root, 'src/pages.json'), 'utf8'))
-  assert.equal(pages.tabBar.list.find(t => t.text === '订单').pagePath, 'pages/boss/query/index')
+  assert.ok(pages.pages.some(page => page.path === 'pages/boss/query/index'))
   const head = element('order-head')
   assert.ok(element('order-cover', head), 'thumbnail belongs in horizontal product row, not a banner')
   assert.ok(element('order-title', head), 'existing package_name (including its spec text) stays visible')

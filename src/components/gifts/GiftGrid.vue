@@ -22,12 +22,12 @@ const failedImages = reactive<Record<string, boolean>>({})
 
 <style scoped>
 .gift-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16rpx; }
-.gift-item { display: flex; flex-direction: column; align-items: center; width: 100%; min-height: 220rpx; margin: 0; padding: 16rpx 8rpx; box-sizing: border-box; border: 2rpx solid transparent; border-radius: 24rpx; background: #fff; line-height: 1.5; }
+.gift-item { display: flex; flex-direction: column; align-items: center; width: 100%; min-height: 220rpx; margin: 0; padding: 16rpx 8rpx; box-sizing: border-box; border: 2rpx solid transparent; border-radius: 24rpx; background: var(--ui-surface, #fff); line-height: 1.5; }
 .gift-item::after { border: 0; }
-.gift-item--selected { border-color: #2f9b63; background: #eef9ef; }
+.gift-item--selected { border-color: var(--ui-accent-line, #2f9b63); background: var(--ui-soft, #eef9ef); }
 .gift-image { width: 112rpx; height: 112rpx; }
-.gift-placeholder { display: flex; align-items: center; justify-content: center; font-size: 20rpx; color: #687665; background: #f7f3ea; border-radius: 18rpx; }
-.gift-name { width: 100%; color: #172116; font-size: 25rpx; overflow-wrap: anywhere; }
-.gift-price { font-size: 23rpx; color: #1f7c4b; }
-.gift-empty { padding: 72rpx 20rpx; text-align: center; color: #687665; font-size: 26rpx; }
+.gift-placeholder { display: flex; align-items: center; justify-content: center; font-size: 20rpx; color: var(--ui-muted, #687665); background: var(--ui-soft, #f7f3ea); border-radius: 18rpx; }
+.gift-name { width: 100%; color: var(--ui-text, #172116); font-size: 25rpx; overflow-wrap: anywhere; }
+.gift-price { font-size: 23rpx; color: var(--ui-accent, #1f7c4b); }
+.gift-empty { padding: 72rpx 20rpx; text-align: center; color: var(--ui-muted, #687665); font-size: 26rpx; }
 </style>

@@ -1,5 +1,6 @@
+import { currentTheme } from './theme'
 // Local publicDir assets; SVG masters live in design/icons (not shipped).
-export const uiIcons = {
+const baseIcons = {
   order: '/icons/duotone/order.png',
   query: '/icons/duotone/query.png',
   grab: '/icons/duotone/grab.png',
@@ -7,6 +8,7 @@ export const uiIcons = {
   apply: '/icons/duotone/apply.png',
   notification: '/icons/duotone/notification.png',
   terms: '/icons/duotone/terms.png',
+  benefits: '/icons/duotone/benefits.png',
   support: '/icons/duotone/support.png',
   feedback: '/icons/duotone/feedback.png',
   settings: '/icons/duotone/settings.png',
@@ -37,6 +39,15 @@ export const uiIcons = {
   feedbackLight: '/icons/duotone/feedback-light.png',
   warningLight: '/icons/duotone/warning-light.png',
 } as const
+
+export const uiIcons = Object.fromEntries(Object.keys(baseIcons).map(key => [key, baseIcons[key as keyof typeof baseIcons]])) as Record<keyof typeof baseIcons, string>
+for (const key of Object.keys(baseIcons) as (keyof typeof baseIcons)[]) {
+  Object.defineProperty(uiIcons, key, { enumerable: true, get() {
+    const original = baseIcons[key]
+    if (/-light|-red/.test(original)) return original
+    return `/icons/themes/${currentTheme.value.id}/${original.split('/').pop()}`
+  } })
+}
 
 // Presentation only: type selects the glyph; original page sign predicates select tone.
 export function walletRecordIcon(type: string, income: boolean) {

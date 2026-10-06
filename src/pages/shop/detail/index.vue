@@ -1,5 +1,5 @@
 <template>
-  <view class="shop-detail-page">
+  <view :style="$appThemeStyle" class="shop-detail-page">
     <scroll-view v-if="product" scroll-y class="detail-scroll">
       <view class="hero-section">
         <image v-if="rawProductImage" class="hero-image" :src="rawProductImage" mode="aspectFill" @tap="previewProductImage(rawProductImage)" />

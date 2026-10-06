@@ -16,17 +16,20 @@ export function toPageUrl(path: string, params: Record<string, string | number |
   return `${path}${toQueryString(params)}`
 }
 
-export type MainTab = 'home' | 'order' | 'query' | 'players' | 'profile'
+// `query` remains a compatibility destination for existing order links, but is
+// now a normal page; only the five entries in pages.json use native switchTab.
+export type MainTab = 'home' | 'order' | 'rankings' | 'query' | 'players' | 'profile'
 
 const mainTabPaths: Record<MainTab, string> = {
   home: '/pages/boss/home/index',
   order: '/pages/shop/category/index',
+  rankings: '/pages/client/rankings/index',
   query: '/pages/boss/query/index',
   players: '/pages/player/list/index',
   profile: '/pages/client/profile/index'
 }
 
-const mainTabPathSet = new Set(Object.values(mainTabPaths))
+const mainTabPathSet = new Set(Object.entries(mainTabPaths).filter(([key]) => key !== 'query').map(([, path]) => path))
 
 function normalizePath(path: string) {
   return path.split('?')[0]
@@ -36,10 +39,13 @@ function isMainTab(value: unknown): value is MainTab {
   return typeof value === 'string' && value in mainTabPaths
 }
 
-function resolveMainTabPath(path: string, params: Record<string, string | number | undefined | null> = {}) {
+function resolvePage(path: string, params: Record<string, string | number | undefined | null> = {}) {
   const normalized = normalizePath(path)
-  if (normalized === mainTabPaths.home && isMainTab(params.tab)) return mainTabPaths[params.tab]
-  return normalized
+  if (normalized === mainTabPaths.home && isMainTab(params.tab)) {
+    const { tab, ...pageParams } = params
+    return { path: mainTabPaths[tab], params: pageParams }
+  }
+  return { path, params }
 }
 
 function isMainTabPath(path: string) {
@@ -52,34 +58,34 @@ function switchMainTab(path: string) {
 }
 
 export function go(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  const targetPath = resolveMainTabPath(path, params)
-  if (isMainTabPath(targetPath)) {
-    switchMainTab(targetPath)
+  const target = resolvePage(path, params)
+  if (isMainTabPath(target.path)) {
+    switchMainTab(target.path)
     return
   }
-  uni.navigateTo({ url: toPageUrl(path, params) })
+  uni.navigateTo({ url: toPageUrl(target.path, target.params) })
 }
 
 export function replace(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  const targetPath = resolveMainTabPath(path, params)
-  if (isMainTabPath(targetPath)) {
-    switchMainTab(targetPath)
+  const target = resolvePage(path, params)
+  if (isMainTabPath(target.path)) {
+    switchMainTab(target.path)
     return
   }
-  uni.redirectTo({ url: toPageUrl(path, params) })
+  uni.redirectTo({ url: toPageUrl(target.path, target.params) })
 }
 
 export function relaunch(path: string, params: Record<string, string | number | undefined | null> = {}) {
-  const targetPath = resolveMainTabPath(path, params)
-  if (isMainTabPath(targetPath)) {
-    switchMainTab(targetPath)
+  const target = resolvePage(path, params)
+  if (isMainTabPath(target.path)) {
+    switchMainTab(target.path)
     return
   }
-  uni.reLaunch({ url: toPageUrl(path, params) })
+  uni.reLaunch({ url: toPageUrl(target.path, target.params) })
 }
 
 export function goMain(tab: MainTab = 'home') {
-  switchMainTab(mainTabPaths[tab])
+  go(mainTabPaths[tab])
 }
 
 /**
@@ -116,7 +122,7 @@ export function replacePage(path: string, params: Record<string, string | number
   uni.redirectTo({ url: toPageUrl(path, params) })
 }
 
-export function navigateToTab(tab: 'query' | 'players' | 'profile') {
+export function navigateToTab(tab: 'rankings' | 'query' | 'players' | 'profile') {
   goMain(tab)
 }
 

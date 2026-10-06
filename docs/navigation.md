@@ -5,8 +5,8 @@
 应用底部使用 WeChat 原生 tabBar，5 个主页面签：
 
 - 首页 `/pages/boss/home/index`
-- 点单 `/pages/boss/order/index`
-- 订单 `/pages/boss/query/index`
+- 点单 `/pages/shop/category/index`
+- 排行榜 `/pages/client/rankings/index`
 - 陪玩 `/pages/player/list/index`
 - 我的 `/pages/client/profile/index`
 
@@ -17,12 +17,16 @@ import { goMain } from '@/utils/nav'
 
 goMain('home')
 goMain('order')
-goMain('query')
+goMain('rankings')
 goMain('players')
 goMain('profile')
 ```
 
 `go()` 和 `replace()` 会自动检测目标路径是否为主页面签：是则走 `uni.switchTab()`，否则走正常的 navigateTo/redirectTo。
+
+订单中心 `/pages/boss/query/index` 保留为子页面，从「我的 → 我的订单」进入。
+原有 `goMain('query')`、`navigateToTab('query')` 兼容调用会打开该子页面，不再调用 `switchTab`。
+兼容首页参数 `{ tab: 'query' }` 也会解析到订单中心，并保留其余页面参数。
 
 ## 子页面
 
@@ -62,6 +66,6 @@ replace('/pages/player/grab/index')
 | `go(path, params)` | 打开子页面 | → `switchTab` |
 | `replace(path, params)` | 替换当前页面 | → `switchTab` |
 | `relaunch(path, params)` | 重启应用 | → `switchTab` |
-| `goMain(tab)` | 切换到主页面签 | → `switchTab` |
+| `goMain(tab)` | 切换到主页面签；兼容 `query` 打开订单子页 | → `switchTab`（`query` → `navigateTo`） |
 | `backToRoute(path)` | 回退到已知路由，防栈累积 | 退栈或 redirectTo |
 | `back(delta)` | 返回上一页 | — |

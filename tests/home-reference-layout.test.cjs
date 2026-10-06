@@ -51,5 +51,5 @@ for(const change of ['hide','switch','expire'])test('late wallet read cannot ref
 test('catalogue and recommendation errors are not mislabeled as real empty data',async t=>{
  const h=homeHarness({catalogFail:true,playerFail:true,guest:true});t.after(()=>h.scope.stop());await h.load();const html=await h.html()
  assert.match(html,/游戏加载失败，点击重试/);assert.match(html,/陪玩加载失败，点击重试/)
- assert.doesNotMatch(html,/暂无已上架游戏|暂无可推荐的陪玩|暗区突围无限|冠名|包天/)
+ assert.doesNotMatch(html,/暂无已上架游戏|暂无可推荐的陪玩|冠名|包天/)
 })

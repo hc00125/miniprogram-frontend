@@ -1,5 +1,5 @@
 <template>
-  <view class="payment-page">
+  <view :style="$appThemeStyle" class="payment-page">
     <button v-if="orderNo" size="mini" @tap="openOrderComplaint">投诉/售后 · 平台反馈</button>
     <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />
     <view class="status-card" :class="{ paid: isPaid }">

@@ -1,5 +1,5 @@
 <template>
-  <view class="wallet-page">
+  <view :style="$appThemeStyle" class="wallet-page">
     <view class="hero-card">
       <view class="hero-top">
         <view>
@@ -177,9 +177,9 @@ onReachBottom(() => {
 </script>
 
 <style lang="scss" scoped>
-.wallet-page { min-height: 100vh; padding: 22rpx 24rpx 80rpx; box-sizing: border-box; color: #172116; background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.14), transparent 30%), radial-gradient(circle at 90% 14%, rgba(47,155,99,.12), transparent 28%), #f7f3ea; }
-.hero-card, .card, .empty-card { border-radius: 28rpx; background: rgba(255,255,255,.96); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.hero-card { padding: 30rpx; color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
+.wallet-page { min-height: 100vh; padding: 22rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.14), transparent 30%), radial-gradient(circle at 90% 14%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 28%), var(--ui-soft, #f7f3ea); }
+.hero-card, .card, .empty-card { border-radius: 28rpx; background: var(--ui-surface, rgba(255,255,255,.96)); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
+.hero-card { padding: 30rpx; color: #fff; background: var(--ui-gradient); }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
 .hero-top > view { flex: 1; min-width: 0; }
 .eyebrow, .hero-title, .hero-sub { display: block; }
@@ -194,7 +194,7 @@ onReachBottom(() => {
 .balance-block > view text:last-child { font-size: 64rpx; line-height: 1; font-weight: 900; }
 .balance-block > view.balance-error text:last-child { font-size: 30rpx; line-height: 1.4; font-weight: 900; color: rgba(255,255,255,.88); text-decoration: underline; }
 .currency { font-size: 30rpx; font-weight: 900; }
-.recharge-btn { width: 100%; height: 80rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: #1f7c4b; font-size: 27rpx; font-weight: 900; background: #fff; }
+.recharge-btn { width: 100%; height: 80rpx; margin-top: 22rpx; display: flex; align-items: center; justify-content: center; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 27rpx; font-weight: 900; background: var(--ui-surface, #fff); }
 .total-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; margin-top: 18rpx; }
 .total-grid view { padding: 18rpx 12rpx; border-radius: 20rpx; text-align: center; background: rgba(255,255,255,.10); }
 .total-grid text { display: block; }
@@ -203,26 +203,26 @@ onReachBottom(() => {
 .total-note { display: block; margin-top: 14rpx; color: rgba(255,255,255,.68); font-size: 20rpx; line-height: 1.55; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 26rpx 6rpx 14rpx; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.section-head text:last-child { color: #879083; font-size: 21rpx; }
+.section-head text:last-child { color: var(--ui-muted, #879083); font-size: 21rpx; }
 .list-section { display: flex; flex-direction: column; gap: 16rpx; }
 .record-card { padding: 22rpx 24rpx; }
 .record-main { display: flex; align-items: flex-start; gap: 16rpx; }
 .record-icon { width: 68rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 20rpx; color: #fff; font-size: 27rpx; font-weight: 900; }
-.record-icon--in { background: linear-gradient(135deg, #4fc083, #1f7c4b); }
+.record-icon--in { background: var(--ui-gradient); }
 .record-icon--out { background: linear-gradient(135deg, #d8a144, #a87520); }
 .record-body { flex: 1; min-width: 0; }
 .record-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
 .record-line.sub { margin-top: 8rpx; }
 .record-title { font-size: 27rpx; font-weight: 900; }
 .record-amount { font-size: 30rpx; font-weight: 900; }
-.amount-in { color: #1f7c4b; }
-.amount-out { color: #a13d35; }
-.record-time { color: #9aa197; font-size: 20rpx; }
-.record-balance { color: #879083; font-size: 20rpx; }
-.record-note { display: block; margin-top: 8rpx; color: #687665; font-size: 21rpx; line-height: 1.5; word-break: break-all; }
-.empty-card { padding: 60rpx 24rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
-.list-foot { padding: 26rpx 0 10rpx; color: #9aa197; text-align: center; font-size: 21rpx; }
-.loading-state { padding: 50rpx 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
+.amount-in { color: var(--ui-accent, #1f7c4b); }
+.amount-out { color: var(--ui-danger, #a13d35); }
+.record-time { color: var(--ui-muted, #9aa197); font-size: 20rpx; }
+.record-balance { color: var(--ui-muted, #879083); font-size: 20rpx; }
+.record-note { display: block; margin-top: 8rpx; color: var(--ui-muted, #687665); font-size: 21rpx; line-height: 1.5; word-break: break-all; }
+.empty-card { padding: 60rpx 24rpx; color: var(--ui-muted, #8a9286); text-align: center; font-size: 24rpx; }
+.list-foot { padding: 26rpx 0 10rpx; color: var(--ui-muted, #9aa197); text-align: center; font-size: 21rpx; }
+.loading-state { padding: 50rpx 20rpx; color: var(--ui-muted, #8a9286); text-align: center; font-size: 24rpx; }
 </style>
 <style scoped>
 .record-icon { background: transparent; }

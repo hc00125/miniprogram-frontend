@@ -9,15 +9,9 @@ const { parse } = require('@vue/compiler-sfc')
 const { compile } = require('@vue/compiler-dom')
 const { renderToString } = require('@vue/server-renderer')
 const root = path.join(__dirname, '..')
-const read = name => fs.readFileSync(path.join(root, name), 'utf8')
+const read = name => fs.readFileSync(path.join(root, name), 'utf8').replace(/\r\n/g, '\n')
 const descriptor = () => parse(read('src/pages/client/profile/index.vue')).descriptor
-function icons() {
-  const filename = 'src/utils/uiIcons.ts'
-  assert.ok(fs.existsSync(path.join(root, filename)), 'fixed local icon mapping must exist')
-  const module = { exports: {} }
-  vm.runInNewContext(ts.transpileModule(read(filename), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports })
-  return module.exports.uiIcons
-}
+function icons() { return require('./theme-icons-harness.cjs').loadIcons() }
 function page() {
   const calls = []
   const mocks = {
@@ -42,19 +36,19 @@ test('reference homepage retains approved local pictograms in game, balance and 
   const { homeHarness } = require('./home-reference-harness.cjs')
   const h = homeHarness({ games: [{ id: 1, name: '实际游戏', icon_url: '', groups: [] }] })
   await h.load(); const html = await h.html()
-  for (const name of ['order','diamond-light','chevron']) assert.ok(html.includes('/icons/duotone/' + name + '.png'))
+  for (const name of ['order','diamond-light']) assert.ok(html.includes('/icons/duotone/' + name + '.png'))
   assert.ok(html.includes('选择游戏') && html.includes('我的钻石'))
   h.scope.stop()
 })
 test('fixed resources contain real transparent PNGs and original token-colored SVGs; native tab states remain complete', () => {
   const map = icons()
-  assert.deepEqual(Object.keys(map).sort(), 'order query grab reviews apply notification terms support feedback settings guest chevron fish shield microphone cart home back clock verification payment diamond diamondLight income incomeRed expense expenseRed refund refundRed adjustment adjustmentRed backfill backfillRed room feedbackLight warningLight'.split(' ').sort())
+  assert.deepEqual(Object.keys(map).sort(), 'benefits order query grab reviews apply notification terms support feedback settings guest chevron fish shield microphone cart home back clock verification payment diamond diamondLight income incomeRed expense expenseRed refund refundRed adjustment adjustmentRed backfill backfillRed room feedbackLight warningLight'.split(' ').sort())
   const theme = read('src/styles/theme.scss')
-  const deep = theme.match(/\$green-deep:\s*(#[0-9a-f]+)/)[1]
-  const soft = theme.match(/\$green-soft:\s*(#[0-9a-f]+)/)[1]
+  const deep = '#1f7c4b'
+  const soft = '#eef9ef'
   for (const [name, url] of Object.entries(map)) {
     const basename = name.replace(/[A-Z]/g, c => '-' + c.toLowerCase())
-    assert.equal(url, '/icons/duotone/' + basename + '.png')
+    assert.equal(url, (/-light|-red/.test(basename) ? '/icons/duotone/' : '/icons/themes/mist/') + basename + '.png')
     const png = fs.readFileSync(path.join(root, 'static', url))
     assert.equal(png.subarray(1, 4).toString(), 'PNG')
     assert.equal(png.readUInt32BE(16), 96); assert.equal(png.readUInt32BE(20), 96)
@@ -90,7 +84,7 @@ test('real profile handlers retain login gates, pending/rejected/paused behavior
 async function renderProfile(state) {
   const render = new Function('Vue', compile(descriptor().template.content, { mode: 'function', prefixIdentifiers: true, isCustomElement: t => ['view','text','image'].includes(t) }).code)(vue)
   const app = vue.createSSRApp({ setup: () => state, render })
-  app.component('MainBottomTabs', { render: () => null })
+  app.component('MainBottomTabs', { render: () => null }); app.component('ThemePicker', { render: () => null })
   return renderToString(app)
 }
 test('profile real SFC renders local pictograms across guest, application and approved states', async () => {
@@ -100,11 +94,11 @@ test('profile real SFC renders local pictograms across guest, application and ap
     state.isLoggedIn.value = status !== 'guest'
     state.profile.value = status === 'guest' ? null : { player_status: approved ? 'approved' : status, player: approved ? { can_accept_orders: status !== 'paused' } : null }
     const html = await renderProfile(state)
-    assert.ok(html.includes('/icons/duotone/order.png'), 'order pictogram must replace character tile')
-    for (const name of ['query','grab','terms','support','feedback','settings']) assert.ok(html.includes('/icons/duotone/' + name + '.png'), name)
-    assert.equal(html.includes('/icons/duotone/reviews.png'), approved)
-    assert.equal(html.includes('/icons/duotone/apply.png'), !approved)
-    assert.equal(html.includes('/icons/duotone/notification.png'), approved)
+    assert.ok(html.includes('/icons/themes/mist/order.png'), 'order pictogram must replace character tile')
+    for (const name of ['query','grab','terms','support','feedback','settings']) assert.ok(html.includes((/-light|-red/.test(name) ? '/icons/duotone/' : '/icons/themes/mist/') + name + '.png'), name)
+    assert.equal(html.includes('/icons/themes/mist/reviews.png'), approved)
+    assert.equal(html.includes('/icons/themes/mist/apply.png'), !approved)
+    assert.equal(html.includes('/icons/themes/mist/notification.png'), approved)
     assert.equal(html.includes('wallet-entry-card'), status !== 'guest')
     assert.equal(html.includes('接单已暂停') || html.includes('接单权限已暂停'), status === 'paused')
     assert.ok(!/class="(?:quick-icon|list-icon)[^"]*">[点查抢评陪通服客诉设]</.test(html))

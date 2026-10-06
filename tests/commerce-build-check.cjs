@@ -5,7 +5,7 @@ function values(v,out=[]){if(v && typeof v==='object'){for(const x of Object.val
 function event(file,action,name='bindtap') {const tag=read(file+'.wxml').match(new RegExp('<[^>]+data-action="'+action+'"[^>]*>'))?.[0];assert.ok(tag,action);return tag.match(new RegExp(name+'="\\{\\{(\\w+)\\}\\}"'))[1]}
 function runtime(file,deps={},store={token:'synthetic-client',client_profile:{id:1}}){
  let Component;const hooks={},events={}
- const vendor={...vue,index:{getStorageSync:k=>store[k],$on:(k,f)=>events[k]=f,$off:k=>delete events[k]},onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(a,fn)=>a.map(fn),_export_sfc:c=>c}
+ const vendor={...vue,s: x => x || '',index:{getStorageSync:k=>store[k],$on:(k,f)=>events[k]=f,$off:k=>delete events[k]},onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(a,fn)=>a.map(fn),_export_sfc:c=>c}
  vm.runInNewContext(read(file+'.js'),{require:p=>p.includes('vendor')?vendor:deps[Object.keys(deps).find(k=>p.includes(k))] || {SESSION_EXPIRED_EVENT:'session:expired'},wx:{createComponent:c=>Component=c,createPage:c=>Component=c},console})
  const scope=vue.effectScope();return{scope,hooks,events,store,setup:props=>{const draw=scope.run(()=>Component.setup(props,{emit(){}}));return()=>draw(props,[])}}
 }

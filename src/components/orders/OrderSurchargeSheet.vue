@@ -94,22 +94,22 @@ onScopeDispose(() => intent.close())
 
 <style scoped>
 .surcharge-mask { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; background: rgba(23,33,22,.4); }
-.surcharge-sheet { width: 100%; max-height: 88vh; display: flex; flex-direction: column; box-sizing: border-box; border-radius: 32rpx 32rpx 0 0; background: #f7f3ea; color: #172116; padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom)); }
+.surcharge-sheet { width: 100%; max-height: 88vh; display: flex; flex-direction: column; box-sizing: border-box; border-radius: 32rpx 32rpx 0 0; background: var(--ui-soft, #f7f3ea); color: var(--ui-text, #172116); padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom)); }
 .surcharge-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .surcharge-title { font-size: 32rpx; font-weight: 800; }
 .surcharge-close { display: flex; align-items: center; justify-content: center; min-width: 88rpx; min-height: 88rpx; background: transparent; font-size: 25rpx; }
 .surcharge-order { font-size: 26rpx; overflow-wrap: anywhere; }
-.surcharge-note { display: block; color: #687665; font-size: 24rpx; margin: 12rpx 0; }
+.surcharge-note { display: block; color: var(--ui-muted, #687665); font-size: 24rpx; margin: 12rpx 0; }
 .surcharge-content { height: 420rpx; min-height: 0; margin-top: 20rpx; }
 .surcharge-label { display: block; font-size: 27rpx; margin: 16rpx 0; }
-input { min-height: 88rpx; background: #fff; border-radius: 20rpx; padding: 0 24rpx; font-size: 30rpx; }
-.surcharge-total { display: block; color: #1f7c4b; font-size: 29rpx; font-weight: 800; margin: 18rpx 0; }
-.surcharge-warning { display: block; color: #9a6a16; font-size: 24rpx; margin: 12rpx 0; }
+input { min-height: 88rpx; background: var(--ui-surface, #fff); border-radius: 20rpx; padding: 0 24rpx; font-size: 30rpx; }
+.surcharge-total { display: block; color: var(--ui-accent, #1f7c4b); font-size: 29rpx; font-weight: 800; margin: 18rpx 0; }
+.surcharge-warning { display: block; color: var(--ui-gold, #9a6a16); font-size: 24rpx; margin: 12rpx 0; }
 .surcharge-footer { flex-shrink: 0; }
-.surcharge-submit { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92rpx; padding: 20rpx; box-sizing: border-box; border-radius: 24rpx; background: #2f9b63; color: #fff; font-size: 29rpx; }
-.surcharge-submit[disabled] { opacity: .56; background: #2f9b63; color: #fff; }
-.surcharge-query { display: flex; align-items: center; justify-content: center; min-height: 88rpx; width: 100%; border-radius: 20rpx; background: #eef9ef; color: #1f7c4b; font-size: 26rpx; }
+.surcharge-submit { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92rpx; padding: 20rpx; box-sizing: border-box; border-radius: 24rpx; background: var(--ui-primary, #2f9b63); color: #fff; font-size: 29rpx; }
+.surcharge-submit[disabled] { opacity: .56; background: var(--ui-primary, #2f9b63); color: #fff; }
+.surcharge-query { display: flex; align-items: center; justify-content: center; min-height: 88rpx; width: 100%; border-radius: 20rpx; background: var(--ui-soft, #eef9ef); color: var(--ui-accent, #1f7c4b); font-size: 26rpx; }
 .surcharge-presets { display: flex; flex-wrap: wrap; gap: 16rpx; margin: 16rpx 0; }
-.surcharge-presets button { display: flex; align-items: center; justify-content: center; min-height: 88rpx; padding: 16rpx 24rpx; border-radius: 20rpx; background: #eef9ef; color: #1f7c4b; font-size: 26rpx; }
+.surcharge-presets button { display: flex; align-items: center; justify-content: center; min-height: 88rpx; padding: 16rpx 24rpx; border-radius: 20rpx; background: var(--ui-soft, #eef9ef); color: var(--ui-accent, #1f7c4b); font-size: 26rpx; }
 button::after { border: 0; }
 </style>

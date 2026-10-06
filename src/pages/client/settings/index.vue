@@ -1,5 +1,5 @@
 <template>
-  <view class="settings-page">
+  <view :style="$appThemeStyle" class="settings-page">
     <view class="hero-card">
       <text class="eyebrow">ACCOUNT SETTINGS</text>
       <text class="hero-title">设置与权限</text>
@@ -46,7 +46,7 @@
       </view>
       <view class="setting-row">
         <view><text>在线接单</text><text>{{ profile.player.is_online ? '当前在线，可接收订单' : '当前离线' }}</text></view>
-        <switch :checked="profile.player.is_online" color="#2f9b63" :disabled="onlineUpdating || !canAcceptOrders" @change="toggleOnline" />
+        <switch :checked="profile.player.is_online" :color="$appThemeAccent" :disabled="onlineUpdating || !canAcceptOrders" @change="toggleOnline" />
       </view>
       <view class="setting-row" @tap="go('/pages/player/profile-settings/index')">
         <view><text>个人简介与语音</text><text>修改后提交后台审核，审核期间展示旧资料</text></view><text>›</text>
@@ -255,9 +255,9 @@ onShow(async () => {
 </script>
 
 <style lang="scss" scoped>
-.settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: #172116; background: radial-gradient(circle at 12% 0%, rgba(47,155,99,.12), transparent 30%), radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%), #f7f3ea; }
-.hero-card, .section-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: rgba(255,255,255,.97); border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.hero-card { color: #fff; background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72); }
+.settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 30%), radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
+.hero-card, .section-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, rgba(255,255,255,.97)); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
+.hero-card { color: #fff; background: var(--ui-gradient); }
 .eyebrow, .hero-title, .hero-sub { display: block; }
 .eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
 .hero-title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
@@ -266,28 +266,28 @@ onShow(async () => {
 .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; margin-bottom: 6rpx; }
 .section-head > view { flex: 1; }
 .section-head .section-title { margin-bottom: 4rpx; }
-.section-head view text:last-child { color: #879083; font-size: 20rpx; }
-.type-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 20rpx; font-weight: 900; background: #eef8f1; }
-.setting-row { width: 100%; min-height: 88rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; padding: 14rpx 0; border-bottom: 1rpx solid rgba(39,61,42,.07); box-sizing: border-box; }
+.section-head view text:last-child { color: var(--ui-muted, #879083); font-size: 20rpx; }
+.type-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 20rpx; font-weight: 900; background: var(--ui-soft, #eef8f1); }
+.setting-row { width: 100%; min-height: 88rpx; display: flex; align-items: center; justify-content: space-between; gap: 18rpx; padding: 14rpx 0; border-bottom: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.07)); box-sizing: border-box; }
 .setting-row:last-child { border-bottom: none; }
 .setting-row > view { flex: 1; min-width: 0; }
 .setting-row view text { display: block; }
 .setting-row view text:first-child { font-size: 26rpx; font-weight: 900; }
-.setting-row view text:last-child { margin-top: 5rpx; color: #879083; font-size: 20rpx; line-height: 1.45; }
-.setting-row > text { color: #aaa; font-size: 34rpx; }
+.setting-row view text:last-child { margin-top: 5rpx; color: var(--ui-muted, #879083); font-size: 20rpx; line-height: 1.45; }
+.setting-row > text { color: var(--ui-muted, #aaa); font-size: 34rpx; }
 .notice-row, .phone-row { align-items: center; }
-.notice-btn { min-width: 142rpx; height: 60rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: #1f7c4b; font-size: 21rpx; font-weight: 900; line-height: 60rpx; background: #eef8f1; }
+.notice-btn { min-width: 142rpx; height: 60rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 21rpx; font-weight: 900; line-height: 60rpx; background: var(--ui-soft, #eef8f1); }
 .notice-btn::after { border: none; }
 .notice-btn[disabled] { opacity: .55; }
-.danger-link view text:first-child { color: #a13d35; }
+.danger-link view text:first-child { color: var(--ui-danger, #a13d35); }
 .permission-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12rpx; margin-top: 18rpx; }
-.permission-grid view { padding: 18rpx; border-radius: 18rpx; text-align: center; background: #eef8f1; }
-.permission-grid view.disabled { background: #f1f2ef; }
+.permission-grid view { padding: 18rpx; border-radius: 18rpx; text-align: center; background: var(--ui-soft, #eef8f1); }
+.permission-grid view.disabled { background: var(--ui-soft, #f1f2ef); }
 .permission-grid text { display: block; }
-.permission-grid text:first-child { color: #1f7c4b; font-size: 24rpx; font-weight: 900; }
-.permission-grid view.disabled text:first-child { color: #9a5a45; }
-.permission-grid text:last-child { margin-top: 4rpx; color: #687665; font-size: 20rpx; }
-.permission-warning { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: #8f4d35; font-size: 21rpx; line-height: 1.5; background: #fff2ec; }
-.logout-btn { width: 100%; height: 82rpx; margin-top: 12rpx; border-radius: 999rpx; color: #a13d35; font-size: 27rpx; font-weight: 900; background: #fff; border: 1rpx solid rgba(161,61,53,.16); }
+.permission-grid text:first-child { color: var(--ui-accent, #1f7c4b); font-size: 24rpx; font-weight: 900; }
+.permission-grid view.disabled text:first-child { color: var(--ui-danger, #9a5a45); }
+.permission-grid text:last-child { margin-top: 4rpx; color: var(--ui-muted, #687665); font-size: 20rpx; }
+.permission-warning { display: block; margin-top: 14rpx; padding: 14rpx; border-radius: 14rpx; color: var(--ui-danger, #8f4d35); font-size: 21rpx; line-height: 1.5; background: var(--ui-surface, #fff2ec); }
+.logout-btn { width: 100%; height: 82rpx; margin-top: 12rpx; border-radius: 999rpx; color: var(--ui-danger, #a13d35); font-size: 27rpx; font-weight: 900; background: var(--ui-surface, #fff); border: 1rpx solid var(--ui-danger, rgba(161,61,53,.16)); }
 .logout-btn::after { border: none; }
 </style>

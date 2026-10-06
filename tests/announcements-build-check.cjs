@@ -9,10 +9,10 @@ const homeConfig=JSON.parse(fs.readFileSync(path.join(root,'pages/boss/home/inde
 assert.equal(homeConfig.usingComponents['home-announcements'],'../../../components/HomeAnnouncements')
 const app=JSON.parse(fs.readFileSync(path.join(root,'app.json'),'utf8'))
 assert.equal(app.pages[0],'pages/boss/home/index');assert.ok(app.pages.includes(page));assert.equal(app.tabBar.list.length,5)
-assert.match(fs.readFileSync(path.join(root,component+'.wxss'),'utf8'),/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/)
+assert.match(fs.readFileSync(path.join(root,component+'.wxss'),'utf8'),/\.announcements[^}]*flex-direction:column/)
 for(const name of [component,page])for(const ext of ['js','json','wxml','wxss'])assert.ok(fs.statSync(path.join(root,name+'.'+ext)).size)
 const hooks={load:[],show:[],hide:[],unload:[],unmount:[]},requests=[],calls=[],cache=new Map(),timers=new Map();let seq=0,defined
-const vendor={...vue,index:{request:o=>requests.push(o),setNavigationBarTitle:o=>calls.push(['title',o.title])},
+const vendor={...vue,s: x => x || '',index:{request:o=>requests.push(o),setNavigationBarTitle:o=>calls.push(['title',o.title])},
  onLoad:f=>hooks.load.push(f),onShow:f=>hooks.show.push(f),onHide:f=>hooks.hide.push(f),onUnload:f=>hooks.unload.push(f),onBeforeUnmount:f=>hooks.unmount.push(f),
  _export_sfc:x=>x,f:(a,fn)=>a.map(fn),e:Object.assign,o:x=>x,t:String,n:x=>x}
 function load(file){
@@ -29,11 +29,14 @@ const item=kind=>({id:kind+':1',kind,boss_name:'测试老板',player_id:7,player
 function respond(r,rows=[item(r.data.kind)]){r.success({statusCode:200,data:{count:rows.length,page:r.data.page,page_size:r.data.page_size,results:rows}})}
 ;(async()=>{
  load(path.join(root,component+'.js'));const props=vue.reactive({active:true}),scope=vue.effectScope(),render=scope.run(()=>defined.setup(props))
- requests.forEach(r=>respond(r));await tick()
+ requests.forEach(r=>respond(r,r.data.kind==='gift'?[{...item('gift'),quantity:99,boss_avatar_url:'https://fixture.invalid/boss.png',player_avatar_url:'https://fixture.invalid/player.png',item_image_url:'https://fixture.invalid/gift.png'},{...item('gift'),id:'gift:2'}]:[item('patronage')]));await tick()
  let view=render(props,[]);assert.equal(view.a.length,2)
- const wxml=fs.readFileSync(path.join(root,component+'.wxml'),'utf8'),tapKey=wxml.match(/bindtap="\{\{card\.(\w+)\}\}"/)[1]
- const gift=view.a.find(c=>Object.values(c).includes('open-gift'));assert.ok(JSON.stringify(gift).includes('玫瑰'));gift[tapKey]();assert.equal(calls.at(-1)[1].kind,'gift')
- props.active=false;assert.equal(timers.size,0);props.active=true;const pending=requests.slice(2);props.active=false;pending.forEach(r=>respond(r));await tick();assert.equal(timers.size,0)
+ const wxml=fs.readFileSync(path.join(root,component+'.wxml'),'utf8'),tapKey=wxml.match(/bindtap="\{\{card\.(\w+)\}\}"/)[1],autoplayKey=wxml.match(/autoplay="\{\{card\.(\w+)\}\}"/)[1]
+ const gift=view.a.find(c=>Object.values(c).includes('open-gift')),patronage=view.a.find(c=>Object.values(c).includes('open-patronage'))
+ for(const value of ['热门广播','测试老板','测试陪玩','玫瑰','99','boss.png','player.png','gift.png'])assert.ok(JSON.stringify(gift).includes(value))
+ assert.equal(gift[autoplayKey],true);assert.equal(patronage[autoplayKey],false)
+ gift[tapKey]();assert.equal(calls.at(-1)[1].kind,'gift')
+ props.active=false;assert.equal(timers.size,0);assert.ok(render(props,[]).a.every(card=>card[autoplayKey]===false));props.active=true;const pending=requests.slice(2);props.active=false;pending.forEach(r=>respond(r));await tick();assert.equal(timers.size,0)
  hooks.unmount.forEach(f=>f());scope.stop()
  load(path.join(root,page+'.js'));const scope2=vue.effectScope(),renderPage=scope2.run(()=>defined.setup({}))
  hooks.load[0]({kind:'gift'});hooks.show[0]();respond(requests.at(-1));await tick()

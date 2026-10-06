@@ -1,5 +1,5 @@
 <template>
-  <view class="page">
+  <view :style="$appThemeStyle" class="page">
     <view class="notice">提交至偷吃电竞平台，由平台客服处理；非微信官方投诉渠道，不影响使用微信官方投诉渠道。本入口不会自动退款或处罚。</view>
     <view v-if="submission.number" class="card success">
       <text class="heading">提交成功</text><text selectable>工单编号：{{ submission.number }}</text>
@@ -89,5 +89,5 @@ onShow(() => {
 </script>
 <style scoped src="./buttons.css"></style>
 <style scoped>
-.page{min-height:100vh;padding:28rpx;background:#f7f3ea;box-sizing:border-box;color:#172116}.card{padding:26rpx;background:white;border-radius:24rpx;margin:22rpx 0;line-height:1.7}.notice{padding:22rpx;border-radius:20rpx;background:#edf6ee;color:#47614b;font-size:24rpx;line-height:1.7}.heading{display:block;font-weight:700;margin:18rpx 0 12rpx}.field,input,textarea{padding:20rpx;background:#f6f7f4;border-radius:14rpx;box-sizing:border-box;width:100%;font-size:28rpx}input{height:82rpx}textarea{height:240rpx}.muted{display:block;color:#75816f;text-align:right;font-size:22rpx}.images{display:flex;gap:14rpx;margin-bottom:18rpx}.images image{width:170rpx;height:170rpx;border-radius:14rpx}.primary{margin:24rpx 0;background:#1f7c4b;color:white}.error{color:#a13d35;font-size:25rpx;margin:20rpx 0;line-height:1.6}.link{display:block;color:#1f7c4b;text-decoration:underline;margin:12rpx 0}.success text{display:block;word-break:break-all}.mask{position:fixed;inset:0;z-index:99;background:#0008;display:flex;align-items:center;padding:30rpx}.dialog{width:100%}.dialog button{margin-top:16rpx}
+.page{min-height:100vh;padding:28rpx;background:var(--ui-soft, #f7f3ea);box-sizing:border-box;color:var(--ui-text, #172116)}.card{padding:26rpx;background:white;border-radius:24rpx;margin:22rpx 0;line-height:1.7}.notice{padding:22rpx;border-radius:20rpx;background:var(--ui-soft, #edf6ee);color:var(--ui-muted, #47614b);font-size:24rpx;line-height:1.7}.heading{display:block;font-weight:700;margin:18rpx 0 12rpx}.field,input,textarea{padding:20rpx;background:var(--ui-soft, #f6f7f4);border-radius:14rpx;box-sizing:border-box;width:100%;font-size:28rpx}input{height:82rpx}textarea{height:240rpx}.muted{display:block;color:var(--ui-muted, #75816f);text-align:right;font-size:22rpx}.images{display:flex;gap:14rpx;margin-bottom:18rpx}.images image{width:170rpx;height:170rpx;border-radius:14rpx}.primary{margin:24rpx 0;background:var(--ui-primary, #1f7c4b);color:white}.error{color:var(--ui-danger, #a13d35);font-size:25rpx;margin:20rpx 0;line-height:1.6}.link{display:block;color:var(--ui-accent, #1f7c4b);text-decoration:underline;margin:12rpx 0}.success text{display:block;word-break:break-all}.mask{position:fixed;inset:0;z-index:99;background:#0008;display:flex;align-items:center;padding:30rpx}.dialog{width:100%}.dialog button{margin-top:16rpx}
 </style>

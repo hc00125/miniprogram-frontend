@@ -81,5 +81,5 @@ onScopeDispose(() => { hide(); uni.$off(SESSION_EXPIRED_EVENT, expire) })
 watch(() => props.orderNo, reset, { flush: 'sync' })
 </script>
 <style scoped>
-.surcharge-read{margin:20rpx 0;padding:20rpx;border-radius:24rpx;background:#fff;color:#172116}.note{display:block;margin:12rpx 0;font-size:24rpx;color:#687665}.record{display:flex;flex-direction:column;gap:8rpx;padding:16rpx 0;font-size:24rpx;border-bottom:1rpx solid #eef3e9}.paging{display:flex;gap:12rpx}button{display:flex;width:100%;min-height:88rpx;align-items:center;justify-content:center;padding:16rpx;box-sizing:border-box;border-radius:20rpx;color:#1f7c4b;background:#eef9ef;font-size:25rpx}button::after{border:0}
+.surcharge-read{margin:20rpx 0;padding:20rpx;border-radius:24rpx;background:var(--ui-surface, #fff);color:var(--ui-text, #172116)}.note{display:block;margin:12rpx 0;font-size:24rpx;color:var(--ui-muted, #687665)}.record{display:flex;flex-direction:column;gap:8rpx;padding:16rpx 0;font-size:24rpx;border-bottom:1rpx solid var(--ui-line, #eef3e9)}.paging{display:flex;gap:12rpx}button{display:flex;width:100%;min-height:88rpx;align-items:center;justify-content:center;padding:16rpx;box-sizing:border-box;border-radius:20rpx;color:var(--ui-accent, #1f7c4b);background:var(--ui-soft, #eef9ef);font-size:25rpx}button::after{border:0}
 </style>

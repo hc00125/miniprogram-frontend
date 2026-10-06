@@ -1,25 +1,22 @@
-$green: #2f9b63;
-$green-soft: #eef9ef;
-$green-deep: #1f7c4b;
-$gold: #d8a144;
-$gold-soft: #fff7df;
-$bg: #f7f3ea;
-$bg-mint: #edf7ee;
-$card: rgba(255, 255, 255, 0.94);
-$text: #172116;
-$muted: #687665;
-$subtle: #94a08d;
-$line: rgba(36, 55, 39, 0.09);
-$shadow: 0 18rpx 46rpx rgba(39, 61, 42, 0.10);
-$shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
+$green: var(--ui-accent, #2f9b63);
+$green-soft: var(--ui-accent-soft);
+$green-deep: var(--ui-accent, #1f7c4b);
+$gold: var(--ui-gold, #d8a144);
+$gold-soft: var(--ui-gold-soft);
+$bg: var(--ui-bg);
+$bg-mint: var(--ui-soft);
+$card: var(--ui-surface, rgba(255, 255, 255, 0.94));
+$text: var(--ui-text, #172116);
+$muted: var(--ui-muted, #687665);
+$subtle: var(--ui-muted, #94a08d);
+$line: var(--ui-line, rgba(36, 55, 39, 0.09));
+$shadow: 0 18rpx 46rpx var(--ui-shadow, rgba(39, 61, 42, 0.10));
+$shadow-soft: 0 10rpx 28rpx var(--ui-shadow, rgba(39, 61, 42, 0.07));
 
 .club-page {
   min-height: 100vh;
   padding: 24rpx;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(216, 161, 68, 0.14), transparent 34%),
-    radial-gradient(circle at 92% 18%, rgba(94, 178, 122, 0.13), transparent 30%),
-    linear-gradient(180deg, #fbf7ef 0%, #eef7ee 54%, #f6f8f3 100%);
+  background: $bg;
   color: $text;
 }
 
@@ -55,7 +52,7 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
 }
 
 .club-eyebrow {
-  color: #a87520;
+  color: var(--ui-gold, #a87520);
   font-size: 22rpx;
   font-weight: 900;
   letter-spacing: 0;
@@ -83,14 +80,14 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   font-size: 22rpx;
   font-weight: 800;
   color: $green-deep;
-  background: rgba(47, 155, 99, 0.10);
-  border: 1px solid rgba(47, 155, 99, 0.16);
+  background: var(--ui-accent-soft, rgba(47, 155, 99, 0.10));
+  border: 1px solid var(--ui-accent-line, rgba(47, 155, 99, 0.16));
 }
 
 .club-pill--gold {
-  color: #a87520;
+  color: var(--ui-gold, #a87520);
   background: rgba(216, 161, 68, 0.14);
-  border-color: rgba(216, 161, 68, 0.20);
+  border-color: var(--ui-gold-line, rgba(216, 161, 68, 0.20));
 }
 
 .club-btn {
@@ -103,8 +100,8 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   font-size: 30rpx;
   font-weight: 900;
   color: #fff;
-  background: linear-gradient(135deg, #65c980, $green-deep);
-  box-shadow: 0 16rpx 30rpx rgba(31, 124, 75, 0.20);
+  background: var(--ui-gradient);
+  box-shadow: 0 16rpx 30rpx var(--ui-shadow, rgba(31, 124, 75, 0.20));
 }
 
 .club-btn[disabled] {
@@ -113,14 +110,14 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
 
 .club-btn--ghost {
   color: $text;
-  background: #fff;
+  background: var(--ui-surface, #fff);
   border: 1px solid $line;
   box-shadow: none;
 }
 
 .club-btn--warn {
   background: linear-gradient(135deg, #e4b355, #c8821a);
-  box-shadow: 0 16rpx 30rpx rgba(200, 130, 26, 0.18);
+  box-shadow: 0 16rpx 30rpx var(--ui-shadow, rgba(200, 130, 26, 0.18));
 }
 
 .club-input,
@@ -129,7 +126,7 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   box-sizing: border-box;
   border: 1px solid $line;
   border-radius: 22rpx;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--ui-surface, rgba(255, 255, 255, 0.95));
   font-size: 28rpx;
   color: $text;
 }
@@ -163,11 +160,11 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   font-weight: 800;
 }
 
-.club-status--wait { background: rgba(216, 161, 68, 0.15); color: #9a6a16; }
-.club-status--run { background: rgba(47, 155, 99, 0.13); color: #1f7c4b; }
-.club-status--pay { background: rgba(230, 130, 46, 0.14); color: #c46b16; }
-.club-status--done { background: rgba(63, 153, 103, 0.12); color: #26753a; }
-.club-status--cancel { background: rgba(0, 0, 0, 0.06); color: #555; }
+.club-status--wait { background: rgba(216, 161, 68, 0.15); color: var(--ui-gold, #9a6a16); }
+.club-status--run { background: var(--ui-accent-soft, rgba(47, 155, 99, 0.13)); color: var(--ui-accent, #1f7c4b); }
+.club-status--pay { background: rgba(230, 130, 46, 0.14); color: var(--ui-gold, #c46b16); }
+.club-status--done { background: var(--ui-accent-soft, rgba(63, 153, 103, 0.12)); color: var(--ui-accent, #26753a); }
+.club-status--cancel { background: rgba(0, 0, 0, 0.06); color: var(--ui-muted, #555); }
 
 .club-empty {
   padding: 80rpx 20rpx;
@@ -183,10 +180,10 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   border-radius: 34rpx;
   overflow: hidden;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(239, 249, 239, 0.86)),
+    linear-gradient(135deg, var(--ui-surface, rgba(255, 255, 255, 0.92)), var(--ui-surface, rgba(239, 249, 239, 0.86))),
     radial-gradient(circle at 82% 28%, rgba(216, 161, 68, 0.28), transparent 28%),
-    linear-gradient(135deg, #fffaf0 0%, #e9f6ec 58%, #f8fbf6 100%);
-  border: 1px solid rgba(216, 161, 68, 0.18);
+    linear-gradient(135deg, var(--ui-surface, #fffaf0) 0%, var(--ui-surface, #e9f6ec) 58%, var(--ui-surface, #f8fbf6) 100%);
+  border: 1px solid var(--ui-gold-line, rgba(216, 161, 68, 0.18));
   box-shadow: $shadow;
 }
 
@@ -198,7 +195,7 @@ $shadow-soft: 0 10rpx 28rpx rgba(39, 61, 42, 0.07);
   width: 300rpx;
   height: 300rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(47, 155, 99, 0.20), rgba(216, 161, 68, 0.20));
+  background: linear-gradient(135deg, var(--ui-accent-soft, rgba(47, 155, 99, 0.20)), rgba(216, 161, 68, 0.20));
 }
 
 .bottom-safe {

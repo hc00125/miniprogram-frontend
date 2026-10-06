@@ -1,5 +1,5 @@
 <template>
-  <view class="legal-page">
+  <view :style="$appThemeStyle" class="legal-page">
     <view class="hero-card">
       <text class="eyebrow">USER AGREEMENT</text>
       <text class="title">偷吃电竞用户服务协议</text>
@@ -112,30 +112,30 @@ const sections = [
   min-height: 100vh;
   padding: 24rpx 24rpx 80rpx;
   box-sizing: border-box;
-  color: #172116;
+  color: var(--ui-text, #172116);
   background:
-    radial-gradient(circle at 12% 0%, rgba(47,155,99,.12), transparent 30%),
+    radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 30%),
     radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%),
-    #f7f3ea;
+    var(--ui-soft, #f7f3ea);
 }
 .hero-card, .notice-card, .section-card {
   margin-bottom: 20rpx;
   padding: 28rpx;
   border-radius: 28rpx;
-  background: rgba(255,255,255,.97);
-  border: 1rpx solid rgba(39,61,42,.08);
-  box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06);
+  background: var(--ui-surface, rgba(255,255,255,.97));
+  border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08));
+  box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06));
 }
 .hero-card {
   color: #fff;
-  background: linear-gradient(135deg, #173426, #1f7c4b 62%, #45ae72);
+  background: var(--ui-gradient);
 }
 .eyebrow, .title, .meta { display: block; }
 .eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
 .title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
 .meta { margin-top: 12rpx; color: rgba(255,255,255,.74); font-size: 21rpx; line-height: 1.5; }
-.notice-card { color: #6f6042; font-size: 24rpx; line-height: 1.8; background: #fff8e8; border-color: rgba(216,161,68,.22); }
+.notice-card { color: var(--ui-gold, #6f6042); font-size: 24rpx; line-height: 1.8; background: var(--ui-surface, #fff8e8); border-color: var(--ui-gold-line, rgba(216,161,68,.22)); }
 .section-title { display: block; font-size: 30rpx; font-weight: 900; }
 .paragraph { margin-top: 16rpx; }
-.paragraph text { color: #4f5d50; font-size: 24rpx; line-height: 1.85; }
+.paragraph text { color: var(--ui-muted, #4f5d50); font-size: 24rpx; line-height: 1.85; }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <view class="notice-page">
+  <view :style="$appThemeStyle" class="notice-page">
     <scroll-view scroll-y class="notice-scroll">
       <view class="notice-hero">
         <view class="hero-badge">TOUCHI CLUB</view>
@@ -122,8 +122,8 @@ function previewFlowImage() {
 <style lang="scss" scoped>
 .notice-page {
   min-height: 100vh;
-  background: #f7f3ea;
-  color: #202124;
+  background: var(--ui-soft, #f7f3ea);
+  color: var(--ui-text, #202124);
 }
 
 .notice-scroll {
@@ -135,10 +135,8 @@ function previewFlowImage() {
   padding: 42rpx 32rpx;
   border-radius: 30rpx;
   color: #fff;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(255, 255, 255, 0.22), transparent 30%),
-    linear-gradient(135deg, #3f4f37 0%, #6b7f55 48%, #e6883a 100%);
-  box-shadow: 0 18rpx 40rpx rgba(75, 92, 55, 0.18);
+  background: var(--ui-gradient);
+  box-shadow: 0 18rpx 40rpx var(--ui-shadow, rgba(75, 92, 55, 0.18));
   box-sizing: border-box;
 }
 
@@ -169,18 +167,18 @@ function previewFlowImage() {
   margin: 22rpx 24rpx 0;
   padding: 28rpx 26rpx;
   border-radius: 24rpx;
-  background: #fff;
-  box-shadow: 0 14rpx 30rpx rgba(35, 42, 30, 0.06);
+  background: var(--ui-surface, #fff);
+  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(35, 42, 30, 0.06));
   box-sizing: border-box;
 }
 
 .intro-card {
-  border: 1rpx solid rgba(100, 122, 79, 0.16);
-  background: linear-gradient(180deg, #fff, #fffaf0);
+  border: 1rpx solid var(--ui-accent-line, rgba(100, 122, 79, 0.16));
+  background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf0));
 }
 
 .welcome-title {
-  color: #e65f34;
+  color: var(--ui-danger, #e65f34);
   font-size: 34rpx;
   font-weight: 900;
   line-height: 1.4;
@@ -188,7 +186,7 @@ function previewFlowImage() {
 
 .welcome-text {
   margin-top: 12rpx;
-  color: #404040;
+  color: var(--ui-text, #404040);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 1.5;
@@ -202,7 +200,7 @@ function previewFlowImage() {
   color: #fff;
   font-size: 28rpx;
   font-weight: 900;
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  background: linear-gradient(135deg, var(--ui-danger-fill, #ef4444), var(--ui-danger-fill, #b91c1c));
 }
 
 .business-row {
@@ -213,24 +211,24 @@ function previewFlowImage() {
   margin-top: 22rpx;
   padding: 18rpx 20rpx;
   border-radius: 18rpx;
-  background: #f8f3e5;
+  background: var(--ui-soft, #f8f3e5);
 }
 
 .business-row text:first-child {
-  color: #5d6f4f;
+  color: var(--ui-muted, #5d6f4f);
   font-size: 26rpx;
   font-weight: 900;
 }
 
 .business-row text:last-child {
-  color: #e65f34;
+  color: var(--ui-danger, #e65f34);
   font-size: 38rpx;
   font-weight: 900;
 }
 
 .section-desc {
   margin-top: 18rpx;
-  color: #555;
+  color: var(--ui-muted, #555);
   font-size: 26rpx;
   font-weight: 600;
   line-height: 1.72;
@@ -240,8 +238,8 @@ function previewFlowImage() {
   margin: 22rpx 24rpx 0;
   overflow: hidden;
   border-radius: 24rpx;
-  background: #fff;
-  box-shadow: 0 14rpx 30rpx rgba(35, 42, 30, 0.06);
+  background: var(--ui-surface, #fff);
+  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(35, 42, 30, 0.06));
 }
 
 .notice-flow-image {
@@ -259,23 +257,23 @@ function previewFlowImage() {
   padding: 30rpx;
   text-align: center;
   box-sizing: border-box;
-  background: #fffaf0;
+  background: var(--ui-surface, #fffaf0);
 }
 
 .placeholder-title {
-  color: #5d6f4f;
+  color: var(--ui-muted, #5d6f4f);
   font-size: 30rpx;
   font-weight: 900;
 }
 
 .placeholder-desc {
-  color: #999;
+  color: var(--ui-muted, #999);
   font-size: 23rpx;
   line-height: 1.5;
 }
 
 .section-title {
-  color: #2f3a2b;
+  color: var(--ui-text, #2f3a2b);
   font-size: 32rpx;
   font-weight: 900;
   line-height: 1.3;
@@ -295,13 +293,13 @@ function previewFlowImage() {
   gap: 18rpx;
   padding: 20rpx;
   border-radius: 18rpx;
-  background: #fafafa;
-  border: 1rpx solid #f0f0f0;
+  background: var(--ui-soft, #fafafa);
+  border: 1rpx solid var(--ui-line, #f0f0f0);
 }
 
 .ordered-item--green {
-  background: #f7faf3;
-  border-color: rgba(93, 111, 79, 0.12);
+  background: var(--ui-soft, #f7faf3);
+  border-color: var(--ui-line, rgba(93, 111, 79, 0.12));
 }
 
 .ordered-index,
@@ -316,29 +314,29 @@ function previewFlowImage() {
   color: #fff;
   font-size: 22rpx;
   font-weight: 900;
-  background: linear-gradient(135deg, #6c805d, #425239);
+  background:var(--ui-gradient);
 }
 
 .rule-index {
-  background: linear-gradient(135deg, #e6883a, #c45a1d);
+  background: linear-gradient(135deg, #e6883a, var(--ui-danger-fill, #c45a1d));
 }
 
 .ordered-text,
 .rule-text {
   flex: 1;
   min-width: 0;
-  color: #4a4a4a;
+  color: var(--ui-text, #4a4a4a);
   font-size: 25rpx;
   font-weight: 600;
   line-height: 1.66;
 }
 
 .notice-card--green {
-  background: linear-gradient(180deg, #fff, #f8fbf4);
+  background:var(--ui-gradient);
 }
 
 .notice-card--rules {
-  background: linear-gradient(180deg, #fff, #fffaf5);
+  background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf5));
 }
 
 .thanks-card {
@@ -347,8 +345,8 @@ function previewFlowImage() {
   border-radius: 24rpx;
   text-align: center;
   color: #fff;
-  background: linear-gradient(135deg, #5d6f4f, #e6883a);
-  box-shadow: 0 14rpx 30rpx rgba(93, 111, 79, 0.14);
+  background:var(--ui-gradient);
+  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(93, 111, 79, 0.14));
 }
 
 .thanks-card view {

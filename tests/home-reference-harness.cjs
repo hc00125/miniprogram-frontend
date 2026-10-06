@@ -14,7 +14,7 @@ function homeHarness(options={}){
   '@/api/catalog':{getCatalogNavigation:async()=>{if(options.catalogFail)throw Error('offline');return {games:options.games||[]}}},
   '@/api/wallet':{getWalletOverview:async()=>{calls.push(['wallet-read']);if(options.walletRead)return options.walletRead();if(options.walletFail)throw Error('offline');return {balance_diamonds:options.balance??123.4}}},
   '@/components/HomeAnnouncements.vue':{default:{}},'@/components/MainBottomTabs.vue':{default:{}},'@/components/gifts/GiftHost.vue':{default:{}},
-  '@/utils/uiIcons':{uiIcons:{order:'/icons/duotone/order.png',diamondLight:'/icons/duotone/diamond-light.png',chevron:'/icons/duotone/chevron.png',query:'/icons/duotone/query.png'}},
+  '@/utils/uiIcons':{uiIcons:{order:'/icons/duotone/order.png',diamondLight:'/icons/duotone/diamond-light.png',chevron:'/icons/duotone/chevron.png',query:'/icons/duotone/query.png',terms:'/icons/duotone/terms.png',benefits:'/icons/duotone/benefits.png',support:'/icons/duotone/support.png'}},
   '@/utils/nav':{go:(...args)=>calls.push(args),goMain:tab=>calls.push(['tab',tab]),navigateToTab:tab=>calls.push(['tab',tab])},
   '@/utils/client':{getClientProfile:()=>storage.client_profile},
   '@/utils/storage':{getStorage:k=>storage[k],SESSION_CHANGED_EVENT:'session-changed'},

@@ -32,7 +32,7 @@ function load(file,options={}){
    endpoint==='records/'?{count:1,next:null,previous:null,results:[record('record-key','unknown')]}:record(o.data.idempotency_key,status)
   o.success({statusCode:200,data})
  }}
- const vendor={...vue,index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,onUnmounted(){},_export_sfc:x=>x,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(items,fn)=>items.map(fn)}
+ const vendor={...vue,s: x => x || '',index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,onUnmounted(){},_export_sfc:x=>x,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(items,fn)=>items.map(fn)}
  function module(file){
   if(cache[file])return cache[file]
   if(file==='common/vendor.js')return vendor

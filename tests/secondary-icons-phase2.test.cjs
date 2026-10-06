@@ -9,12 +9,8 @@ const { parse } = require('@vue/compiler-sfc')
 const { baseParse, compile } = require('@vue/compiler-dom')
 const { renderToString } = require('@vue/server-renderer')
 const root = path.join(__dirname, '..')
-const read = p => fs.readFileSync(path.join(root, p), 'utf8')
-function icons() {
-  const module = { exports: {} }
-  vm.runInNewContext(ts.transpileModule(read('src/utils/uiIcons.ts'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports })
-  return module.exports.uiIcons
-}
+const read = p => fs.readFileSync(path.join(root, p), 'utf8').replace(/\r\n/g, '\n')
+function icons() { return require('./theme-icons-harness.cjs').loadIcons() }
 function fragment(page, cls) {
   const template = parse(read(page.startsWith('src/') ? page : 'src/pages/' + page + '/index.vue')).descriptor.template.content
   let found
@@ -34,7 +30,7 @@ async function render(page, cls, state = {}) {
   return renderToString(vue.createSSRApp({ setup: () => ({ uiIcons: icons(), ...state }), render }))
 }
 
-function asset(html,name) { assert.ok(html.includes('/icons/duotone/'+name+'.png'), name+' pictogram missing') }
+function asset(html,name) { assert.ok(html.includes((/-light|-red/.test(name) ? '/icons/duotone/' : '/icons/themes/mist/')+name+'.png'), name+' pictogram missing') }
 function stripCheckoutV2(source) {
  function removeRange(start,end){const i=source.indexOf(start),j=source.indexOf(end,i+start.length);assert.ok(i>=0&&j>i,'checkout addition changed; revisit hash contract');source=source.slice(0,i)+source.slice(j)}
  function exact(a,b=''){assert.equal(source.split(a).length,2,'checkout change must be exact');source=source.replace(a,b)}
@@ -63,7 +59,7 @@ test('phase2 all original scripts, directives, button text and monetary interpol
  // Payment script/status expressions include the approved login-recovery fix;
  // real API/SFC behavior is guarded by order-balance-payment*.test.cjs.
  for(const p of files){
-   let source=read(p).replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
+   let source=read(p).replace(' :style="$appThemeStyle"', '').replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
      .replace('    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />\n','')
    if(p==='src/pages/player/grab/index.vue') source=source
      .replace("import { hallSurcharge } from '@/utils/surchargePresentation'\n",'')
@@ -83,7 +79,7 @@ test('payment SFC waiting verification collection and diamond icons keep brand a
  const ios=await render('boss/payment','pay-methods',{isIOS:true,payMethod:'balance',selectPayMethod(){},balanceSufficient:true,balanceOptionSub:'余额说明',walletBalance:123,walletLoadFailed:false});assert.doesNotMatch(ios,/微信即时支付/)
 })
 
-function iconModule(){const module={exports:{}};vm.runInNewContext(ts.transpileModule(read('src/utils/uiIcons.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{module,exports:module.exports});return module.exports}
+function iconModule(){return require('./theme-icons-harness.cjs').loadIconModule()}
 function pageFunctions(page,names){const module={exports:{}};const script=parse(read('src/pages/'+page+'/index.vue')).descriptor.scriptSetup.content;vm.runInNewContext(ts.transpileModule(script+'\nmodule.exports={'+names.join(',')+'}',{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{module,exports:module.exports,require:n=>n==='vue'?vue:n==='@/utils/uiIcons'?iconModule():n==='@/utils/diamonds'?{formatDiamonds:x=>String(x)}:n==='@dcloudio/uni-app'?{onShow(){},onReachBottom(){}}:{}});return module.exports}
 test('ledger SFC uses real entry/source type maps without altering amount functions or income/deduction classes',async()=>{
  const funcs=iconModule(),wallet=pageFunctions('client/wallet',['isIncome','amountText','entryTypeText','diamonds','dateTime']),growth=pageFunctions('client/growth-records',['amountText','recordTypeText','diamonds','dateTime']);

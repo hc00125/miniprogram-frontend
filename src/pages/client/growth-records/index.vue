@@ -1,5 +1,5 @@
 <template>
-  <view class="growth-page">
+  <view :style="$appThemeStyle" class="growth-page">
     <view class="summary-card">
       <text class="summary-eyebrow">VIP GROWTH</text>
       <text class="summary-title">累计成长钻石</text>
@@ -139,9 +139,9 @@ onReachBottom(() => {
 </script>
 
 <style lang="scss" scoped>
-.growth-page { min-height: 100vh; padding: 22rpx 24rpx 80rpx; box-sizing: border-box; color: #172116; background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.14), transparent 30%), radial-gradient(circle at 90% 14%, rgba(47,155,99,.12), transparent 28%), #f7f3ea; }
-.summary-card, .record-card, .empty-card { border-radius: 28rpx; border: 1rpx solid rgba(39,61,42,.08); box-shadow: 0 14rpx 34rpx rgba(39,61,42,.06); }
-.summary-card { padding: 30rpx; color: #fff; background: linear-gradient(135deg,#59655b,#26372d); }
+.growth-page { min-height: 100vh; padding: 22rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.14), transparent 30%), radial-gradient(circle at 90% 14%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 28%), var(--ui-soft, #f7f3ea); }
+.summary-card, .record-card, .empty-card { border-radius: 28rpx; border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
+.summary-card { padding: 30rpx; color: #fff; background:var(--ui-gradient); }
 .summary-eyebrow, .summary-title, .summary-tip { display: block; }
 .summary-eyebrow { color: rgba(255,255,255,.62); font-size: 20rpx; font-weight: 900; letter-spacing: 3rpx; }
 .summary-title { margin-top: 8rpx; font-size: 31rpx; font-weight: 900; }
@@ -151,24 +151,24 @@ onReachBottom(() => {
 .summary-tip { margin-top: 20rpx; color: rgba(255,255,255,.72); font-size: 22rpx; line-height: 1.65; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 28rpx 6rpx 14rpx; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.section-head text:last-child { color: #879083; font-size: 21rpx; }
+.section-head text:last-child { color: var(--ui-muted, #879083); font-size: 21rpx; }
 .record-list { display: flex; flex-direction: column; gap: 16rpx; }
-.record-card { padding: 22rpx 24rpx; display: flex; align-items: flex-start; gap: 16rpx; background: rgba(255,255,255,.96); }
+.record-card { padding: 22rpx 24rpx; display: flex; align-items: flex-start; gap: 16rpx; background: var(--ui-surface, rgba(255,255,255,.96)); }
 .record-icon { width: 68rpx; height: 68rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; color: #fff; font-size: 27rpx; font-weight: 900; }
-.record-icon--plus { background: linear-gradient(135deg,#4fc083,#1f7c4b); }
-.record-icon--minus { background: linear-gradient(135deg,#d66b5f,#a13d35); }
+.record-icon--plus { background: var(--ui-gradient); }
+.record-icon--minus { background: linear-gradient(135deg,var(--ui-danger-fill, #d66b5f),var(--ui-danger-fill, #a13d35)); }
 .record-main { flex: 1; min-width: 0; }
 .record-line { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
-.record-line--sub { margin-top: 8rpx; color: #8b9389; font-size: 20rpx; }
+.record-line--sub { margin-top: 8rpx; color: var(--ui-muted, #8b9389); font-size: 20rpx; }
 .record-title { font-size: 27rpx; font-weight: 900; }
 .record-amount { font-size: 29rpx; font-weight: 900; }
-.amount-plus { color: #1f7c4b; }
-.amount-minus { color: #a13d35; }
-.record-order, .record-note { display: block; margin-top: 9rpx; color: #687665; font-size: 21rpx; line-height: 1.5; word-break: break-all; }
-.record-note { color: #8a7152; }
-.empty-card { padding: 60rpx 24rpx; color: #8a9286; text-align: center; font-size: 24rpx; background: rgba(255,255,255,.96); }
-.list-foot { padding: 26rpx 0 10rpx; color: #9aa197; text-align: center; font-size: 21rpx; }
-.loading-state { padding: 50rpx 20rpx; color: #8a9286; text-align: center; font-size: 24rpx; }
+.amount-plus { color: var(--ui-accent, #1f7c4b); }
+.amount-minus { color: var(--ui-danger, #a13d35); }
+.record-order, .record-note { display: block; margin-top: 9rpx; color: var(--ui-muted, #687665); font-size: 21rpx; line-height: 1.5; word-break: break-all; }
+.record-note { color: var(--ui-gold, #8a7152); }
+.empty-card { padding: 60rpx 24rpx; color: var(--ui-muted, #8a9286); text-align: center; font-size: 24rpx; background: var(--ui-surface, rgba(255,255,255,.96)); }
+.list-foot { padding: 26rpx 0 10rpx; color: var(--ui-muted, #9aa197); text-align: center; font-size: 21rpx; }
+.loading-state { padding: 50rpx 20rpx; color: var(--ui-muted, #8a9286); text-align: center; font-size: 24rpx; }
 </style>
 
 <style scoped>

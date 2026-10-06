@@ -1,5 +1,5 @@
 <template>
-  <view class="surcharge-payment">
+  <view :style="$appThemeStyle" class="surcharge-payment">
     <view class="card"><text class="title">订单付款</text><text class="hint">原订单和整单加价一起支付，不需要再付一笔加购款。</text></view>
     <view v-if="order" class="card">
       <view class="row"><text>原单金额</text><text>¥{{ order.checkout.base_amount_yuan }}</text></view>
@@ -162,9 +162,9 @@ async function processPayment(retry:boolean){
 }
 </script>
 <style scoped>
-.surcharge-payment{min-height:100vh;padding:26rpx;background:#f7f3ea;color:#172116;box-sizing:border-box}.card{margin-bottom:22rpx;padding:28rpx;border-radius:28rpx;background:#fffdf6;box-shadow:0 14rpx 36rpx rgba(39,61,42,.06)}.title{display:block;font-size:32rpx;font-weight:800}.hint{display:block;margin-top:16rpx;color:#687665;font-size:23rpx;line-height:1.6}.row{display:flex;justify-content:space-between;gap:20rpx;padding:15rpx 0;border-bottom:1rpx solid #e8efe6}.strong{color:#1f7c4b;font-weight:800}.warning{display:block;margin-bottom:18rpx;color:#9a6a16;font-size:24rpx}button{margin-top:22rpx;border-radius:32rpx;background:#1f7c4b;color:white;font-size:26rpx}button[disabled]{opacity:.5}
+.surcharge-payment{min-height:100vh;padding:26rpx;background:var(--ui-soft, #f7f3ea);color:var(--ui-text, #172116);box-sizing:border-box}.card{margin-bottom:22rpx;padding:28rpx;border-radius:28rpx;background:var(--ui-surface, #fffdf6);box-shadow:0 14rpx 36rpx var(--ui-shadow, rgba(39,61,42,.06))}.title{display:block;font-size:32rpx;font-weight:800}.hint{display:block;margin-top:16rpx;color:var(--ui-muted, #687665);font-size:23rpx;line-height:1.6}.row{display:flex;justify-content:space-between;gap:20rpx;padding:15rpx 0;border-bottom:1rpx solid var(--ui-line, #e8efe6)}.strong{color:var(--ui-accent, #1f7c4b);font-weight:800}.warning{display:block;margin-bottom:18rpx;color:var(--ui-gold, #9a6a16);font-size:24rpx}button{margin-top:22rpx;border-radius:32rpx;background:var(--ui-primary, #1f7c4b);color:white;font-size:26rpx}button[disabled]{opacity:.5}
 </style>
 <style scoped>
-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:88rpx;padding:20rpx 24rpx;box-sizing:border-box;line-height:1.5}.payment-methods{margin-top:18rpx}.method{justify-content:space-between;background:#fffdf6;color:#53614f;border:2rpx solid #e3eade}.method.selected{background:#eef9ef;color:#1f7c4b;border-color:#1f7c4b}.method:after{border:0}
-.cancel-order{background:#eef9ef;color:#1f7c4b;border:2rpx solid #dce8d8}.cancel-order:after{border:0}
+button{display:flex;align-items:center;justify-content:center;width:100%;min-height:88rpx;padding:20rpx 24rpx;box-sizing:border-box;line-height:1.5}.payment-methods{margin-top:18rpx}.method{justify-content:space-between;background:var(--ui-surface, #fffdf6);color:var(--ui-muted, #53614f);border:2rpx solid var(--ui-line, #e3eade)}.method.selected{background:var(--ui-soft, #eef9ef);color:var(--ui-accent, #1f7c4b);border-color:var(--ui-accent-line, #1f7c4b)}.method:after{border:0}
+.cancel-order{background:var(--ui-soft, #eef9ef);color:var(--ui-accent, #1f7c4b);border:2rpx solid var(--ui-line, #dce8d8)}.cancel-order:after{border:0}
 </style>

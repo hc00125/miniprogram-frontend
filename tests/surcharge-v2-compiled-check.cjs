@@ -8,7 +8,7 @@ assert.match(read(checkout+'.wxml'),/data-action="surcharge-input"/);assert.matc
 assert.match(read(checkout+'.wxss'),/surcharge-choice/);assert.match(read(hall+'.wxml'),/每人加价净收益/);assert.match(read(hall+'.wxss'),/surcharge-reward/)
 const quotes=[],creates=[],surchargeCreates=[],routes=[],store={token:'fixture-only-token',client_profile:{id:7,openid:'fixture-openid',nickname:'fixture-name'}},hooks={},events={}
 const index={getStorageSync:k=>store[k],$on:(k,f)=>events[k]=f,$off:k=>delete events[k]}
-const vendor={...vue,index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(a,fn)=>a.map(fn),_export_sfc:c=>c}
+const vendor={...vue,s: x => x || '',index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(a,fn)=>a.map(fn),_export_sfc:c=>c}
 const overrides={
  uiIcons:{uiIcons:{diamond:'/icons/duotone/diamond.png'}},commerceRelease:{commerceRelease:{orderSurchargeQuoteSupported:true}},
  surchargePresentation:{parseWholeOrderAmount:v=>v===''||v==='0'?{amount:0,valid:true}:/^[1-9]\d*$/.test(v)?{amount:Number(v),valid:true}:{amount:null,valid:false}},

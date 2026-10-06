@@ -1,5 +1,5 @@
 <template>
-  <view class="kook-page">
+  <view :style="$appThemeStyle" class="kook-page">
     <text class="eyebrow">接单通知</text><text class="title">连接你的 KOOK</text>
     <text class="subtitle">指定邀请发给本人，接单仍在小程序完成。</text>
     <view v-if="s.error" class="notice">{{ s.error }}</view>
@@ -26,7 +26,7 @@
         </template>
         <template v-else-if="s.challenge.status === 'awaiting_confirmation'">
           <text class="heading">待你确认的账号</text><text class="identity">{{ s.challenge.kook_display_name || 'KOOK用户' }}</text><text>{{ s.challenge.masked_kook_user }}</text>
-          <view class="row"><text>绑定后接收本人通知</text><switch color="#2f9b63" :checked="s.consent" :disabled="s.busy" @change="s.consent = $event.detail.value" /></view>
+          <view class="row"><text>绑定后接收本人通知</text><switch :color="$appThemeAccent" :checked="s.consent" :disabled="s.busy" @change="s.consent = $event.detail.value" /></view>
           <button class="primary" :disabled="s.busy || !s.challenge.confirmation_nonce" @tap="c.confirmBinding">这是我的账号，确认绑定</button>
         </template>
         <text v-else class="heading">{{ s.challenge.status === 'expired' ? '绑定码已过期，请重新获取' : '本次绑定流程已结束，请刷新' }}</text>
@@ -74,9 +74,9 @@ onHide(() => { visible = false; stop(); c.hide() })
 onUnload(() => { visible = false; stop(); c.reset(); uni.$off(SESSION_EXPIRED_EVENT, expired) })
 </script>
 <style scoped>
-.kook-page { min-height: 100vh; box-sizing: border-box; padding: 40rpx 28rpx 80rpx; background: #fbf7ef; color: #243c2d; }
+.kook-page { min-height: 100vh; box-sizing: border-box; padding: 40rpx 28rpx 80rpx; background: var(--ui-soft, #fbf7ef); color: var(--ui-text, #243c2d); }
 .eyebrow, .title, .subtitle, .heading, .identity, .hint, .code, .result { display: block; }
-.eyebrow { color: #2f9b63; font-size: 24rpx; font-weight: 700; }.title { margin-top: 12rpx; font-size: 46rpx; font-weight: 800; }.subtitle { margin: 16rpx 0 32rpx; color: #728075; font-size: 25rpx; line-height: 1.7; }
-.card { background: #fffefb; border: 1rpx solid #e1e9dd; border-radius: 30rpx; padding: 28rpx; margin-top: 22rpx; }.heading { font-size: 31rpx; font-weight: 700; }.identity { margin: 20rpx 0; overflow-wrap: anywhere; }.hint { margin: 16rpx 0; color: #768275; font-size: 24rpx; line-height: 1.6; }.notice { padding: 24rpx; border-radius: 24rpx; background: #fff0d7; color: #82622d; font-size: 26rpx; }.code { margin: 24rpx 0; padding: 28rpx 12rpx; background: #eef5e9; border-radius: 20rpx; text-align: center; font-family: monospace; font-size: 34rpx; }.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 18rpx 0; }.actions { display: flex; gap: 16rpx; }.result { margin-top: 20rpx; color: #2f7f54; font-size: 26rpx; }
-button { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92rpx; box-sizing: border-box; padding: 22rpx 28rpx; margin: 18rpx 0 0; border-radius: 24rpx; background: #edf3e8; color: #2c6541; font-size: 27rpx; line-height: 1.4; }button::after { border: 0; }button.primary { background: #2f9b63; color: #fff; }button[disabled] { opacity: .45; }.small { width: auto; min-height: 64rpx; margin: 0; padding: 12rpx 20rpx; }
+.eyebrow { color: var(--ui-accent, #2f9b63); font-size: 24rpx; font-weight: 700; }.title { margin-top: 12rpx; font-size: 46rpx; font-weight: 800; }.subtitle { margin: 16rpx 0 32rpx; color: var(--ui-muted, #728075); font-size: 25rpx; line-height: 1.7; }
+.card { background: var(--ui-surface, #fffefb); border: 1rpx solid var(--ui-line, #e1e9dd); border-radius: 30rpx; padding: 28rpx; margin-top: 22rpx; }.heading { font-size: 31rpx; font-weight: 700; }.identity { margin: 20rpx 0; overflow-wrap: anywhere; }.hint { margin: 16rpx 0; color: var(--ui-muted, #768275); font-size: 24rpx; line-height: 1.6; }.notice { padding: 24rpx; border-radius: 24rpx; background: var(--ui-soft, #fff0d7); color: var(--ui-gold, #82622d); font-size: 26rpx; }.code { margin: 24rpx 0; padding: 28rpx 12rpx; background: var(--ui-soft, #eef5e9); border-radius: 20rpx; text-align: center; font-family: monospace; font-size: 34rpx; }.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 18rpx 0; }.actions { display: flex; gap: 16rpx; }.result { margin-top: 20rpx; color: var(--ui-accent, #2f7f54); font-size: 26rpx; }
+button { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92rpx; box-sizing: border-box; padding: 22rpx 28rpx; margin: 18rpx 0 0; border-radius: 24rpx; background: var(--ui-soft, #edf3e8); color: var(--ui-accent, #2c6541); font-size: 27rpx; line-height: 1.4; }button::after { border: 0; }button.primary { background: var(--ui-primary, #2f9b63); color: #fff; }button[disabled] { opacity: .45; }.small { width: auto; min-height: 64rpx; margin: 0; padding: 12rpx 20rpx; }
 </style>

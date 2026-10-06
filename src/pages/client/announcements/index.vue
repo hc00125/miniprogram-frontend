@@ -1,5 +1,5 @@
 <template>
-  <view class="announcement-page">
+  <view :style="$appThemeStyle" class="announcement-page">
     <view class="page-heading"><text class="page-title">通报记录</text><text class="page-caption">记录每一份心意</text></view>
     <view class="feed-tabs">
       <button v-for="tab in tabs" :key="tab.kind" class="feed-tab" :class="{ active: kind === tab.kind }" :data-action="`filter-${tab.kind}`" @tap="selectKind(tab.kind)">{{ tab.label }}</button>
@@ -71,36 +71,36 @@ onUnload(hide)
 </script>
 
 <style scoped>
-.announcement-page { min-height: 100vh; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); background: #f7f5ee; box-sizing: border-box; }
+.announcement-page { min-height: 100vh; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); background: var(--ui-soft, #f7f5ee); box-sizing: border-box; }
 .page-heading { display: flex; flex-direction: column; gap: 10rpx; margin: 10rpx 4rpx 26rpx; }
-.page-title { color: #253b2f; font-size: 36rpx; font-weight: 800; }
-.page-caption { color: #8a9489; font-size: 24rpx; }
+.page-title { color: var(--ui-text, #253b2f); font-size: 36rpx; font-weight: 800; }
+.page-caption { color: var(--ui-muted, #8a9489); font-size: 24rpx; }
 .feed-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
-.feed-tab { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 72rpx; margin: 0; padding: 14rpx 8rpx; border-radius: 36rpx; background: #eaece3; color: #778273; font-size: 25rpx; line-height: 1.4; box-sizing: border-box; }
-.feed-tab.active { background: #1f7c4b; color: #fffefa; font-weight: 700; }
+.feed-tab { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 72rpx; margin: 0; padding: 14rpx 8rpx; border-radius: 36rpx; background: var(--ui-soft, #eaece3); color: var(--ui-muted, #778273); font-size: 25rpx; line-height: 1.4; box-sizing: border-box; }
+.feed-tab.active { background: var(--ui-primary, #1f7c4b); color: #fffefa; font-weight: 700; }
 .feed-tab::after, .more::after { border: 0; }
-.feed-list { overflow: hidden; border-radius: 24rpx; background: #fffefa; }
-.record { display: flex; align-items: center; gap: 18rpx; padding: 28rpx 20rpx; border-bottom: 1rpx solid #edf0e8; }
+.feed-list { overflow: hidden; border-radius: 24rpx; background: var(--ui-surface, #fffefa); }
+.record { display: flex; align-items: center; gap: 18rpx; padding: 28rpx 20rpx; border-bottom: 1rpx solid var(--ui-line, #edf0e8); }
 .record:last-child { border-bottom: 0; }
 .record-avatars { position: relative; width: 108rpx; height: 92rpx; flex-shrink: 0; }
-.avatar { position: absolute; width: 66rpx; height: 66rpx; border-radius: 50%; border: 3rpx solid #fffefa; background: #eef9ef; box-sizing: border-box; }
+.avatar { position: absolute; width: 66rpx; height: 66rpx; border-radius: 50%; border: 3rpx solid var(--ui-line, #fffefa); background: var(--ui-soft, #eef9ef); box-sizing: border-box; }
 .avatar-boss { top: 0; left: 0; }
 .avatar-player { bottom: 0; right: 0; }
-.avatar-fallback { display: flex; align-items: center; justify-content: center; color: #1f7c4b; font-size: 25rpx; font-weight: 700; }
+.avatar-fallback { display: flex; align-items: center; justify-content: center; color: var(--ui-accent, #1f7c4b); font-size: 25rpx; font-weight: 700; }
 .record-body { flex: 1; min-width: 0; }
 .record-names { display: flex; align-items: baseline; gap: 8rpx; font-size: 25rpx; line-height: 1.6; }
-.boss-name, .player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: #253b2f; }
-.player-name { color: #1f7c4b; }
-.record-verb { flex-shrink: 0; color: #929985; font-size: 22rpx; }
-.record-patronage { display: block; color: #253b2f; font-size: 25rpx; line-height: 1.6; overflow-wrap: anywhere; }
-.record-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx; margin-top: 8rpx; color: #1f7c4b; font-size: 24rpx; line-height: 1.5; }
+.boss-name, .player-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; color: var(--ui-text, #253b2f); }
+.player-name { color: var(--ui-accent, #1f7c4b); }
+.record-verb { flex-shrink: 0; color: var(--ui-muted, #929985); font-size: 22rpx; }
+.record-patronage { display: block; color: var(--ui-text, #253b2f); font-size: 25rpx; line-height: 1.6; overflow-wrap: anywhere; }
+.record-item { display: flex; flex-wrap: wrap; align-items: center; gap: 8rpx; margin-top: 8rpx; color: var(--ui-accent, #1f7c4b); font-size: 24rpx; line-height: 1.5; }
 .item-name { overflow-wrap: anywhere; }
 .item-quantity { font-weight: 700; }
-.kind-tag { padding: 2rpx 8rpx; border-radius: 8rpx; background: #eef9ef; font-size: 19rpx; }
-.record-time { display: block; margin-top: 10rpx; color: #929985; font-size: 20rpx; }
+.kind-tag { padding: 2rpx 8rpx; border-radius: 8rpx; background: var(--ui-soft, #eef9ef); font-size: 19rpx; }
+.record-time { display: block; margin-top: 10rpx; color: var(--ui-muted, #929985); font-size: 20rpx; }
 .record-art { width: 88rpx; flex-shrink: 0; }
 .item-image { display: block; width: 88rpx; height: 88rpx; }
-.item-placeholder { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; border-radius: 20rpx; background: #eef9ef; color: #6d866e; font-size: 23rpx; }
-.empty, .end { display: block; padding: 44rpx 20rpx; text-align: center; color: #929985; font-size: 25rpx; }
-.more { display: flex; width: 100%; min-height: 84rpx; align-items: center; justify-content: center; margin-top: 24rpx; padding: 22rpx; border-radius: 42rpx; box-sizing: border-box; color: #1f7c4b; background: #eef9ef; font-size: 26rpx; }
+.item-placeholder { display: flex; align-items: center; justify-content: center; width: 88rpx; height: 88rpx; border-radius: 20rpx; background: var(--ui-soft, #eef9ef); color: var(--ui-muted, #6d866e); font-size: 23rpx; }
+.empty, .end { display: block; padding: 44rpx 20rpx; text-align: center; color: var(--ui-muted, #929985); font-size: 25rpx; }
+.more { display: flex; width: 100%; min-height: 84rpx; align-items: center; justify-content: center; margin-top: 24rpx; padding: 22rpx; border-radius: 42rpx; box-sizing: border-box; color: var(--ui-accent, #1f7c4b); background: var(--ui-soft, #eef9ef); font-size: 26rpx; }
 </style>

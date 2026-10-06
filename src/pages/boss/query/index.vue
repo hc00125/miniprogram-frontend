@@ -1,5 +1,5 @@
 <template>
-  <view class="club-page query-page">
+  <view :style="$appThemeStyle" class="club-page query-page">
     <view class="query-hero">
       <view class="hero-bg"><view class="ambient-glow ambient-glow--left"></view><view class="ambient-glow ambient-glow--right"></view></view>
       <view class="hero-content"><view class="hero-title">订单中心</view></view>

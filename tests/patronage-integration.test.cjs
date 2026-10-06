@@ -88,10 +88,10 @@ test('a hidden older onShow completion cannot replace the newer active payment c
  firstQuote.success({statusCode:200,data:{...quote(),can_submit:true,blockers:[]}});await oldShow;login.success({code:'code'});await buying
  assert.equal(p.requests.filter(o=>o.url.endsWith('/purchases/')).length,1);assert.match(p.text(),/购买成功/);p.scope.stop()
 })
-test('active purchase button keeps full-width brand-green styling while disabled is muted',()=>{
+test('active purchase button keeps full-width theme styling while disabled is muted',()=>{
  const fs=require('node:fs'),{parse}=require('@vue/compiler-sfc'),postcss=require('postcss');const css=parse(fs.readFileSync(require('node:path').join(__dirname,'../src/pages/client/patronage/index.vue'),'utf8')).descriptor.styles[0].content
  const rules={};postcss.parse(css).walkRules(r=>{rules[r.selector]=Object.fromEntries(r.nodes.filter(n=>n.type==='decl').map(n=>[n.prop,n.value]))})
- assert.equal(rules['.purchase-button'].background,'#1f7c4b');assert.equal(rules['.purchase-button'].color,'#fff');assert.equal(rules['.purchase-button'].width,'100%');assert.notEqual(rules['.purchase-button[disabled]'].background,rules['.purchase-button'].background)
+ assert.equal(rules['.purchase-button'].background,'var(--ui-primary, #1f7c4b)');assert.equal(rules['.purchase-button'].color,'#fff');assert.equal(rules['.purchase-button'].width,'100%');assert.notEqual(rules['.purchase-button[disabled]'].background,rules['.purchase-button'].background)
 })
 test('corrupt local journal visibly disables buying even when backend flags are enabled',async()=>{
  const p=livePage();p.h.storage['patronage:payment-intent:v1:1']={version:999};await p.life.show[0]();assert.equal(p.action('purchase').props.disabled,true);assert.match(p.text(),/恢复记录异常/);p.scope.stop()

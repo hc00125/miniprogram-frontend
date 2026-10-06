@@ -17,7 +17,7 @@ test('hidden homepage ignores old responses and never restarts its refresh timer
 test('one failed feed does not hide the other; retry is read only',async()=>{
  const s=setup('src/components/HomeAnnouncements.vue',{active:true})
  try{
-  s.requests[0].fail({});s.respond(s.requests[1]);await tick()
+  s.requests.find(r=>r.data.kind==='patronage').fail({});s.respond(s.requests.find(r=>r.data.kind==='gift'));await tick()
   assert.match(s.text(),/加载失败/);assert.match(s.text(),/玫瑰/)
   s.action('open-patronage').props.onTap();assert.equal(s.requests.length,3);assert.equal(s.calls.length,0)
   s.respond(s.requests[2]);await tick();assert.match(s.text(),/周冠/)
@@ -26,12 +26,27 @@ test('one failed feed does not hide the other; retry is read only',async()=>{
 test('home cards independently load real API records, preserve empty state and navigate by kind',async()=>{
  const s=setup('src/components/HomeAnnouncements.vue',{active:true})
  try {
-  assert.equal(s.requests.length,2);assert.match(s.text(),/冠名通报/);assert.match(s.text(),/礼物通报/)
+  assert.equal(s.requests.length,2);assert.match(s.text(),/冠名通报/);assert.match(s.text(),/热门广播/)
   s.respond(s.requests.find(r=>r.data.kind==='patronage'),[])
   s.respond(s.requests.find(r=>r.data.kind==='gift'))
   await tick();assert.match(s.text(),/暂无通报/);assert.match(s.text(),/玫瑰/)
   s.action('open-gift').props.onTap();assert.deepEqual(s.calls.at(-1),['/pages/client/announcements/index',{kind:'gift'}])
   s.action('open-patronage').props.onTap();assert.deepEqual(s.calls.at(-1),['/pages/client/announcements/index',{kind:'patronage'}])
   assert.ok(s.requests.every(r=>r.method==='GET'))
+ }finally{s.close()}
+})
+test('home broadcast shows giver, recipient, artwork and quantity; broken images preserve readable content and retry after refresh',async()=>{
+ const s=setup('src/components/HomeAnnouncements.vue',{active:true})
+ const gift={...row('gift',9),boss_name:'老板名字比较长',player_name:'陪玩名字也比较长',quantity:99,boss_avatar_url:'https://images.invalid/boss.png',player_avatar_url:'https://images.invalid/player.png',item_image_url:'https://images.invalid/gift.png'}
+ try{
+  s.respond(s.requests.find(r=>r.data.kind==='gift'),[gift]);s.respond(s.requests.find(r=>r.data.kind==='patronage'),[]);await tick()
+  for(const value of [gift.boss_name,gift.player_name,'送给','玫瑰','×99'])assert.ok(s.text().includes(value))
+  for(const role of ['boss','player','item'])assert.ok(s.action(`image-${role}-gift:9`))
+  for(const role of ['boss','player','item'])s.action(`image-${role}-gift:9`).props.onError()
+  assert.ok(!s.tree().some(n=>n.type==='image'))
+  for(const value of [gift.boss_name,gift.player_name,'玫瑰','×99','礼'])assert.ok(s.text().includes(value))
+  s.props.active=false;s.props.active=true
+  s.respond(s.requests.slice(2).find(r=>r.data.kind==='gift'),[gift]);s.respond(s.requests.slice(2).find(r=>r.data.kind==='patronage'),[]);await tick()
+  for(const role of ['boss','player','item'])assert.ok(s.action(`image-${role}-gift:9`))
  }finally{s.close()}
 })

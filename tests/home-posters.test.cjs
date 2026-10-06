@@ -1,73 +1,37 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const vue = require('vue')
-const { homeHarness, source, descriptor } = require('./home-reference-harness.cjs')
-const template = descriptor.template.content
-function harness(packages = [], fail = false) { return homeHarness({ packages, packageFail: fail, guest: true }) }
-// The approved reference layout replaces hot-package cards with games/wallet/players.
-test('carousel keeps lounge and maps real five/six posters to their own product details', async () => {
-  const products = [
-    { id: 16, name: '五套四弹', cover_url: 'https://api.huc125.cn/media/packages/2026/07/46908ab7-76b1-483b-b497-0b14596bce47_pJB36ig.jpg', base_price: 20 },
-    { id: 22, name: '六套五弹', cover_url: 'https://api.huc125.cn/media/packages/2026/07/liutao-wutan-danren-cover.jpg', base_price: 30 }
-  ]
-  const h = harness(products); await h.load()
-  const banners = vue.unref(h.state.heroBanners)
-  assert.equal(banners.length, 3)
-  assert.equal(banners[0].image, 'https://api.huc125.cn/media/banners/hero-lounge.jpg')
-  h.state.handleHeroBannerTap(banners[0].target)
-  assert.equal(h.calls.at(-1)[0], '/pages/shop/category/index')
-  for (const [i, pkg] of products.entries()) {
-    assert.equal(banners[i + 1].image, pkg.cover_url)
-    h.state.handleHeroBannerTap(banners[i + 1].target)
-    assert.equal(h.calls.at(-1)[0], '/pages/shop/detail/index')
-    assert.equal(h.calls.at(-1)[1].packageId, pkg.id)
-  }
-  const html = await h.html()
-  assert.doesNotMatch(html, /package-five.png|package-six.png/)
-  assert.match(html, /class="hero-slide__image"[^>]+mode="aspectFit"/)
-  h.state.packages.value = []
-  assert.equal(vue.unref(h.state.heroBanners).length, 1, 'removed products must not remain as stale offers')
-  const offline = harness([], true); await offline.load()
-  assert.equal(vue.unref(offline.state.heroBanners).length, 1)
+const { homeHarness, source } = require('./home-reference-harness.cjs')
+test('three approved banners remain available offline, with activity rules and display-only brand', async t => {
+ const h=homeHarness({guest:true,packageFail:true,catalogFail:true});t.after(()=>h.scope.stop());await h.load()
+ const banners=vue.unref(h.state.heroBanners)
+ assert.deepEqual(Array.from(banners,b=>b.id),['national-bounty','club-welcome','arena-s7'])
+ assert.deepEqual(Array.from(banners,b=>b.image),['/images/home-redesign/national-bounty-2026.jpg','/images/home-redesign/club-welcome.jpg','/images/home-redesign/arena-s7-utopia.jpg'])
+ h.state.handleHeroBannerTap(banners[0].target);assert.equal(h.calls.at(-1)[0],'/pages/client/national-bounty/index')
+ const before=h.calls.length;h.state.handleHeroBannerTap(banners[1].target);assert.equal(h.calls.length,before)
+ assert.doesNotMatch(source,/getPackages|goShopDetail|package-22/)
 })
-
-test('carousel image errors remove only the failed offer and never substitute a poster', async () => {
-  const h = harness([{ id: 16, name: '五套四弹', cover_url: 'https://api.huc125.cn/media/five.jpg' }]); await h.load()
-  const banner = vue.unref(h.state.heroBanners)[1]
-  assert.match(template, /@error="handleHeroImageError\(banner\)"/)
-  h.state.handleHeroImageError(banner)
-  assert.equal(vue.unref(h.state.heroBanners).length, 1)
-  assert.equal(h.state.packages.value.length, 1)
-  assert.doesNotMatch(await h.html(), /five.jpg|package-five.png|package-six.png/)
+test('Arena banner selects the real Arena game even when another game comes first',async t=>{
+ for(const game of [{id:73,name:'暗区突围无限',code:'aqtw'},{id:91,name:'战术射击',code:'arena-breakout-infinite'}]){
+  const h=homeHarness({guest:true,games:[{id:12,name:'小游戏',code:'steam'},game]});t.after(()=>h.scope.stop());await h.load()
+  h.state.handleHeroBannerTap('arena');assert.equal(h.storage['catalog:requested-game-id'],game.id);assert.equal(h.calls.at(-1)[0],'/pages/shop/category/index')
+ }
 })
-
-test('failed package API never substitutes invented local packages', async () => {
-  const h = harness([], true); await h.load()
-  const html = await h.html()
-  assert.equal(h.state.heroBanners.value.length, 1)
-  assert.doesNotMatch(source, /fallbackPackages|packageVisuals|packageImageFor|默认展示数据/)
+test('Arena loading does not misroute; missing game or failed API opens customer service',async t=>{
+ for(const options of [{games:[{id:12,name:'小游戏',code:'steam'}]},{catalogFail:true}]){
+  const h=homeHarness({guest:true,...options});t.after(()=>h.scope.stop());await h.load()
+  h.state.catalogLoading.value=true;h.state.handleHeroBannerTap('arena');assert.deepEqual(h.calls.at(-1),['toast','服务加载中，请稍后再试'])
+  h.state.catalogLoading.value=false;h.state.handleHeroBannerTap('arena');assert.equal(h.calls.at(-1)[0],'/pages/client/customer-service/index');assert.equal(h.calls.at(-1)[1].scene,'arena');assert.equal(h.storage['catalog:requested-game-id'],undefined)
+ }
 })
-
-
-test('failed carousel cover recovers only on real API URL change and never mutates catalogue', async t => {
-  const products = [{ id: 11, name: '特色玩法单', cover_url: 'https://fixture.invalid/broken.jpg' }, { id: 16, name: '五套四弹', cover_url: 'https://fixture.invalid/five.jpg' }]
-  const before = JSON.stringify(products), h = harness(products); t.after(() => h.scope.stop()); await h.load()
-  assert.doesNotMatch(await h.html(), /broken.jpg|特色玩法单/)
-  h.state.handleHeroImageError(h.state.heroBanners.value[1])
-  assert.equal(h.state.heroBanners.value.length, 1)
-  assert.equal(JSON.stringify(products), before)
-  h.state.packages.value = [...products, { id: 22, name: '六套五弹' }]
-  assert.equal(h.state.heroBanners.value.length, 1, 'missing image does not get a fabricated poster')
-  h.state.packages.value = products.map(p => p.id === 16 ? { ...p, cover_url: 'https://fixture.invalid/recovered.jpg' } : p)
-  assert.equal(h.state.heroBanners.value.length, 2)
-  assert.match(await h.html(), /recovered.jpg/)
+test('failed local banner keeps a readable fallback and working destination',async t=>{
+ const h=homeHarness({guest:true});t.after(()=>h.scope.stop());await h.load();const banner=vue.unref(h.state.heroBanners)[0]
+ h.state.handleHeroImageError(banner);assert.equal(vue.unref(h.state.heroBanners).length,3)
+ const html=await h.html();assert.match(html,/hero-slide__fallback/);assert.match(html,/国庆赏金赛，查看活动规则/);assert.doesNotMatch(html,/src="\/images\/home-redesign\/national-bounty-2026.jpg"/)
+ h.state.handleHeroBannerTap(banner.target);assert.equal(h.calls.at(-1)[0],'/pages/client/national-bounty/index')
 })
-test('home retains order notice navigation without fictional broadcasts or obsolete hot-card sections', async t => {
-  const h = harness(); t.after(() => h.scope.stop()); await h.load()
-  const html = await h.html()
-  assert.doesNotMatch(html, /18分钟前|金牌陪已接单|notice-bar|热门套餐/)
-  assert.match(html, /下单须知/)
-  h.state.goOrderNotice()
-  assert.ok(h.calls.some(call => call[0] === '/pages/boss/order-notice/index'))
-  for (const tab of ['query', 'players', 'profile']) { h.state.handleMainTabSelect(tab); assert.equal(h.calls.at(-1)[1], tab) }
+test('home retains order notice and existing user destinations',async t=>{
+ const h=homeHarness({guest:true});t.after(()=>h.scope.stop());await h.load();assert.match(await h.html(),/下单须知/)
+ h.state.goOrderNotice();assert.equal(h.calls.at(-1)[0],'/pages/boss/order-notice/index')
+ for(const tab of ['query','players','profile']){h.state.handleMainTabSelect(tab);assert.equal(h.calls.at(-1)[1],tab)}
 })
