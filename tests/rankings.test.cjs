@@ -29,6 +29,17 @@ test('boss contributions use the existing one-decimal diamond precision while pl
   for (const value of [1234.56, Infinity, NaN, Number.MAX_SAFE_INTEGER, '1234.5']) assert.throws(() => parsed('boss', value))
   assert.throws(() => parsed('player', 1234.5))
 })
+test('rankings enforce competitive ranks 1,1,3 rather than trusting malformed rank numbers', () => {
+  const a = api(), rows = [
+    { ...row('并列甲'), id: 'a', rank: 1, value: 10 },
+    { ...row('并列乙'), id: 'b', rank: 1, value: 10 },
+    { ...row('第三'), id: 'c', rank: 3, value: 5 },
+  ]
+  assert.deepEqual(a.parseRankings(response('boss', 'day', rows), 'boss', 'day').results.map(x => x.rank), [1, 1, 3])
+  for (const ranks of [[2, 2, 3], [1, 2, 3], [1, 1, 2], [1, 1, 1]]) {
+    assert.throws(() => a.parseRankings(response('boss', 'day', rows.map((r, i) => ({ ...r, rank: ranks[i] }))), 'boss', 'day'))
+  }
+})
 function page() {
   const requests = [], unmount = []
   const h = harness({ vue: { ...vue, onBeforeUnmount: f => unmount.push(f) }, '@/api/rankings': { getRankings: (board, period) => new Promise((resolve, reject) => requests.push({ board, period, resolve, reject })) } })
@@ -50,6 +61,28 @@ test('ranking tabs discard stale responses and preserve selected board and perio
     p.requests[4].resolve({ available: false }); await tick(); assert.ok(p.action('unavailable')); assert.doesNotMatch(p.text(), /本周陪玩/)
   } finally { p.close() }
 })
+test('ranking rules explain refund attribution, successful acceptance and exclusive Beijing periods', async () => {
+  const p = page()
+  try {
+    p.h.hooks.show[0](); p.requests[0].resolve(response()); await tick()
+    assert.match(p.text(), /成功退款扣回原消费期/)
+    assert.match(p.text(), /冠名线下退款暂不自动同步/)
+    assert.match(p.text(), /充值不计入/)
+    assert.match(p.text(), /北京时间/)
+    assert.match(p.text(), /周一/)
+    assert.match(p.text(), /结束时刻不含/)
+    assert.match(p.text(), /2026/)
+    assert.match(p.text(), /同分并列/)
+    p.action('board-player').props.onTap()
+    assert.match(p.text(), /成功接单时间/)
+    assert.match(p.text(), /同人同单只计一次/)
+    assert.match(p.text(), /仅统计最终成功完成的订单/)
+    assert.match(p.text(), /未完成、老板取消、陪玩退出不计/)
+    assert.doesNotMatch(p.text(), /后续取消不扣减/)
+    assert.doesNotMatch(p.text(), /成功退款扣回原消费期/)
+  } finally { p.close() }
+})
+
 test('ranking error retry, empty results and failed avatar have distinct honest display states', async () => {
   const p = page()
   try {

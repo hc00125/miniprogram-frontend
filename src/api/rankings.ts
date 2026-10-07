@@ -28,12 +28,12 @@ export function parseRankings(value: unknown, board: RankingBoard, period: Ranki
   if (v.available !== true || v.board !== board || v.period !== period || !timestamp(v.period_start) || !timestamp(v.period_end) || !timestamp(v.updated_at)
     || Date.parse(v.period_start) >= Date.parse(v.period_end) || !Array.isArray(v.results) || v.results.length > 50) invalid()
   const ids = new Set<string>(); let lastRank = 0; let lastValue = Infinity
-  const results = v.results.map((entry: unknown) => {
+  const results = v.results.map((entry: unknown, index: number) => {
     if (!entry || typeof entry !== 'object') invalid()
     const row = entry as Record<string, unknown>
     const amount = metricValue(row.value, board)
     if (typeof row.id !== 'string' || !row.id.trim() || ids.has(row.id) || typeof row.name !== 'string' || !row.name.trim()
-      || !Number.isSafeInteger(row.rank) || Number(row.rank) < 1 || Number(row.rank) < lastRank
+      || !Number.isSafeInteger(row.rank) || Number(row.rank) !== (amount === lastValue ? lastRank : index + 1)
       || amount > lastValue) invalid()
     ids.add(row.id); lastRank = Number(row.rank); lastValue = amount
     return { id: row.id, rank: lastRank, name: row.name, avatar_url: avatar(row.avatar_url), value: lastValue }

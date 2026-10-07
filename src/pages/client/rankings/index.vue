@@ -13,7 +13,8 @@
       <view class="period-tabs">
         <button v-for="tab in periods" :key="tab.value" class="period-tab" :class="{ active: period === tab.value }" :aria-pressed="period === tab.value" :data-action="`period-${tab.value}`" @tap="selectPeriod(tab.value)">{{ tab.label }}</button>
       </view>
-      <text class="ranking-description">{{ board === 'boss' ? '点单、礼物与冠名消费钻石合计' : '记录陪玩的每一份接单努力' }}</text>
+      <text class="ranking-description">{{ board === 'boss' ? '点单、礼物与冠名消费钻石合计' : '按成功接单时间统计，同人同单只计一次' }}</text>
+      <view class="ranking-footnote" data-action="ranking-rules"><text>{{ board === 'boss' ? '充值不计入，点单与礼物成功退款扣回原消费期；冠名线下退款暂不自动同步' : '仅统计最终成功完成的订单；未完成、老板取消、陪玩退出不计' }}</text><text>北京时间自然日、周一开始的自然周、自然月 · 同分并列</text></view>
       <view v-if="status === 'loading'" class="state" data-action="loading"><view class="state-mark">榜</view><text class="state-title">榜单加载中</text><text class="state-caption">荣誉正在集结…</text></view>
       <view v-else-if="status === 'error'" class="state" data-action="error"><view class="state-mark">榜</view><text class="state-title">暂时没能加载榜单</text><text class="state-caption">稍后再试一次吧</text><button class="retry-button" data-action="retry" @tap="load">重新加载</button></view>
       <view v-else-if="status === 'unavailable'" class="state" data-action="unavailable"><view class="state-mark">榜</view><text class="state-title">榜单暂未开放</text><text class="state-caption">期待与你一起见证荣誉时刻</text></view>
@@ -43,8 +44,8 @@ const status = ref<'loading' | 'error' | 'unavailable' | 'ready'>('loading'), re
 const failedImages = ref<Record<string, boolean>>({})
 const items = computed(() => result.value?.available ? result.value.results : [])
 let visible = false, generation = 0
-function displayTime(value: string) { const date = new Date(Date.parse(value) + 8 * 60 * 60 * 1000); const pad = (v: number) => String(v).padStart(2, '0'); return `${date.getUTCMonth() + 1}/${date.getUTCDate()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}` }
-const periodCaption = computed(() => result.value?.available ? `统计时间：${displayTime(result.value.period_start)} — ${displayTime(result.value.period_end)}（北京时间）` : '')
+function displayTime(value: string) { const date = new Date(Date.parse(value) + 8 * 60 * 60 * 1000); const pad = (v: number) => String(v).padStart(2, '0'); return `${date.getUTCFullYear()}/${date.getUTCMonth() + 1}/${date.getUTCDate()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}` }
+const periodCaption = computed(() => result.value?.available ? `统计时间：${displayTime(result.value.period_start)} — ${displayTime(result.value.period_end)}（北京时间，结束时刻不含）` : '')
 function formatValue(value: number) { return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',') }
 async function load() {
   if (!visible) return
