@@ -8,7 +8,7 @@
 
     <view class="discovery-tabs">
       <button class="discovery-tab" :class="{ active: discoveryMode === 'random' }" :aria-pressed="discoveryMode === 'random'" hover-class="discovery-tab--pressed" @tap="selectDiscoveryMode('random')">随机陪玩</button>
-      <button class="discovery-tab" :class="{ active: discoveryMode === 'quality' }" :aria-pressed="discoveryMode === 'quality'" hover-class="discovery-tab--pressed" @tap="selectDiscoveryMode('quality')">优质陪玩</button>
+      <button class="discovery-tab" :class="{ active: discoveryMode === 'quality' }" :aria-pressed="discoveryMode === 'quality'" hover-class="discovery-tab--pressed" @tap="selectDiscoveryMode('quality')">推荐陪玩</button>
     </view>
 
     <view class="search-panel">
