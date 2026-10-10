@@ -6,7 +6,7 @@ test('v3 approved duration, renewal, half-yuan rate and manual support copy rend
  p.life.load[0]({playerId:'7'});await p.life.show[0]();await p.action('package-year').props.onTap()
  assert.match(p.text(),/365天/);assert.match(p.text(),/付款成功后生效/);assert.match(p.text(),/同老板同陪玩续购累加/)
  assert.match(p.text(),/未到期从原到期日延长/);assert.match(p.text(),/已到期从本次付款起算/)
- await p.action('package-day_pass').props.onTap();assert.match(p.text(),/0.5元步长/);assert.match(p.text(),/赠送一周冠名（7天），按同一规则累加/)
+ await p.action('package-day_pass').props.onTap();assert.match(p.text(),/时薪 × 7小时/);assert.match(p.text(),/赠送一周冠名（7天），按同一规则累加/)
  assert.match(p.text(),/暂不提供自助退款/);assert.match(p.text(),/客服人工核实处理/)
  p.action('support').props.onTap();assert.deepEqual(p.calls[0],['/pages/client/customer-service/index'])
  assert.equal(p.action('purchase').props.disabled,true);assert.equal(typeof p.action('purchase').props.onTap,'function')

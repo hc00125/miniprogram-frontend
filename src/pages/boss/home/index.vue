@@ -66,7 +66,7 @@
               <view class="player-card-head" @tap="openPlayerDetail(player)">
                 <image v-if="!failedAvatars[player.id]" class="player-avatar" :src="player.avatar_url" mode="aspectFill" @error="failedAvatars[player.id] = true" />
                 <view v-else class="player-avatar player-avatar--fallback">{{ player.name.slice(0, 1) }}</view>
-                <view class="player-copy"><text class="player-name">{{ player.name }}</text><text class="player-type">{{ player.type_name }}</text></view>
+                <view class="player-copy"><text class="player-name">{{ player.name }}</text><PatronageCrowns compact :player-id="player.id" /><text class="player-type">{{ player.type_name }}</text></view>
               </view>
               <view class="player-meta"><view class="player-status" :class="{ off: !player.presence_online }"><text></text>{{ player.presence_online ? '在线' : '离线' }}</view><text class="player-rating">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'}` : '暂无评分' }}</text></view>
               <view class="player-actions">
@@ -92,6 +92,7 @@ import { getCatalogNavigation, type GameService } from '@/api/catalog'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import GiftHost from '@/components/gifts/GiftHost.vue'
+import PatronageCrowns from '@/components/PatronageCrowns.vue'
 import HomeAnnouncements from '@/components/HomeAnnouncements.vue'
 import { uiIcons } from '@/utils/uiIcons'
 import { go, goMain, navigateToTab, type MainTab } from '@/utils/nav'
@@ -136,8 +137,10 @@ function normalizeOnlineValue(value: unknown) { return value === true || value =
 function normalizePlayer(player: OnlinePlayer): OnlinePlayer { const isOnline = normalizeOnlineValue(player.is_online); return { ...player, is_online: isOnline, type_name: player.player_type?.name || player.type_name || '优质陪玩', price_extra: player.player_type?.price_extra || player.price_extra || 0, status: isOnline ? '在线' : '离线' } }
 function goShopCategory() { go('/pages/shop/category/index') }
 function goSteamGames() {
-  if (steamGame.value) { uni.setStorageSync('catalog:requested-game-id', steamGame.value.id); goShopCategory(); return }
-  go('/pages/client/customer-service/index', { scene: 'steam' })
+  uni.removeStorageSync('catalog:requested-game-id')
+  uni.setStorageSync('catalog:requested-game-kind', 'mini-games')
+  if (steamGame.value) uni.setStorageSync('catalog:requested-game-id', steamGame.value.id)
+  goShopCategory()
 }
 function goRankings() { goMain('rankings') }
 function goFeaturedGame() { if (!featuredGame.value) return; uni.setStorageSync('catalog:requested-game-id', featuredGame.value.id); goShopCategory() }

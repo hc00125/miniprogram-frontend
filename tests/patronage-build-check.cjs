@@ -8,10 +8,12 @@ for(const file of ['pages/client/patronage/index','pages/client/patronage/record
 for(const file of ['pages/client/patronage/index','pages/client/patronage/records'])assert.ok(app.pages.includes(file))
 const wxml=read('pages/client/patronage/index.wxml'),purchaseButton=wxml.match(/<button[^>]*data-action="purchase"[^>]*>/)[0]
 assert.match(purchaseButton,/disabled="{{\w+}}"/);assert.doesNotMatch(purchaseButton,/disabled="{{true}}"/);assert.match(purchaseButton,/bindtap/)
-assert.match(wxml,/8小时仅为计价说明/);assert.match(wxml,/0.5元步长/);assert.match(wxml,/同老板同陪玩续购累加/)
+assert.match(wxml,/7小时仅为计价说明/);assert.match(wxml,/时薪 × 7小时/);assert.match(wxml,/同老板同陪玩续购累加/)
 assert.match(wxml,/赠送一周冠名（7天），按同一规则累加/)
 assert.match(read('pages/client/patronage/index.wxss'),/\.purchase-button[^}]*width:100%/)
 assert.match(read('pages/client/patronage/index.wxss'),/safe-area-inset-bottom/)
+for(const host of ['pages/player/list/index','pages/boss/home/index']){assert.match(read(host+'.wxml'),/<patronage-crowns/);assert.ok(JSON.parse(read(host+'.json')).usingComponents['patronage-crowns'])}
+assert.match(read('pages/player/service-management/index.wxml'),/<patronage-service-duration-settings/);assert.match(read('components/PatronageServiceDurationSettings.wxml'),/0.5小时/);assert.match(read('components/PatronageCrowns.wxss'),/flex-wrap:wrap/)
 assert.match(read('pages/player/detail/index.wxml'),/<patronage-crowns/);assert.match(read('pages/player/detail/index.wxml'),/<gift-host/)
 assert.match(read('pages/client/profile/index.wxml'),/冠名 \/ 包天记录/)
 assert.ok(fs.existsSync(path.join(root,'utils/patronagePaymentIntent.js')),'real controller must be in the purchase dependency graph')
@@ -27,7 +29,7 @@ function load(file,options={}){
   if(options.timeout&&endpoint==='purchases/'){o.fail({errMsg:'fixture timeout'});return}
   const c=catalog();c.purchase_enabled=enabled
   c.packages.push({code:'year',name:'年冠',kind:'naming',duration_days:365,amount_yuan:'9999.00',amount_diamonds:'99990.0',available:true,blockers:[]})
-  const data=endpoint==='catalog/'?c:endpoint==='quotes/'?{...quote(),can_submit:enabled,blockers:enabled?[]:['PURCHASE_NOT_ENABLED']}:
+  const data=endpoint==='catalog/'?c:endpoint==='quotes/'?{...quote(),service_hours:'26.5',hourly_amount_yuan:'7.09',hourly_amount_diamonds:'70.9',service_terms_source:'player_override',service_terms_version:'2026-10-table-v1',can_submit:enabled,blockers:enabled?[]:['PURCHASE_NOT_ENABLED']}:
    endpoint==='purchases/pending/'?{count:pendingCount,next:pendingCount?'https://evil.invalid':null,previous:null,results:[]}:
    endpoint==='records/'?{count:1,next:null,previous:null,results:[record('record-key','unknown')]}:record(o.data.idempotency_key,status)
   o.success({statusCode:200,data})
@@ -54,8 +56,8 @@ async function run(){
  for(const options of [{enabled:false},{ios:true}]){
   const page=load('pages/client/patronage/index',options);page.hooks.load({playerId:'7'});await page.hooks.show();assert.equal(page.disabled('purchase'),true);await page.tap('purchase');assert.equal(page.modals.length,0);assert.equal(page.requests.filter(o=>o.url.endsWith('/purchases/')).length,0);page.scope.stop()
  }
- const page=load('pages/client/patronage/index');page.hooks.load({playerId:'7'});await page.hooks.show();assert.equal(page.disabled('purchase'),false);assert.match(page.text(),/2000.0/);assert.match(page.text(),/365天（1年）/)
- const task=page.tap('purchase');await tick();await page.tap('purchase');assert.equal(page.modals.length,1);page.modals[0].success({confirm:true});await task
+ const page=load('pages/client/patronage/index');page.hooks.load({playerId:'7'});await page.hooks.show();assert.equal(page.disabled('purchase'),false);assert.match(page.text(),/2000.0/);assert.match(page.text(),/26.5/);assert.match(page.text(),/70.9/);assert.match(page.text(),/365天（1年）/)
+ const task=page.tap('purchase');await tick();await page.tap('purchase');assert.equal(page.modals.length,1);assert.match(page.modals[0].content,/26.5 小时/);page.modals[0].success({confirm:true});await task
  const posts=()=>page.requests.filter(o=>o.url.endsWith('/purchases/'));assert.equal(posts().length,1);assert.equal(page.requests.at(-1).url.endsWith('/by-key/'),true);assert.equal(page.requests.at(-1).data.idempotency_key,posts()[0].data.idempotency_key);assert.match(page.text(),/购买成功/)
  await confirm(page,'buy-again');assert.equal(posts().length,2);assert.notEqual(posts()[0].data.idempotency_key,posts()[1].data.idempotency_key);assert.equal(Object.keys(page.storage).filter(k=>k.includes(':archive:')).length,1)
  page.tap('support');assert.equal(JSON.stringify(page.calls[0]),JSON.stringify(['/pages/client/customer-service/index']));page.hooks.hide();assert.doesNotMatch(page.text(),/2000.0/);page.scope.stop()

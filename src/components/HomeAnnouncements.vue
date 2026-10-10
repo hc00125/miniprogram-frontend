@@ -8,15 +8,17 @@
             <view class="announcement-avatars">
               <image v-if="item.boss_avatar_url && !failedImages[`${item.id}:boss`]" class="announcement-avatar avatar-boss" :src="item.boss_avatar_url" mode="aspectFill" :data-action="`image-boss-${item.id}`" @error="failedImages[`${item.id}:boss`] = true" />
               <view v-else class="announcement-avatar avatar-boss avatar-fallback">{{ item.boss_name.slice(0, 1) }}</view>
-              <image v-if="item.player_avatar_url && !failedImages[`${item.id}:player`]" class="announcement-avatar avatar-player" :src="item.player_avatar_url" mode="aspectFill" :data-action="`image-player-${item.id}`" @error="failedImages[`${item.id}:player`] = true" />
-              <view v-else class="announcement-avatar avatar-player avatar-fallback">{{ item.player_name.slice(0, 1) }}</view>
+              <image v-if="item.kind !== 'vip_upgrade' && item.player_avatar_url && !failedImages[`${item.id}:player`]" class="announcement-avatar avatar-player" :src="item.player_avatar_url" mode="aspectFill" :data-action="`image-player-${item.id}`" @error="failedImages[`${item.id}:player`] = true" />
+              <view v-else-if="item.kind !== 'vip_upgrade'" class="announcement-avatar avatar-player avatar-fallback">{{ item.player_name.slice(0, 1) }}</view>
             </view>
             <view class="announcement-copy">
-              <view class="announcement-names"><text class="announcement-name">{{ item.boss_name }}</text><text class="announcement-verb">{{ item.kind === 'gift' ? '送给' : '为' }}</text><text class="announcement-name recipient-name">{{ item.player_name }}</text></view>
-              <view class="announcement-detail"><text v-if="item.kind === 'patronage'" class="announcement-verb">开通</text><text class="announcement-item">{{ item.item_name }}</text><text v-if="item.kind === 'gift'" class="announcement-quantity">×{{ item.quantity }}</text></view>
+              <view v-if="item.kind !== 'vip_upgrade'" class="announcement-names"><text class="announcement-name">{{ item.boss_name }}</text><text class="announcement-verb">{{ item.kind === 'gift' ? '送给' : '为' }}</text><text class="announcement-name recipient-name">{{ item.player_name }}</text></view>
+              <view v-else class="announcement-names"><text class="announcement-name">{{ item.boss_name }}</text><text class="announcement-verb">升级了</text></view>
+              <view v-if="item.kind === 'vip_upgrade'" class="announcement-detail">{{ item.from_tier_name }} → {{ item.to_tier_name }}</view>
+              <view v-else class="announcement-detail"><text v-if="item.kind === 'patronage'" class="announcement-verb">开通</text><text class="announcement-item">{{ item.item_name }}</text><text v-if="item.kind === 'gift'" class="announcement-quantity">×{{ item.quantity }}</text></view>
             </view>
             <image v-if="item.item_image_url && !failedImages[`${item.id}:item`]" class="announcement-art" :src="item.item_image_url" mode="aspectFit" :data-action="`image-item-${item.id}`" @error="failedImages[`${item.id}:item`] = true" />
-            <view v-else class="announcement-art art-fallback">{{ item.kind === 'gift' ? '礼' : '冠' }}</view>
+            <view v-else class="announcement-art art-fallback">{{ item.kind === 'gift' ? '礼' : item.kind === 'vip_upgrade' ? '升' : '冠' }}</view>
           </view>
         </swiper-item>
       </swiper>
@@ -28,12 +30,13 @@
 
 <script setup lang="ts">
 import { reactive, watch, onBeforeUnmount } from 'vue'
-import { getAnnouncements, type Announcement, type AnnouncementKind } from '@/api/announcements'
+import { getAnnouncements, type Announcement } from '@/api/announcements'
+type CardKind = 'gift' | 'patronage'
 import { go } from '@/utils/nav'
 const props = defineProps<{ active: boolean }>()
-const cards: { kind: AnnouncementKind; title: string }[] = [{ kind: 'gift', title: '热门广播' }, { kind: 'patronage', title: '冠名通报' }]
+const cards: { kind: CardKind; title: string }[] = [{ kind: 'gift', title: '热门广播' }, { kind: 'patronage', title: '冠名通报' }]
 const failedImages = reactive<Record<string, boolean>>({})
-const feeds = reactive<Record<AnnouncementKind, { items: Announcement[]; loading: boolean; error: boolean }>>({
+const feeds = reactive<Record<CardKind, { items: Announcement[]; loading: boolean; error: boolean }>>({
   patronage: { items: [], loading: false, error: false }, gift: { items: [], loading: false, error: false }
 })
 let generation = 0
@@ -43,22 +46,22 @@ async function refresh(ticket: number) {
   await Promise.all(cards.map(card => load(card.kind, ticket)))
   if (props.active && ticket === generation) timer = setTimeout(() => { timer = undefined; void refresh(ticket) }, 30000)
 }
-async function load(kind: AnnouncementKind, ticket = generation) {
+async function load(kind: CardKind, ticket = generation) {
   feeds[kind].loading = true; feeds[kind].error = false
   try {
-    const result = await getAnnouncements(kind, 1, 10)
+    const result = await getAnnouncements(kind === 'gift' ? 'popular' : kind, 1, 10)
     if (props.active && ticket === generation) {
       feeds[kind].items = result.results
       // Keep image failures bounded to the current two feeds, and retry them on refresh.
-      Object.keys(failedImages).filter(key => key.startsWith(`${kind}:`)).forEach(key => delete failedImages[key])
+      Object.keys(failedImages).filter(key => key.startsWith(`${kind}:`) || (kind === 'gift' && key.startsWith('vip_upgrade:'))).forEach(key => delete failedImages[key])
     }
   }
   catch { if (props.active && ticket === generation) feeds[kind].error = true }
   finally { if (props.active && ticket === generation) feeds[kind].loading = false }
 }
-function open(kind: AnnouncementKind) {
+function open(kind: CardKind) {
   if (feeds[kind].error) { if (!feeds[kind].loading) void load(kind); return }
-  go('/pages/client/announcements/index', { kind })
+  go(kind === 'patronage' ? '/pages/client/patronage-announcements/index' : '/pages/client/popular-announcements/index')
 }
 watch(() => props.active, active => { stop(); if (active) void refresh(generation) }, { immediate: true, flush: 'sync' })
 onBeforeUnmount(stop)

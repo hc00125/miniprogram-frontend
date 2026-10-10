@@ -39,9 +39,10 @@
       <view><text>{{ overview?.accepted_orders || 0 }}</text><text>累计接单</text></view>
       <view><text>{{ overview?.completed_orders || 0 }}</text><text>已结算订单</text></view>
       <view><text>{{ fish(overview?.withdrawn_total) }}</text><text>累计已提鱼干</text></view>
-      <view><text>{{ Number(overview?.default_commission_rate ?? 16).toFixed(0) }}%</text><text>默认抽成</text></view>
+      <view><text>{{ overview ? Number(overview.default_commission_rate).toFixed(0) : '--' }}%</text><text>默认抽成</text></view>
     </view>
 
+    <view v-if="overview?.commission_policy === 'standard25-mini16-v1'" class="card">默认抽成25%；仅娱乐mini、技术mini的普通陪玩订单享16%优惠，冠名、礼物、加价、包天不自动享受。明确例外与历史订单以原记录为准。</view>
     <view class="card withdrawal-card">
       <view class="card-head">
         <view>

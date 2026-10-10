@@ -41,7 +41,8 @@
         <view v-else class="empty-box">暂无评价</view>
       </view>
 
-      <view v-if="!player && loaded" class="empty-state">陪玩师不存在或已下架</view>
+      <view v-if="!player && loaded && detailError === 'unavailable'" class="empty-state">陪玩师不存在或已下架</view>
+      <view v-else-if="!player && loaded && detailError === 'load'" class="empty-state"><text>详情加载失败，请重试</text><button class="retry-btn" @tap="fetchPlayer">重新加载</button></view>
       <view class="bottom-space"></view>
     </scroll-view>
 
@@ -63,6 +64,7 @@ const playerId = ref<number | null>(null)
 const player = ref<OnlinePlayer | null>(null)
 const ratingData = ref<PlayerRatingsResult | null>(null)
 const loaded = ref(false)
+const detailError = ref<'load' | 'unavailable' | null>(null)
 const openingProduct = ref(false)
 const isPlaying = ref(false)
 let audioContext: UniApp.InnerAudioContext | null = null
@@ -75,10 +77,16 @@ function starText(value: number) { const count = Math.max(1, Math.min(5, Number(
 function formatReviewDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
 async function fetchPlayer() {
   loaded.value = false
+  detailError.value = null
+  ratingData.value = null
   try {
     player.value = await getPublicPlayerDetail(Number(playerId.value))
     if (player.value && !player.value.is_archived) { try { ratingData.value = await getPublicPlayerRatings(player.value.id) } catch { ratingData.value = null } }
-  } catch { player.value = null; toast('陪玩详情加载失败') } finally { loaded.value = true }
+  } catch (error) {
+    player.value = null
+    const failure = error as { statusCode?: number; code?: string }
+    detailError.value = failure?.statusCode === 404 && failure?.code === 'PLAYER_UNAVAILABLE' ? 'unavailable' : 'load'
+  } finally { loaded.value = true }
 }
 function getAudioContext() {
   if (!player.value?.audio_intro_url) return null
@@ -113,5 +121,6 @@ onBeforeUnmount(() => uni.$off('player-presence-updated', applyOwnPresence))
 </script>
 
 <style lang="scss" scoped>
+.retry-btn{display:flex;align-items:center;justify-content:center;min-height:88rpx;margin:24rpx auto 0;padding:16rpx 32rpx;border-radius:22rpx;color:var(--ui-on-primary, #fff);background:var(--ui-primary, #2f9b63)}
 .player-detail-page{min-height:100vh;color:var(--ui-text, #172116);background:var(--ui-soft, #f7f3ea)}.detail-scroll{height:100vh}.profile-hero,.detail-card{margin:24rpx;padding:28rpx;border-radius:30rpx;background:var(--ui-surface, #fff);box-shadow:0 14rpx 30rpx var(--ui-shadow, rgba(39,61,42,.07))}.profile-hero{background:linear-gradient(135deg,var(--ui-surface, #fff),var(--ui-soft, #eef8e7))}.profile-head{display:flex;align-items:center;gap:22rpx}.avatar{width:132rpx;height:132rpx;flex-shrink:0;border-radius:34rpx;background:var(--ui-primary, #2f9b63)}.avatar--placeholder{display:flex;align-items:center;justify-content:center;color:#fff;font-size:52rpx;font-weight:900}.profile-main{flex:1;min-width:0}.name-row{display:flex;align-items:center;gap:14rpx}.player-name{flex:1;font-size:40rpx;font-weight:900}.status-pill{padding:8rpx 16rpx;border-radius:999rpx;color:var(--ui-accent, #1f7c4b);font-size:22rpx;font-weight:900;background:var(--ui-soft, #ecf8ef)}.status-pill.off{color:var(--ui-muted, #99a198);background:var(--ui-soft, #f0f2ef)}.player-type{display:inline-block;margin-top:12rpx;padding:7rpx 14rpx;border-radius:999rpx;color:var(--ui-muted, #687665);font-size:23rpx;background:var(--ui-soft, #f2f5ef)}.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12rpx;margin-top:24rpx}.stats-row view{padding:16rpx 8rpx;border-radius:18rpx;text-align:center;background:var(--ui-surface, rgba(255,255,255,.75))}.stats-row text{display:block}.stats-row text:first-child{font-size:26rpx;font-weight:900}.stats-row text:last-child{margin-top:5rpx;color:var(--ui-muted, #879083);font-size:20rpx}.service-card{border:1rpx solid var(--ui-accent-line, rgba(47,155,99,.16));background:linear-gradient(135deg,var(--ui-soft, #f1faf3),var(--ui-surface, #fffaf0))}.service-card.blocked{background:var(--ui-soft, #f5f4f1)}.card-title,.card-subtitle{display:block}.card-title{font-size:30rpx;font-weight:900}.card-subtitle{margin-top:7rpx;color:var(--ui-muted, #7d877a);font-size:22rpx;line-height:1.5}.service-state{display:inline-block;margin-top:16rpx;padding:8rpx 14rpx;border-radius:999rpx;color:var(--ui-accent, #1f7c4b);font-size:21rpx;font-weight:900;background:var(--ui-soft, #e5f6e9)}.audio-player{display:flex;align-items:center;gap:16rpx;margin-top:18rpx;padding:18rpx;border-radius:18rpx;background:var(--ui-soft, #f7faf4)}.audio-player button{width:100rpx;height:60rpx;margin:0;border-radius:999rpx;color:#fff;font-size:23rpx;background:var(--ui-primary, #1f7c4b)}.audio-player view{flex:1}.audio-player text{display:block}.audio-player text:first-child{font-weight:900}.audio-player text:last-child{margin-top:5rpx;color:var(--ui-muted, #879083);font-size:21rpx}.bio-text{display:block;margin-top:16rpx;color:var(--ui-muted, #4f5d50);font-size:25rpx;line-height:1.7}.card-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16rpx}.rating-pill{padding:8rpx 12rpx;border-radius:999rpx;color:var(--ui-gold, #a87520);font-size:20rpx;font-weight:900;background:var(--ui-surface, #fff6df)}.review-list{margin-top:18rpx;display:flex;flex-direction:column;gap:14rpx}.review-item{padding:18rpx;border-radius:18rpx;background:var(--ui-soft, #f7faf4)}.review-item>view{display:flex;justify-content:space-between;color:var(--ui-muted, #9aa197);font-size:20rpx}.review-item>text{display:block;margin-top:8rpx;font-size:24rpx}.review-item>text:last-child{color:var(--ui-muted, #879083);font-size:20rpx}.stars{color:var(--ui-gold, #e1ac3f)}.empty-box,.empty-state{margin-top:18rpx;padding:30rpx;border-radius:18rpx;color:var(--ui-muted, #879083);text-align:center;background:var(--ui-soft, #f7faf4)}.bottom-space{height:170rpx}.bottom-bar{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:1fr 2fr;gap:12rpx;padding:18rpx 20rpx calc(18rpx + env(safe-area-inset-bottom));background:var(--ui-surface, rgba(255,255,255,.98));box-shadow:0 -10rpx 30rpx var(--ui-shadow, rgba(39,61,42,.08))}.bottom-bar button{height:82rpx;margin:0;padding:0 12rpx;border-radius:999rpx;font-size:24rpx;font-weight:900}.back-btn{color:var(--ui-muted, #687665);background:var(--ui-soft, #f1f3ef)}.order-btn{color:#fff;background:var(--ui-gradient)}.order-btn[disabled]{opacity:.5}.bottom-bar button::after,.audio-player button::after{border:none}
 </style>

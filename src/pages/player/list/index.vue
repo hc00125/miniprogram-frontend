@@ -28,6 +28,7 @@
         <view class="portrait"><image v-if="player.avatar_url" class="portrait-img" :src="player.avatar_url" mode="aspectFill" /><view v-else class="portrait-empty">{{ player.name?.slice(0, 1) || '陪' }}</view></view>
         <view class="player-main">
           <view class="name-row"><text>{{ player.name }}</text><text class="club-pill" :class="player.presence_online ? '' : 'pill-offline'">{{ player.presence_online ? '在线' : '离线' }}</text></view>
+          <PatronageCrowns compact :player-id="player.id" />
           <view class="tags"><text>{{ player.type_name || '优质陪玩' }}</text><text class="rating-tag">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'} · ${player.rating_count}条评价` : '暂无评分' }}</text><text>接单 {{ player.total_orders || 0 }}</text><text v-if="player.audio_intro_url" class="audio-tag">语音介绍</text></view>
           <view class="bio">{{ player.bio || '暂无简介' }}</view>
           <view class="player-actions">
@@ -50,6 +51,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import GiftHost from '@/components/gifts/GiftHost.vue'
+import PatronageCrowns from '@/components/PatronageCrowns.vue'
 import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
 import { success, toast } from '@/utils/feedback'
 

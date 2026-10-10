@@ -41,6 +41,8 @@
             <small>统一服务标准 · 钻石标价结算 · 订单全程留痕</small>
           </view>
           <view v-if="loading" class="state">加载商品中...</view>
+          <view v-else-if="loadFailed" class="state" @tap="load()">商品服务加载失败，点击重试</view>
+          <view v-else-if="miniGamesMissing" class="state">小游戏服务暂未上架，请选择其他游戏</view>
           <view v-else-if="!games.length" class="state">暂无已启用的游戏服务</view>
           <view v-else-if="!categories.length" class="state">该游戏暂未配置套餐分类</view>
           <view v-else-if="!filteredProducts.length" class="state">暂无相关商品</view>
@@ -72,16 +74,20 @@ const statusBarHeight = ref(20)
 const keyword = ref('')
 const loading = ref(false)
 const loaded = ref(false)
+const loadFailed = ref(false)
+const miniGamesRequested = ref(false)
+const miniGame = computed(() => games.value.find(game => /steam|小游戏/i.test(`${game.code} ${game.name}`)) || null)
+const miniGamesMissing = computed(() => miniGamesRequested.value && !miniGame.value)
 const refreshing = ref(false)
 const games = ref<GameService[]>([])
 const products = ref<BossPackage[]>([])
 const activeGameId = ref<number | null>(null)
 const activeCategoryId = ref<number | null>(null)
 
-const activeGame = computed(() => games.value.find(item => item.id === activeGameId.value) || games.value[0] || null)
+const activeGame = computed(() => miniGamesRequested.value ? miniGame.value : games.value.find(item => item.id === activeGameId.value) || games.value[0] || null)
 const categories = computed(() => activeGame.value?.groups || [])
 const activeCategory = computed(() => categories.value.find(item => item.id === activeCategoryId.value) || categories.value[0] || null)
-const activeGameName = computed(() => activeGame.value?.name || '游戏服务')
+const activeGameName = computed(() => activeGame.value?.name || (miniGamesRequested.value ? '小游戏陪玩' : '游戏服务'))
 const activeCategoryName = computed(() => activeCategory.value?.name || '套餐服务')
 const filteredProducts = computed(() => {
   const q = keyword.value.trim().toLowerCase()
@@ -107,6 +113,7 @@ onShareTimeline(() => ({
 }))
 
 function selectGame(game: GameService) {
+  miniGamesRequested.value = false
   activeGameId.value = game.id
   activeCategoryId.value = game.groups[0]?.id || null
 }
@@ -125,7 +132,7 @@ function productTheme(product: BossPackage) { if (product.product_type === 'guar
 function openDetail(id: number) { go('/pages/shop/detail/index', { packageId: id }) }
 
 function normalizeSelection() {
-  const selectedGame = games.value.find(item => item.id === activeGameId.value) || games.value[0]
+  const selectedGame = miniGamesRequested.value ? miniGame.value : games.value.find(item => item.id === activeGameId.value) || games.value[0]
   activeGameId.value = selectedGame?.id || null
   const selectedGroup = selectedGame?.groups.find(item => item.id === activeCategoryId.value) || selectedGame?.groups[0]
   activeCategoryId.value = selectedGroup?.id || null
@@ -133,6 +140,7 @@ function normalizeSelection() {
 
 async function load(silent = false) {
   if (!silent) loading.value = true
+  loadFailed.value = false
   try {
     const [navigation, list] = await Promise.all([getCatalogNavigation(), getPackages()])
     games.value = navigation.games
@@ -140,6 +148,7 @@ async function load(silent = false) {
     normalizeSelection()
     loaded.value = true
   } catch (error) {
+    loadFailed.value = true
     toast(getErrorMessage(error, '商品服务加载失败'))
   } finally {
     loading.value = false
@@ -151,8 +160,16 @@ function refreshData() { refreshing.value = true; load(true) }
 function selectMainTab(tab: MainTab) { if (tab === 'order') return; if (tab === 'query' || tab === 'players' || tab === 'profile') return navigateToTab(tab); goMain(tab) }
 onLoad(() => { try { statusBarHeight.value = uni.getSystemInfoSync().statusBarHeight || 20 } catch { statusBarHeight.value = 20 } })
 onShow(async () => {
+  const requestedKind = uni.getStorageSync('catalog:requested-game-kind')
+  if (requestedKind === 'mini-games') {
+    uni.removeStorageSync('catalog:requested-game-kind')
+    uni.removeStorageSync('catalog:requested-game-id')
+    miniGamesRequested.value = true
+    activeGameId.value = null; activeCategoryId.value = null; keyword.value = ''
+  }
   if (!loaded.value) await load()
   if (!loaded.value) return
+  if (requestedKind === 'mini-games') normalizeSelection()
   // Native tab navigation drops query parameters; consume only an explicit homepage choice.
   const requested = uni.getStorageSync('catalog:requested-game-id')
   if (requested === '' || requested === undefined || requested === null) return

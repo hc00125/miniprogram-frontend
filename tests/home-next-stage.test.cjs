@@ -46,7 +46,7 @@ function cachedCatalogue(storage, games) {
     '@/utils/nav': { goMain: tab => calls.push(['tab', tab]), navigateToTab: tab => calls.push(['tab', tab]) }
   }
   const source = parse(fs.readFileSync(path.join(root, 'src/pages/shop/category/index.vue'), 'utf8')).descriptor.scriptSetup.content
-    + '\nmodule.exports = { games, loaded, activeGameId, activeCategoryId, keyword, selectMainTab };'
+    + '\nmodule.exports = { games, loaded, activeGameId, activeCategoryId, keyword, selectGame, selectMainTab };'
   const module = { exports: {} }
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, {
     module, exports: module.exports, require: name => mocks[name],
@@ -92,15 +92,15 @@ test('rendered floating rank button and homepage tab handler both target the ran
   assert.match(await h.html(), /src="\/icons\/rank-light.png"/)
 })
 
-test('Steam card with no configured game opens existing customer service without inventing catalogue data', async t => {
+test('Steam card with no configured game opens catalogue with explicit mini-game intent without inventing data', async t => {
   const h = homeHarness({ guest: true, games: [baseGame] })
   t.after(() => h.scope.stop())
   await h.load()
   const html = await h.html()
   assert.match(html, /去下单/)
   action(h, 'steam-games').props.onTap()
-  assert.equal(h.calls.at(-1)[0], '/pages/client/customer-service/index')
-  assert.equal(h.calls.at(-1)[1].scene, 'steam')
+  assert.deepEqual(h.calls.at(-1), ['/pages/shop/category/index'])
+  assert.equal(h.storage['catalog:requested-game-kind'], 'mini-games')
   assert.equal(h.storage['catalog:requested-game-id'], undefined)
   assert.equal(h.state.games.value.length, 1)
 })
@@ -120,8 +120,7 @@ test('configured Steam card selects the actual game on a previously visited cata
   assert.equal(catalogue.state.activeCategoryId.value, 271)
   assert.equal(catalogue.state.keyword.value, '')
   assert.equal(h.storage['catalog:requested-game-id'], undefined)
-  catalogue.state.activeGameId.value = 5
-  catalogue.state.activeCategoryId.value = 51
+  catalogue.state.selectGame(baseGame)
   await catalogue.show()
   assert.equal(catalogue.state.activeGameId.value, 5, 'ordinary catalogue revisits preserve the latest manual selection')
   catalogue.state.selectMainTab('rankings')

@@ -10,7 +10,7 @@ function setup(file,initialProps={}){
  const draw=scope.run(()=>C.setup(props,{expose(){}})),tree=()=>nodes(draw({},[]))
  const text=()=>tree().filter(n=>typeof n.children==='string').map(n=>n.children).join('|')
  const action=id=>tree().find(n=>n.props?.['data-action']===id)
- const respond=(r,rows=[row(r.data.kind)],count=rows.length)=>r.success({statusCode:200,data:{count,page:r.data.page,page_size:r.data.page_size,results:rows}})
+ const respond=(r,rows=[row(r.data.kind==='popular'?'gift':r.data.kind)],count=rows.length)=>r.success({statusCode:200,data:{count,page:r.data.page,page_size:r.data.page_size,results:rows}})
  const close=()=>{life.unmount.forEach(f=>f());scope.stop()}
  return {h,life,calls,requests,props,tree,text,action,respond,close}
 }

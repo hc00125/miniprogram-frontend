@@ -6,6 +6,8 @@ export interface EarningsOverview {
   accepted_orders: number
   completed_orders: number
   default_commission_rate: number
+  commission_policy?: string
+  mini_ordinary_commission_rate?: number
   review_days: number
   min_withdrawal_amount: number
   pending_balance: number

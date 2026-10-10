@@ -21,6 +21,7 @@
             <text class="package-name">{{ item.name }}</text>
             <text class="price">{{ item.amount_diamonds === null ? '暂未配置' : `${item.amount_diamonds} 钻` }}</text>
             <text class="muted">{{ item.code === 'day_pass' ? '赠送一周冠名' : item.code === 'year' ? '365天（1年）' : `${item.duration_days}天` }}</text>
+            <text v-if="item.service_hours" class="muted">含 {{ item.service_hours }} 小时 · 约 {{ item.hourly_amount_diamonds }} 钻/小时</text>
             <text v-if="!item.available" class="blocker">{{ item.blockers.includes('HOURLY_RATE_UNSET') ? '包天时薪暂未设置' : '当前套餐暂不可用' }}</text>
           </button>
         </view>
@@ -28,11 +29,11 @@
       <view v-if="selected" class="card">
         <text class="section-title">{{ selected.name }}说明</text>
         <template v-if="selected.code === 'day_pass'">
-          <text class="body-copy">包天时薪由后台按0.5元步长设置；价格按时薪 × 8 × 0.85 计价。</text>
+          <text class="body-copy">包天按已确认的普通点单时薪 × 7小时计价，以服务端总钻价为准。</text>
           <text class="body-copy">赠送一周冠名（7天），按同一规则累加。</text>
-          <text class="muted">8小时仅为计价说明，不限制服务时长，不自动计时或完单。</text>
+          <text class="muted">7小时仅为计价说明，不限制服务时长，不自动计时或完单。</text>
         </template>
-        <text v-else class="body-copy">冠名在陪玩详情展示，到期后结束展示。</text>
+        <text v-else class="body-copy">冠名展示有效期与包含服务时长独立；日冠有效期24小时，不是自然日，也不代表全天无限服务。服务时长由陪玩自行计时。</text>
         <text class="body-copy">付款成功后生效；同老板同陪玩续购累加，未到期从原到期日延长，已到期从本次付款起算。</text>
         <text class="body-copy">支持多位老板同时冠名，不独占、不锁单，不影响其他老板下单或陪玩接单。</text>
       </view>
@@ -42,6 +43,7 @@
         <text v-else-if="quoteError" class="notice">{{ quoteError }}</text>
         <template v-else-if="quote">
           <view class="quote-row"><text>本次报价</text><text class="price">{{ quote.amount_diamonds }} 钻</text></view>
+          <text v-if="quote.service_hours" class="body-copy">包含 {{ quote.service_hours }} 小时服务 · 折算约 {{ quote.hourly_amount_diamonds }} 钻/小时</text>
           <view class="quote-row muted"><text>可用钻石（已扣预留）</text><text>{{ quote.available_diamonds }} 钻</text></view>
           <text v-for="reason in quote.blockers" :key="reason" class="notice">{{ blockerLabel(reason) }}</text>
         </template>
@@ -206,7 +208,7 @@ async function buy(again: boolean) {
   busy.value = true; paymentMessage.value = ''
   try {
     if (!await checkPending(ticket, owner)) throw new Error('服务端存在未决交易，请先核对')
-    const accepted = await new Promise<boolean>(resolve => uni.showModal({ title: again ? '确认再次购买' : '确认购买', content: `${catalog.value?.player?.name} · ${name}，消费 ${q.amount_diamonds} 钻。${again ? '将归档上一意图并开始新的一笔。' : ''}`, confirmText: '确认购买', success: r => resolve(r.confirm), fail: () => resolve(false) }))
+    const accepted = await new Promise<boolean>(resolve => uni.showModal({ title: again ? '确认再次购买' : '确认购买', content: `${catalog.value?.player?.name} · ${name}，消费 ${q.amount_diamonds} 钻。${q.service_hours ? `包含 ${q.service_hours} 小时服务，折算约 ${q.hourly_amount_diamonds} 钻/小时；与冠名有效期独立。` : ''}${again ? '将归档上一意图并开始新的一笔。' : ''}`, confirmText: '确认购买', success: r => resolve(r.confirm), fail: () => resolve(false) }))
     if (!guard(ticket, owner) || !accepted) return
     const freshCatalog = await getPatronageCatalog(q.player_id)
     if (!guard(ticket, owner)) return

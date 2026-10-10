@@ -2,7 +2,11 @@ import { BASE_URL } from '@/utils/request'
 import { handleSessionExpiry, getClientSessionGeneration } from '@/utils/sessionExpiry'
 
 export type PatronageCode = 'day' | 'week' | 'month' | 'quarter' | 'year' | 'day_pass'
-export interface PatronagePackage {
+export interface PatronageServiceTerms {
+  service_hours: string | null; hourly_amount_yuan: string | null; hourly_amount_diamonds: string | null
+  service_terms_source: string | null; service_terms_version: string | null
+}
+export interface PatronagePackage extends PatronageServiceTerms {
   code: PatronageCode; kind: 'naming' | 'day_pass'; name: string; duration_days: number | null
   amount_yuan: string | null; amount_diamonds: string | null; available: boolean; blockers: string[]; bonus_naming_days?: number
 }
@@ -11,7 +15,7 @@ export interface PatronageCatalog {
   player: { id: number; name: string; is_archived?: boolean; avatar_url: string; hourly_rate_yuan: string | null } | null
   packages: PatronagePackage[]
 }
-export interface PatronageQuote {
+export interface PatronageQuote extends PatronageServiceTerms {
   contract_version: '1.0'; player_id: number; package_code: PatronageCode; amount_yuan: string; amount_diamonds: string
   commission_rate: string; platform_amount_yuan: string; player_amount_yuan: string; price_version: string
   available_diamonds: string; can_submit: boolean; blockers: string[]
@@ -19,7 +23,7 @@ export interface PatronageQuote {
 export function parsePatronageQuote(value: unknown): PatronageQuote {
   const v = object(value)
   if (typeof v.price_version !== 'string' || !/^[a-f0-9]{64}$/.test(v.price_version)) invalid()
-  return { contract_version: version(v.contract_version), player_id: integer(v.player_id, 1), package_code: code(v.package_code),
+  return { ...parseServiceTerms(v), contract_version: version(v.contract_version), player_id: integer(v.player_id, 1), package_code: code(v.package_code),
     amount_yuan: amount(v.amount_yuan), amount_diamonds: amount(v.amount_diamonds), commission_rate: rate(v.commission_rate),
     platform_amount_yuan: amount(v.platform_amount_yuan), player_amount_yuan: amount(v.player_amount_yuan), price_version: v.price_version,
     available_diamonds: amount(v.available_diamonds), can_submit: bool(v.can_submit), blockers: blockers(v.blockers) }
@@ -31,7 +35,7 @@ export async function getPatronageQuote(playerId: number, packageCode: Patronage
   return result
 }
 export interface PatronageCrown { id: number; boss_name: string; boss_avatar_url: string; package_name: string; starts_at: string; expires_at: string; source: 'purchase' | 'day_pass_bonus' }
-export interface PatronageRecord {
+export interface PatronageRecord extends PatronageServiceTerms {
   purchase_no: string; idempotency_key: string; price_version: string; player_id: number; player_name: string; package_code: PatronageCode; package_name: string
   amount_yuan: string; amount_diamonds: string; payment_status: 'created' | 'processing' | 'unknown' | 'paid' | 'failed'
   created_at: string; paid_at: string | null; starts_at: string | null; expires_at: string | null; bonus_naming_days: number; blockers: string[]
@@ -60,7 +64,7 @@ export function parsePatronageRecords(value: unknown): PatronageRecords {
     const identity = parsePatronagePurchaseInput(r)
     if (!text(r.purchase_no).trim() || (r.payment_status === 'paid') !== (r.paid_at !== null)) invalid()
     if (r.payment_status === 'paid' && (!validDate(r.starts_at) || !validDate(r.expires_at) || Date.parse(r.expires_at) <= Date.parse(r.starts_at))) invalid()
-    return { purchase_no: text(r.purchase_no), idempotency_key: identity.idempotency_key, price_version: identity.price_version, player_id: integer(r.player_id, 1), player_name: text(r.player_name), package_code: code(r.package_code), package_name: text(r.package_name),
+    return { ...parseServiceTerms(r), purchase_no: text(r.purchase_no), idempotency_key: identity.idempotency_key, price_version: identity.price_version, player_id: integer(r.player_id, 1), player_name: text(r.player_name), package_code: code(r.package_code), package_name: text(r.package_name),
       amount_yuan: amount(r.amount_yuan), amount_diamonds: amount(r.amount_diamonds), payment_status: r.payment_status,
       created_at: date(r.created_at), paid_at: optionalDate(r.paid_at), starts_at: optionalDate(r.starts_at), expires_at: optionalDate(r.expires_at), bonus_naming_days: integer(r.bonus_naming_days), blockers: blockers(r.blockers) }
   }) }
@@ -131,6 +135,21 @@ async function request(method: 'GET' | 'POST', endpoint: string, data?: object, 
     }, fail: () => reject(new Error('网络异常，请稍后重试'))
   }))
 }
+function parseServiceTerms(v: any): PatronageServiceTerms {
+  if (v.service_hours == null) return { service_hours: null, hourly_amount_yuan: null, hourly_amount_diamonds: null, service_terms_source: null, service_terms_version: null }
+  const hours = amount(v.service_hours)
+  if (!/^(0|[1-9]\d*)(\.(0+|50*))?$/.test(hours) || !/[1-9]/.test(hours)) invalid()
+  if (!['level_default', 'player_override'].includes(v.service_terms_source) || v.service_terms_version !== '2026-10-table-v1') invalid()
+  return { service_hours: hours, hourly_amount_yuan: optionalAmount(v.hourly_amount_yuan), hourly_amount_diamonds: optionalAmount(v.hourly_amount_diamonds), service_terms_source: v.service_terms_source, service_terms_version: v.service_terms_version }
+}
+export async function getMyPatronageDurations(): Promise<PatronageCatalog> {
+  return parsePatronageCatalog(await request('GET', 'my-service-durations', {}, true))
+}
+export async function saveMyPatronageDuration(packageCode: PatronageCode, hours: string): Promise<PatronageCatalog> {
+  if (code(packageCode) === 'day_pass') invalid()
+  if (!/^(0|[1-9]\d*)(\.(0+|50*))?$/.test(hours) || !/[1-9]/.test(hours)) throw new Error('请按0.5小时步长填写正数')
+  return parsePatronageCatalog(await request('POST', 'my-service-durations', { package_code: packageCode, service_hours: hours }, true))
+}
 const codes = ['day', 'week', 'month', 'quarter', 'year', 'day_pass']
 function invalid(): never { throw new Error('冠名服务响应异常，请稍后重试') }
 function object(value: any): any { if (!value || typeof value !== 'object' || Array.isArray(value)) invalid(); return value }
@@ -160,7 +179,7 @@ export function parsePatronageCatalog(value: unknown): PatronageCatalog {
     packages: list(v.packages).map(raw => {
       const p = object(raw), packageCode = code(p.code), available = bool(p.available)
       if (p.kind !== (packageCode === 'day_pass' ? 'day_pass' : 'naming')) invalid()
-      return { code: packageCode, kind: p.kind, name: text(p.name), duration_days: p.duration_days === null ? null : integer(p.duration_days, 1),
+      return { ...parseServiceTerms(p), code: packageCode, kind: p.kind, name: text(p.name), duration_days: p.duration_days === null ? null : integer(p.duration_days, 1),
         amount_yuan: available ? amount(p.amount_yuan) : optionalAmount(p.amount_yuan),
         amount_diamonds: available ? amount(p.amount_diamonds) : optionalAmount(p.amount_diamonds), available, blockers: blockers(p.blockers),
         ...(p.bonus_naming_days === undefined ? {} : { bonus_naming_days: integer(p.bonus_naming_days) }) }

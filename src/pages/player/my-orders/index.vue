@@ -7,7 +7,7 @@
 
     <view class="notice-entry"><view class="notice-icon"><image class="secondary-pictogram" :src="uiIcons.notification" mode="aspectFit" /></view><view class="notice-main"><text>指定订单微信提醒</text><text>{{ orderNoticeAvailable ? `已获得 ${orderNoticeAvailable} 次提醒授权` : '开启后，老板支付指定订单会第一时间通知你' }}</text></view><button class="club-btn club-btn--ghost" :loading="subscribing" :disabled="subscribing" @tap="enableOrderNotice">{{ orderNoticeAvailable ? '再次开启' : '开启提醒' }}</button></view>
 
-    <view class="wallet-entry" @tap="go('/pages/player/earnings/index')"><view class="wallet-icon"><image class="secondary-pictogram" :src="uiIcons.fish" mode="aspectFit" /></view><view class="wallet-main"><text>鱼干收益中心</text><text>查看工资、16%抽成、3天审核与提现记录</text></view><text class="wallet-arrow">›</text></view>
+    <view class="wallet-entry" @tap="go('/pages/player/earnings/index')"><view class="wallet-icon"><image class="secondary-pictogram" :src="uiIcons.fish" mode="aspectFit" /></view><view class="wallet-main"><text>鱼干收益中心</text><text>查看工资、订单抽成、审核与提现记录</text></view><text class="wallet-arrow">›</text></view>
 
     <view class="club-card ratings-card">
       <view class="club-card__bd">

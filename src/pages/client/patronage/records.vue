@@ -8,6 +8,8 @@
     <view v-for="record in records" :key="record.purchase_no" class="record-card">
       <view class="row"><text class="record-title">{{ record.player_name }} · {{ record.package_name }}</text><text class="status" :class="{ paid: record.payment_status === 'paid' }">{{ patronagePaymentLabel(record.payment_status) }}</text></view>
       <text class="amount">{{ record.amount_diamonds }} 钻</text>
+      <text v-if="record.service_hours" class="muted">购买约定 {{ record.service_hours }} 小时 · 折算约 {{ record.hourly_amount_diamonds }} 钻/小时</text>
+      <text v-else-if="record.package_code !== 'day_pass'" class="muted">此记录未保存服务时长约定，不使用当前配置补填</text>
       <text class="muted">记录编号：{{ record.purchase_no }}</text>
       <text class="muted">创建时间：{{ displayDate(record.created_at) }}</text>
       <template v-if="record.payment_status === 'paid'">

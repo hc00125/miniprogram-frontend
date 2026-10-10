@@ -13,7 +13,7 @@ function homeHarness(options={}){
   '@/api/boss':{getPackages:async()=>{if(options.packageFail)throw Error('offline');return options.packages||[]},getPlayerList:async()=>{if(options.playerFail)throw Error('offline');return options.players||[]}},
   '@/api/catalog':{getCatalogNavigation:async()=>{if(options.catalogFail)throw Error('offline');return {games:options.games||[]}}},
   '@/api/wallet':{getWalletOverview:async()=>{calls.push(['wallet-read']);if(options.walletRead)return options.walletRead();if(options.walletFail)throw Error('offline');return {balance_diamonds:options.balance??123.4}}},
-  '@/components/HomeAnnouncements.vue':{default:{}},'@/components/MainBottomTabs.vue':{default:{}},'@/components/gifts/GiftHost.vue':{default:{}},
+  '@/components/PatronageCrowns.vue':{default:{}},'@/components/HomeAnnouncements.vue':{default:{}},'@/components/MainBottomTabs.vue':{default:{}},'@/components/gifts/GiftHost.vue':{default:{}},
   '@/utils/uiIcons':{uiIcons:{order:'/icons/duotone/order.png',diamondLight:'/icons/duotone/diamond-light.png',chevron:'/icons/duotone/chevron.png',query:'/icons/duotone/query.png',terms:'/icons/duotone/terms.png',benefits:'/icons/duotone/benefits.png',support:'/icons/duotone/support.png'}},
   '@/utils/nav':{go:(...args)=>calls.push(args),goMain:tab=>calls.push(['tab',tab]),navigateToTab:tab=>calls.push(['tab',tab])},
   '@/utils/client':{getClientProfile:()=>storage.client_profile},
@@ -24,7 +24,7 @@ function homeHarness(options={}){
  const compiled=compileScript(descriptor,{id:'home-reference'}),module={exports:{}}
  vm.runInNewContext(ts.transpileModule(compiled.content,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module,exports:module.exports,uni,require:n=>{if(!(n in mocks))throw Error('Missing mock '+n);return mocks[n]}})
  const scope=vue.effectScope(),state=scope.run(()=>module.exports.default.setup({},{expose(){}}))
- async function html(){const app=vue.createSSRApp({setup:()=>({...state}),render});app.component('MainBottomTabs',{render:()=>null});app.component('HomeAnnouncements',{props:['active'],render:()=>null});app.component('GiftHost',{props:['recipientId','recipientName'],render(){return vue.h('button',{'data-recipient-id':this.recipientId,'data-recipient-name':this.recipientName},'送礼物')}});return renderToString(app)}
+ async function html(){const app=vue.createSSRApp({setup:()=>({...state}),render});app.component('PatronageCrowns',{props:['playerId','compact'],render:()=>null});app.component('MainBottomTabs',{render:()=>null});app.component('HomeAnnouncements',{props:['active'],render:()=>null});app.component('GiftHost',{props:['recipientId','recipientName'],render(){return vue.h('button',{'data-recipient-id':this.recipientId,'data-recipient-name':this.recipientName},'送礼物')}});return renderToString(app)}
  return {state,scope,storage,calls,hooks,events,html,load:async()=>{for(const f of hooks.show)await f()},hide:()=>hooks.hide.forEach(f=>f())}
 }
 module.exports={homeHarness,source,descriptor}

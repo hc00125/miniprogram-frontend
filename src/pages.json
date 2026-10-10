@@ -2,6 +2,8 @@
   "pages": [
     {"path":"pages/boss/home/index","style":{"navigationBarTitleText":"偷吃电竞","navigationBarBackgroundColor":"#f7f9fc","navigationBarTextStyle":"black"}},
     {"path":"pages/client/national-bounty/index","style":{"navigationBarTitleText":"国庆赏金赛"}},
+    {"path":"pages/client/popular-announcements/index","style":{"navigationBarTitleText":"热门广播","navigationBarBackgroundColor":"#f7f9fc"}},
+    {"path":"pages/client/patronage-announcements/index","style":{"navigationBarTitleText":"冠名通报","navigationBarBackgroundColor":"#f7f9fc"}},
     {"path":"pages/client/announcements/index","style":{"navigationBarTitleText":"动态通报","navigationBarBackgroundColor":"#f7f9fc"}},
     {"path":"pages/client/history-claim/index","style":{"navigationBarTitleText":"认领历史订单"}},
     {"path":"pages/client/benefits/index","style":{"navigationBarTitleText":"常驻福利"}},

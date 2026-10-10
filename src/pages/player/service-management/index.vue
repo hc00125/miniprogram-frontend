@@ -7,6 +7,7 @@
       <text class="approval">{{ data?.auto_approval_enabled ? '符合规则的服务会自动审核上架' : '提交后由管理员审核，审核通过后老板才能看到' }}</text>
     </view>
 
+    <PatronageServiceDurationSettings />
     <view v-if="loading" class="empty">服务加载中...</view>
 
     <template v-else>
@@ -52,6 +53,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import PatronageServiceDurationSettings from '@/components/PatronageServiceDurationSettings.vue'
 import { onShow } from '@dcloudio/uni-app'
 import {
   createPlayerServiceListing,

@@ -1,11 +1,12 @@
 import { BASE_URL } from '@/utils/request'
 
-export type AnnouncementKind = 'patronage' | 'gift'
-export type AnnouncementFilter = AnnouncementKind | 'all'
+export type AnnouncementKind = 'patronage' | 'gift' | 'vip_upgrade'
+export type AnnouncementFilter = 'patronage' | 'gift' | 'all' | 'popular'
 export interface Announcement {
   id: string; kind: AnnouncementKind; boss_name: string; player_id: number; player_name: string
   item_name: string; quantity: number; occurred_at: string; text: string
   boss_avatar_url?: string; player_avatar_url?: string; item_image_url?: string
+  from_tier_name?: string; to_tier_name?: string
 }
 export interface AnnouncementPage { count: number; page: number; page_size: number; results: Announcement[] }
 
@@ -25,11 +26,15 @@ export function parseAnnouncements(value: unknown, kind: AnnouncementFilter, pag
   if (v.results.length !== expected) invalid()
   const ids = new Set<string>()
   const results = v.results.map(r => {
-    if (!r || !['gift', 'patronage'].includes(r.kind) || !text(r.id) || !new RegExp(`^${r.kind}:[1-9][0-9]*$`).test(r.id) || (kind !== 'all' && r.kind !== kind) || ids.has(r.id)
-      || !positive(r.player_id) || !positive(r.quantity) || !text(r.boss_name) || !text(r.player_name)
-      || !text(r.item_name) || !text(r.text) || !text(r.occurred_at)
+    const allowed = kind === 'popular' ? ['gift', 'vip_upgrade'] : kind === 'all' ? ['gift', 'patronage'] : [kind]
+    if (!r || !allowed.includes(r.kind) || !text(r.id) || !new RegExp(`^${r.kind}:[1-9][0-9]*$`).test(r.id) || ids.has(r.id)
+      || (r.kind === 'vip_upgrade' ? !text(r.from_tier_name) || !text(r.to_tier_name) : !positive(r.player_id) || !positive(r.quantity) || !text(r.player_name) || !text(r.item_name))
+      || !text(r.boss_name) || !text(r.text) || !text(r.occurred_at)
       || !/^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:\d{2})$/.test(r.occurred_at) || !Number.isFinite(Date.parse(r.occurred_at))) invalid()
     ids.add(r.id)
+    if (r.kind === 'vip_upgrade') return { id: r.id, kind: r.kind, boss_name: r.boss_name,
+      boss_avatar_url: imageUrl(r.boss_avatar_url), from_tier_name: r.from_tier_name, to_tier_name: r.to_tier_name,
+      occurred_at: r.occurred_at, text: r.text, player_id: 0, player_name: '', item_name: r.to_tier_name!, quantity: 1 }
     return { id: r.id, kind: r.kind, boss_name: r.boss_name, player_id: r.player_id, player_name: r.player_name,
       item_name: r.item_name, quantity: r.quantity, occurred_at: r.occurred_at, text: r.text,
       ...('boss_avatar_url' in r ? { boss_avatar_url: imageUrl(r.boss_avatar_url) } : {}),
@@ -40,7 +45,7 @@ export function parseAnnouncements(value: unknown, kind: AnnouncementFilter, pag
 }
 
 export async function getAnnouncements(kind: AnnouncementFilter, page = 1, pageSize = 20): Promise<AnnouncementPage> {
-  if (!['all', 'patronage', 'gift'].includes(kind) || !positive(page) || !positive(pageSize) || pageSize > 50) invalid()
+  if (!['all', 'patronage', 'gift', 'popular'].includes(kind) || !positive(page) || !positive(pageSize) || pageSize > 50) invalid()
   return new Promise((resolve, reject) => uni.request({
     url: `${BASE_URL.replace(/\/$/, '')}/announcements/`, method: 'GET',
     data: { kind, page, page_size: pageSize }, timeout: 15000,
