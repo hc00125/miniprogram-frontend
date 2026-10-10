@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="announcement-page">
-    <view class="page-heading"><text class="page-title">热门广播</text><text class="page-caption">礼物心意，升级时刻</text></view>
+    <view class="page-heading"><text class="page-title">热门广播</text></view>
     <view class="feed-list">
       <view v-for="item in items" :key="item.id" class="record" data-action="record" @tap="openPlayer(item)">
         <view class="record-avatars">
@@ -69,7 +69,6 @@ onUnload(hide)
 .announcement-page { min-height: 100vh; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); background: var(--ui-soft, #f7f5ee); box-sizing: border-box; }
 .page-heading { display: flex; flex-direction: column; gap: 10rpx; margin: 10rpx 4rpx 26rpx; }
 .page-title { color: var(--ui-text, #253b2f); font-size: 36rpx; font-weight: 800; }
-.page-caption { color: var(--ui-muted, #8a9489); font-size: 24rpx; }
 .more::after { border: 0; }
 .feed-list { overflow: hidden; border-radius: 24rpx; background: var(--ui-surface, #fffefa); }
 .record { display: flex; align-items: center; gap: 18rpx; padding: 28rpx 20rpx; border-bottom: 1rpx solid var(--ui-line, #edf0e8); }

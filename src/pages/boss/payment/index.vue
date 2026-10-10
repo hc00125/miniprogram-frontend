@@ -17,7 +17,7 @@
       <text v-if="showRenewalSummary" class="amount-breakdown">
         主订单 💎{{ diamond(mainOrderAmount) }} · 续单 💎{{ diamond(renewalPaidAmount) }}
       </text>
-      <view class="secure-tip"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>平台统一钻石标价 · 人民币1元对应10钻石</text></view>
+      <view class="secure-tip"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>人民币1元对应10钻石</text></view>
     </view>
 
     <view v-if="showPaymentWindow" class="card virtual-pay-card">
@@ -172,7 +172,6 @@
         <view class="wechat-icon functional-icon"><image class="payment-pictogram" :src="uiIcons.payment" mode="aspectFit" /></view>
         <view>
           <text>选择支付方式</text>
-          <text>{{ isRenewal ? '续单使用钻石结算 · 成功后自动合并时长' : '平台服务统一以钻石标价和结算' }}</text>
         </view>
       </view>
       <view class="pay-methods">

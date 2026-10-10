@@ -1,20 +1,13 @@
 <template>
   <view :style="$appThemeStyle" class="club-page apply-page">
     <view class="apply-hero">
-      <view class="hero-eyebrow">PLAYER APPLICATION</view>
       <view class="hero-title">成为<br/>偷吃电竞陪玩师</view>
-      <view class="hero-sub">展示你的实力，接住今晚的订单</view>
-      <view class="hero-tags">
-        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.apply" mode="aspectFit" /><text>资料审核</text></view>
-        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.microphone" mode="aspectFit" /><text>语音介绍</text></view>
-        <view class="hero-tag"><image class="secondary-pictogram" :src="uiIcons.order" mode="aspectFit" /><text>在线接单</text></view>
-      </view>
     </view>
 
     <view class="form-card">
       <view class="form-head">
         <text class="form-num">1</text>
-        <view><text class="form-eyebrow">申请信息</text><text class="form-hint">请如实填写，便于审核联系</text></view>
+        <text class="form-eyebrow">申请信息</text>
       </view>
 
       <view class="field">
@@ -73,7 +66,7 @@
         <text class="audio-remove" @tap="removeAudio">移除</text>
       </view>
       <button v-else class="audio-upload" :disabled="audioUploading" @tap="chooseAudio">{{ audioUploading ? '上传中...' : '上传音频介绍' }}</button>
-      <view class="audio-tips">支持 MP3 / M4A / AAC / WAV，建议控制在 20MB 以内，内容尽量简短清晰。</view>
+      <view class="audio-tips">支持 MP3 / M4A / AAC / WAV，建议控制在 20MB 以内。</view>
     </view>
 
     <view class="form-card form-card--notice">
@@ -252,11 +245,11 @@ onShow(loadApplyContext)
 .apply-page { min-height:100vh;padding:20rpx 24rpx 200rpx;box-sizing:border-box;background:radial-gradient(ellipse at 12% 0%,rgba(216,161,68,.10),transparent 36%),radial-gradient(ellipse at 88% 14%,var(--ui-accent-soft, rgba(47,155,99,.10)),transparent 32%),linear-gradient(180deg,var(--ui-soft, #fbf7ef) 0%,var(--ui-soft, #f7f3ea) 48%,var(--ui-surface, #fffaf2) 100%); }
 .apply-hero,.form-card,.agree-card { border-radius:28rpx;background:var(--ui-surface, rgba(255,255,255,.96));box-shadow:0 14rpx 36rpx var(--ui-shadow, rgba(38,69,54,.06));border:1px solid var(--ui-line, rgba(42,63,48,.06)); }
 .apply-hero { padding:36rpx 32rpx 32rpx;background:linear-gradient(135deg,var(--ui-surface, #fff8ed) 0%,var(--ui-soft, #fef5dc) 56%,var(--ui-soft, #edf6f0) 100%); }
-.hero-eyebrow,.form-eyebrow { display:block;color:var(--ui-gold, #a87520);font-size:22rpx;font-weight:900;letter-spacing:1rpx; }
-.hero-title { margin-top:14rpx;color:var(--ui-text, #172116);font-size:56rpx;line-height:1.05;font-weight:900; }
-.hero-sub,.form-hint { display:block;margin-top:10rpx;color:var(--ui-muted, #687665);font-size:24rpx;line-height:1.45; }
-.hero-tags { display:flex;gap:14rpx;margin-top:26rpx; }
-.hero-tag { flex:1;min-height:76rpx;display:flex;align-items:center;justify-content:center;gap:8rpx;border-radius:20rpx;background:var(--ui-surface, rgba(255,255,255,.70));color:var(--ui-accent, #1f7c4b);font-size:22rpx;font-weight:900; }
+.form-eyebrow { display:block;color:var(--ui-gold, #a87520);font-size:22rpx;font-weight:900;letter-spacing:1rpx; }
+.hero-title { color:var(--ui-text, #172116);font-size:56rpx;line-height:1.05;font-weight:900; }
+.form-hint { display:block;margin-top:10rpx;color:var(--ui-muted, #687665);font-size:24rpx;line-height:1.45; }
+
+
 .form-card { margin-top:22rpx;padding:28rpx; }
 .form-head { display:flex;align-items:center;gap:18rpx;margin-bottom:24rpx; }
 .form-num,.notice-icon { width:56rpx;height:56rpx;display:flex;align-items:center;justify-content:center;border-radius:18rpx;color:#fff;background:var(--ui-gradient);font-size:26rpx;font-weight:900;flex-shrink:0; }
@@ -290,6 +283,6 @@ onShow(loadApplyContext)
 .rule-line { display:block;margin-bottom:12rpx;color:var(--ui-muted, #687665);font-size:26rpx;line-height:1.7; }.rule-confirm { margin-top:18rpx; }
 .audio-icon { background: transparent; }
 .secondary-pictogram { width: 48rpx; height: 48rpx; }
-.hero-tag .secondary-pictogram { width: 32rpx; height: 32rpx; flex-shrink: 0; }
+
 .secondary-pictogram { display: block; }
 </style>

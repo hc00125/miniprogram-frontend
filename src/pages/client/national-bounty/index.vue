@@ -2,9 +2,7 @@
   <view :style="$appThemeStyle" class="activity-page">
     <image class="activity-poster" src="/images/home-redesign/national-bounty-2026.jpg" mode="widthFix" aria-label="偷吃电竞国庆赏金赛" />
     <view class="activity-heading">
-      <text class="activity-eyebrow">偷吃电竞 · 国庆活动</text>
       <text class="activity-title">国庆赏金赛</text>
-      <text class="activity-intro">各位老板好！喜逢国庆，我们赏金赛活动正式开启！</text>
     </view>
     <view class="rule-card">
       <text class="section-title">活动时段</text>
@@ -41,10 +39,8 @@ function contactService() { go('/pages/client/customer-service/index') }
 .activity-page { min-height: 100vh; padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; color: var(--ui-text); }
 .activity-poster { display: block; width: 100%; height: auto; border-radius: 24rpx; }
 .activity-heading { padding: 32rpx 4rpx 8rpx; }
-.activity-eyebrow, .activity-title, .activity-intro, .section-title, .activity-time, .award-place, .award-value { display: block; }
-.activity-eyebrow { color: var(--ui-accent); font-size: 25rpx; font-weight: 600; }
-.activity-title { margin-top: 12rpx; font-size: 44rpx; font-weight: 800; line-height: 1.3; }
-.activity-intro { margin-top: 16rpx; color: var(--ui-muted); font-size: 32rpx; line-height: 1.75; }
+.activity-title, .section-title, .activity-time, .award-place, .award-value { display: block; }
+.activity-title { font-size: 44rpx; font-weight: 800; line-height: 1.3; }
 .rule-card { margin-top: 24rpx; padding: 28rpx; border: 1rpx solid var(--ui-line); border-radius: 24rpx; background: var(--ui-surface); }
 .section-title { margin-bottom: 18rpx; font-size: 34rpx; font-weight: 700; line-height: 1.5; }
 .activity-time { color: var(--ui-accent); font-size: 30rpx; font-weight: 600; line-height: 1.7; }

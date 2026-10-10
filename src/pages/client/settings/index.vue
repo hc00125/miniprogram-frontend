@@ -1,15 +1,13 @@
 <template>
   <view :style="$appThemeStyle" class="settings-page">
     <view class="hero-card">
-      <text class="eyebrow">ACCOUNT SETTINGS</text>
       <text class="hero-title">设置与权限</text>
-      <text class="hero-sub">管理账号资料、陪玩展示、通知和隐私选项</text>
     </view>
 
     <view class="section-card">
       <text class="section-title">账号</text>
       <view class="setting-row" @tap="go('/pages/client/account/index')">
-        <view><text>头像与昵称</text><text>修改账号公开资料</text></view><text>›</text>
+        <view><text>头像与昵称</text></view><text>›</text>
       </view>
       <view class="setting-row phone-row">
         <view>
@@ -26,7 +24,7 @@
         </button>
       </view>
       <view v-if="profile" class="setting-row" @tap="go('/pages/client/history-claim/index')">
-        <view><text>认领历史订单</text><text>关联客服登记的服务记录</text></view><text>›</text>
+        <view><text>认领历史订单</text></view><text>›</text>
       </view>
       <view v-if="profile?.player" class="setting-row notice-row">
         <view>
@@ -63,13 +61,13 @@
     <view class="section-card">
       <text class="section-title">协议与隐私</text>
       <view class="setting-row" @tap="go('/pages/legal/user-agreement/index')">
-        <view><text>用户服务协议</text><text>查看平台服务规则</text></view><text>›</text>
+        <view><text>用户服务协议</text></view><text>›</text>
       </view>
       <view class="setting-row" @tap="go('/pages/legal/privacy/index')">
-        <view><text>隐私政策</text><text>了解个人信息的收集与使用</text></view><text>›</text>
+        <view><text>隐私政策</text></view><text>›</text>
       </view>
       <view class="setting-row" @tap="go('/pages/client/customer-service/index')">
-        <view><text>联系客服</text><text>微信官方客服与人工客服微信</text></view><text>›</text>
+        <view><text>联系客服</text></view><text>›</text>
       </view>
       <view class="setting-row danger-link" @tap="go('/pages/client/customer-service/index?scene=account-cancellation')">
         <view><text>申请账号注销</text><text>联系客服核验未完成订单、提现和身份后处理</text></view><text>›</text>
@@ -258,10 +256,7 @@ onShow(async () => {
 .settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 30%), radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
 .hero-card, .section-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, rgba(255,255,255,.97)); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
 .hero-card { color: #fff; background: var(--ui-gradient); }
-.eyebrow, .hero-title, .hero-sub { display: block; }
-.eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.hero-title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
-.hero-sub { margin-top: 10rpx; color: rgba(255,255,255,.74); font-size: 22rpx; }
+.hero-title { display: block; font-size: 40rpx; font-weight: 900; }
 .section-title { display: block; margin-bottom: 10rpx; font-size: 30rpx; font-weight: 900; }
 .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; margin-bottom: 6rpx; }
 .section-head > view { flex: 1; }
@@ -273,7 +268,7 @@ onShow(async () => {
 .setting-row > view { flex: 1; min-width: 0; }
 .setting-row view text { display: block; }
 .setting-row view text:first-child { font-size: 26rpx; font-weight: 900; }
-.setting-row view text:last-child { margin-top: 5rpx; color: var(--ui-muted, #879083); font-size: 20rpx; line-height: 1.45; }
+.setting-row view text + text { margin-top: 5rpx; color: var(--ui-muted, #879083); font-size: 20rpx; line-height: 1.45; }
 .setting-row > text { color: var(--ui-muted, #aaa); font-size: 34rpx; }
 .notice-row, .phone-row { align-items: center; }
 .notice-btn { min-width: 142rpx; height: 60rpx; margin: 0; padding: 0 18rpx; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 21rpx; font-weight: 900; line-height: 60rpx; background: var(--ui-soft, #eef8f1); }

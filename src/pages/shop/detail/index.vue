@@ -4,10 +4,8 @@
       <view class="hero-section">
         <image v-if="rawProductImage" class="hero-image" :src="rawProductImage" mode="aspectFill" @tap="previewProductImage(rawProductImage)" />
         <view v-else class="hero-placeholder">
-          <view class="hero-brand">偷吃俱乐部 <text>CLUB</text></view>
           <view class="hero-title">{{ heroTitle }}</view>
-          <view class="hero-subtitle">{{ heroSubtitle }}</view>
-          <view class="hero-note">{{ heroNote }}</view>
+          <view v-if="heroSubtitle" class="hero-subtitle">{{ heroSubtitle }}</view>
         </view>
         <view class="hero-mask"></view>
         <view class="hero-float hero-float--left" @tap="goBack"><image class="back-pictogram" :src="uiIcons.back" mode="aspectFit" /></view>
@@ -29,10 +27,9 @@
           <text class="product-name">{{ product.name }}</text>
           <text class="product-badge">{{ productBadge }}</text>
         </view>
-        <text class="product-summary">{{ productSummary }}</text>
+        <text v-if="productSummary" class="product-summary">{{ productSummary }}</text>
         <view class="member-strip">
-          <text>平台统一钻石标价 · 人民币1元对应10钻石</text>
-          <text>{{ isGuaranteeProduct ? '查看规则 ›' : '了解更多 ›' }}</text>
+          <text>人民币1元对应10钻石</text>
         </view>
         <view v-if="isGuaranteeProduct" class="guarantee-overview">
           <view class="overview-item"><text>起步钻石</text><view class="diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondFromYuan(productPrice) }}</text></view></view>
@@ -47,10 +44,7 @@
 
       <view v-if="hasMultipleServiceGroups" class="detail-card player-service-switch-card">
         <view class="player-service-switch-head">
-          <view>
-            <text class="player-service-switch-title">TA 的服务类型</text>
-            <text class="player-service-switch-subtitle">选择类型后，下方展示该类型全部规格</text>
-          </view>
+          <text class="player-service-switch-title">TA 的服务类型</text>
           <text class="player-service-switch-count">{{ activeServiceGroupName }}</text>
         </view>
         <scroll-view scroll-x class="player-service-scroll" :show-scrollbar="false">
@@ -91,14 +85,13 @@
         <view class="rules-content">{{ product.rules_text }}</view>
       </view>
 
-      <view class="graphic-title"><text></text><text>图文详情</text><text></text></view>
-      <view class="graphic-card">
+      <view v-if="product.detail_text || detailImages.length || detailText" class="graphic-title"><text></text><text>图文详情</text><text></text></view>
+      <view v-if="product.detail_text || detailImages.length || detailText" class="graphic-card">
         <view v-if="product.detail_text" class="graphic-text">{{ product.detail_text }}</view>
         <template v-if="detailImages.length">
           <image v-for="url in detailImages" :key="url" class="graphic-image" :src="url" mode="widthFix" @tap="previewProductImage(url)" />
         </template>
         <view v-else-if="!product.detail_text" class="graphic-placeholder">
-          <view class="hero-brand">偷吃俱乐部 <text>CLUB</text></view>
           <view class="hero-title">{{ heroTitle }}</view>
           <view class="hero-subtitle">{{ detailText }}</view>
         </view>
@@ -144,7 +137,7 @@
         </view>
         <view class="spec-popup-body">
           <view v-if="hasMultipleServiceGroups" class="popup-product-group">
-            <view class="spec-popup-title-row"><text class="spec-popup-title">服务类型</text><text class="spec-popup-title-tip">先选择陪玩类型</text></view>
+            <view class="spec-popup-title-row"><text class="spec-popup-title">服务类型</text></view>
             <scroll-view scroll-x class="popup-product-scroll" :show-scrollbar="false">
               <view class="popup-product-list">
                 <view
@@ -262,12 +255,11 @@ const originalPrice = computed(() => product.value ? getOriginalPrice(product.va
 const soldCount = computed(() => product.value ? getSoldCount(product.value) : 0)
 const soldCountText = computed(() => soldCount.value ? `已售${soldCount.value}件` : '新品上线')
 const wantCount = computed(() => Math.max(1, soldCount.value + 1))
-const heroTitle = computed(() => product.value?.name || 'VIP特惠')
-const heroSubtitle = computed(() => selectedSpec.value?.name || product.value?.description || '规格可选 · 快速开局')
-const heroNote = computed(() => '选择规格与服务时长后下单，支付页可使用已有钻石或微信即时支付')
+const heroTitle = computed(() => product.value?.name || '')
+const heroSubtitle = computed(() => selectedSpec.value?.name || product.value?.description || '')
 const productBadge = computed(() => activeServiceGroupName.value || (isGuaranteeProduct.value ? '特色单' : product.value?.group_name || '推荐套餐'))
-const productSummary = computed(() => product.value?.description || '精选套餐，平台保障，统一使用整数钻石标价。')
-const detailText = computed(() => product.value?.description || selectedSpec.value?.description || '选择规格和服务时长后确认下单')
+const productSummary = computed(() => product.value?.description || '')
+const detailText = computed(() => product.value?.description || selectedSpec.value?.description || '')
 const guaranteeRules = computed(() => [selectedSpec.value?.guarantee_amount ? `当前选择：电视台保底 ${selectedSpec.value.guarantee_amount}` : '请选择一个电视台保底档位', '下单后客服会按所选规格确认局数、规则和开局时间', '钻石价格以后端配置为准'])
 const recommendProducts = computed(() => allProducts.value.filter(item => item.id !== product.value?.id).slice(0, 6))
 const shareQuery = computed(() => packageId.value ? `packageId=${packageId.value}${playerId.value ? `&playerId=${playerId.value}` : ''}` : '')

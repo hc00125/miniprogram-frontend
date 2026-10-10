@@ -4,7 +4,7 @@
       <view class="landing">
         <view class="club-brand" data-section="club-brand">
           <image class="club-brand-logo" src="/images/club/club-logo.png" mode="aspectFit" />
-          <view class="club-brand-copy"><view class="club-brand-title"><text>偷吃电竞</text><text class="club-brand-badge">俱乐部</text></view><text class="club-brand-subtitle">一起开黑，一起开心</text></view>
+          <view class="club-brand-copy"><view class="club-brand-title"><text>偷吃电竞</text><text class="club-brand-badge">俱乐部</text></view></view>
         </view>
         <view class="hero-section">
           <swiper class="hero-swiper" circular autoplay interval="4200" duration="480" @change="handleHeroChange">
@@ -25,19 +25,19 @@
           <button v-if="isArenaFeaturedGame" class="steam-game-card arena-game-card" data-action="arena-game" aria-label="暗区突围无限，去下单" @tap="goFeaturedGame">
             <image class="steam-game-art" src="/images/home-redesign/arena-breakout.jpg" mode="aspectFill" />
             <view class="steam-game-shade" />
-            <view class="steam-game-content"><view class="steam-game-copy"><text class="steam-game-title">暗区突围无限</text><text class="steam-game-subtitle">组队开局，一起寻金</text></view><text class="steam-game-action">去下单 ›</text></view>
+            <view class="steam-game-content"><view class="steam-game-copy"><text class="steam-game-title">暗区突围无限</text></view><text class="steam-game-action">去下单 ›</text></view>
           </button>
           <view v-else-if="featuredGame" class="game-card" @tap="goFeaturedGame">
             <image v-if="featuredGame.icon_url && !failedGameIcons[featuredGame.id]" class="game-icon" :src="featuredGame.icon_url" mode="aspectFill" @error="failedGameIcons[featuredGame.id] = true" />
             <view v-else class="game-icon game-icon--fallback"><image :src="uiIcons.order" mode="aspectFit" /></view>
-            <view class="game-copy"><text class="game-name">{{ featuredGame.name }}</text><text class="game-sub">选择服务，轻松开局</text></view>
+            <view class="game-copy"><text class="game-name">{{ featuredGame.name }}</text></view>
             <button class="game-order" @tap.stop="goFeaturedGame">去点单</button>
           </view>
           <view v-else class="section-empty" @tap="fetchHomeData">{{ catalogLoading ? '游戏加载中…' : catalogLoadFailed ? '游戏加载失败，点击重试' : '暂无已上架游戏' }}</view>
           <button class="steam-game-card" data-action="steam-games" aria-label="小游戏陪玩，去下单" @tap="goSteamGames">
             <image class="steam-game-art" src="/images/home-redesign/steam-games.jpg" mode="aspectFill" />
             <view class="steam-game-shade" />
-            <view class="steam-game-content"><view class="steam-game-copy"><text class="steam-game-title">小游戏陪玩</text><text class="steam-game-subtitle">一起开黑，一起通关</text></view><text class="steam-game-action">去下单 ›</text></view>
+            <view class="steam-game-content"><view class="steam-game-copy"><text class="steam-game-title">小游戏陪玩</text></view><text class="steam-game-action">去下单 ›</text></view>
           </button>
         </view>
 
@@ -110,7 +110,7 @@ const currentHeroIndex = ref(0)
 const failedHeroImages = ref<Record<string, boolean>>({})
 const heroBanners: HeroBanner[] = [
   { id: 'national-bounty', image: homeHero, target: 'national-bounty', title: '国庆赏金赛，查看活动规则' },
-  { id: 'club-welcome', image: '/images/home-redesign/club-welcome.jpg', target: 'brand', title: '欢迎来到偷吃电竞，一起开黑，一起开心' },
+  { id: 'club-welcome', image: '/images/home-redesign/club-welcome.jpg', target: 'brand', title: '偷吃电竞' },
   { id: 'arena-s7', image: '/images/home-redesign/arena-s7-utopia.jpg', target: 'arena', title: '暗区突围无限，S7赛季已上线，查看暗区服务' }
 ]
 onShareAppMessage(() => ({ title: '偷吃电竞｜专业游戏陪练服务', path: '/pages/boss/home/index', imageUrl: homeHero }))
@@ -218,7 +218,6 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .club-brand-copy { flex: 1; min-width: 0; }
 .club-brand-title { display: flex; align-items: center; gap: 14rpx; color: var(--ui-text, #253b2f); font-size: 35rpx; font-weight: 800; }
 .club-brand-badge { padding: 4rpx 10rpx; border: 1rpx solid var(--ui-line, #d6e5d3); border-radius: 8rpx; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 19rpx; font-weight: 600; border-color: var(--ui-accent-line); }
-.club-brand-subtitle { display: block; margin-top: 7rpx; color: var(--ui-muted, #7c8876); font-size: 22rpx; }
 .hero-section { margin-top: 4rpx; }
 /* 750rpx viewport minus page/landing gutters = 654rpx; banners are 2:1. */
 .hero-swiper { height: 327rpx; }
@@ -239,7 +238,6 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .game-icon--fallback image { width: 58rpx; height: 58rpx; }
 .game-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 10rpx; }
 .game-name { overflow: hidden; color: var(--ui-text, #253b2f); font-size: 29rpx; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.game-sub { color: var(--ui-muted, #8a9489); font-size: 22rpx; }
 .game-order { display: flex; flex-shrink: 0; align-items: center; justify-content: center; min-width: 126rpx; min-height: 72rpx; margin: 0; padding: 14rpx 22rpx; border-radius: 36rpx; background: var(--ui-primary, #1f7c4b); color: #ffffff; font-size: 25rpx; line-height: 1.4; box-sizing: border-box; }
 .steam-game-card { position: relative; display: block; width: 100%; height: 305rpx; margin: 18rpx 0 0; padding: 0; overflow: hidden; border-radius: 26rpx; background: var(--ui-primary, #213f37); text-align: left; line-height: 1.5; box-sizing: border-box; }
 .arena-game-card { margin-top: 0; }
@@ -249,7 +247,6 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .steam-game-content { position: absolute; left: 26rpx; right: 26rpx; bottom: 22rpx; display: flex; align-items: flex-end; justify-content: space-between; gap: 18rpx; }
 .steam-game-copy { flex: 1; min-width: 0; color: #ffffff; text-shadow: 0 2rpx 8rpx var(--ui-shadow, rgba(0,0,0,.28)); }
 .steam-game-title { display: block; font-size: 34rpx; font-weight: 800; line-height: 1.3; }
-.steam-game-subtitle { display: block; margin-top: 8rpx; font-size: 22rpx; line-height: 1.5; color: #edf2e8; }
 .steam-game-action { flex-shrink: 0; padding: 12rpx 25rpx; border: 1rpx solid var(--ui-line, rgba(255,255,255,.5)); border-radius: 34rpx; background: var(--ui-button-surface); color: var(--ui-button-ink); font-size: 26rpx; font-weight: 800; line-height: 1.5; }
 .ranking-float { position: fixed; z-index: 8; right: 20rpx; bottom: calc(32rpx + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3rpx; width: 108rpx; height: 108rpx; margin: 0; padding: 8rpx; border: 3rpx solid var(--ui-line, #f7f5ee); border-radius: 50%; background: var(--ui-gradient); box-shadow: 0 5rpx 20rpx var(--ui-shadow, rgba(22,67,40,.18)); color: #ffffff; font-size: 22rpx; line-height: 1.3; box-sizing: border-box; }
 .ranking-float-icon { width: 40rpx; height: 40rpx; }

@@ -1,7 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="growth-page">
     <view class="summary-card">
-      <text class="summary-eyebrow">VIP GROWTH</text>
       <text class="summary-title">累计成长钻石</text>
       <view class="summary-value"><image class="diamond-unit" :src="uiIcons.diamondLight" mode="aspectFit" /><text>{{ diamonds(growthDiamonds) }}</text></view>
       <text class="summary-tip">只统计已支付且已完成的有效消费；成功退款后会扣回对应成长钻石。</text>
@@ -31,7 +30,7 @@
         </view>
       </view>
 
-      <view v-if="!loading && !records.length" class="empty-card">暂无成长钻石记录。完成有效消费后会在这里展示。</view>
+      <view v-if="!loading && !records.length" class="empty-card">暂无成长钻石记录</view>
       <view v-if="loadingMore" class="list-foot">正在加载更多...</view>
       <view v-else-if="!loading && records.length && !hasMore" class="list-foot">已显示全部成长记录</view>
     </view>
@@ -142,16 +141,15 @@ onReachBottom(() => {
 .growth-page { min-height: 100vh; padding: 22rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 10% 0%, rgba(216,161,68,.14), transparent 30%), radial-gradient(circle at 90% 14%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 28%), var(--ui-soft, #f7f3ea); }
 .summary-card, .record-card, .empty-card { border-radius: 28rpx; border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
 .summary-card { padding: 30rpx; color: #fff; background:var(--ui-gradient); }
-.summary-eyebrow, .summary-title, .summary-tip { display: block; }
-.summary-eyebrow { color: rgba(255,255,255,.62); font-size: 20rpx; font-weight: 900; letter-spacing: 3rpx; }
-.summary-title { margin-top: 8rpx; font-size: 31rpx; font-weight: 900; }
+.summary-title, .summary-tip { display: block; }
+.summary-title { font-size: 31rpx; font-weight: 900; }
 .summary-value { margin-top: 22rpx; display: flex; align-items: baseline; gap: 8rpx; }
 .summary-value text:first-child { font-size: 30rpx; }
 .summary-value text:last-child { font-size: 62rpx; line-height: 1; font-weight: 900; }
 .summary-tip { margin-top: 20rpx; color: rgba(255,255,255,.72); font-size: 22rpx; line-height: 1.65; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 28rpx 6rpx 14rpx; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.section-head text:last-child { color: var(--ui-muted, #879083); font-size: 21rpx; }
+.section-head text + text { color: var(--ui-muted, #879083); font-size: 21rpx; }
 .record-list { display: flex; flex-direction: column; gap: 16rpx; }
 .record-card { padding: 22rpx 24rpx; display: flex; align-items: flex-start; gap: 16rpx; background: var(--ui-surface, rgba(255,255,255,.96)); }
 .record-icon { width: 68rpx; height: 68rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 20rpx; color: #fff; font-size: 27rpx; font-weight: 900; }

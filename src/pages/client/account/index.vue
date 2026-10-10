@@ -3,7 +3,6 @@
     <view class="account-hero brand-poster">
       <view class="hero-top">
         <view class="hero-tag">账号信息</view>
-        <view class="hero-sub">登录身份与基础资料</view>
       </view>
       <view class="hero-body">
         <button
@@ -47,7 +46,6 @@
     <view class="vip-card" :class="`vip-card--${vipTheme}`">
       <view class="vip-head">
         <view>
-          <text class="vip-eyebrow">TOUCHI VIP</text>
           <text class="vip-title">{{ vipName }}</text>
         </view>
         <text class="vip-spend">成长钻石 💎{{ diamond(growthDiamonds) }}</text>
@@ -85,7 +83,6 @@
         >{{ accountRestriction.restricted ? '账户受限' : '充值钻石' }}</view>
       </view>
       <view class="wallet-entry-foot">
-        <text>可用钻石可直接支付平台商品与服务</text>
         <text>查看明细 ›</text>
       </view>
     </view>
@@ -93,7 +90,6 @@
     <view class="club-card vip-room-card">
       <view class="vip-room-head">
         <view>
-          <text class="vip-room-eyebrow">会员权益</text>
           <text class="vip-room-title">专属KOOK房间</text>
         </view>
         <text class="vip-room-state" :class="vipKookRoomStatusClass">{{ vipKookRoomStatusText }}</text>
@@ -114,7 +110,6 @@
     <view class="club-card form-card">
       <view class="club-card__hd form-head">
         <text class="club-card__title">基础资料</text>
-        <text class="helper">保存后立即同步到个人中心</text>
       </view>
       <view class="club-card__bd form-body">
         <view class="field-group">
@@ -434,7 +429,6 @@ onShow(async () => {
 .account-hero { padding: 28rpx; }
 .hero-top { position: relative; z-index: 1; }
 .hero-tag { color: var(--ui-gold, #a87520); font-size: 22rpx; font-weight: 900; letter-spacing: 4rpx; }
-.hero-sub { margin-top: 8rpx; color: var(--ui-muted, #687665); font-size: 24rpx; }
 .hero-body { margin-top: 24rpx; display: flex; align-items: center; gap: 22rpx; position: relative; z-index: 1; }
 .avatar-shell { width: 150rpx; height: 150rpx; padding: 0; border-radius: 42rpx; background: var(--ui-soft, #172116); border: 1px solid var(--ui-gold-line, rgba(216,161,68,.18)); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--ui-gold, #d8a144); font-size: 54rpx; font-weight: 900; }
 .avatar-shell[disabled] { opacity: .72; }
@@ -476,8 +470,7 @@ onShow(async () => {
 .vip-card--supreme { background: linear-gradient(135deg,#090909,#38230d 58%,#d8a144); box-shadow: 0 18rpx 46rpx var(--ui-shadow, rgba(23,15,5,.28)); }
 .vip-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 20rpx; }
 .vip-head text { display: block; }
-.vip-eyebrow { font-size: 19rpx; font-weight: 900; letter-spacing: 3rpx; opacity: .68; }
-.vip-title { margin-top: 7rpx; font-size: 38rpx; font-weight: 900; }
+.vip-title { font-size: 38rpx; font-weight: 900; }
 .vip-spend { font-size: 22rpx; font-weight: 900; }
 .vip-progress-track { height: 12rpx; margin-top: 25rpx; overflow: hidden; border-radius: 999rpx; background: rgba(255,255,255,.18); }
 .vip-progress-bar { height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--ui-gold-soft, #f7dda0),#d8a144); }
@@ -496,14 +489,12 @@ onShow(async () => {
 .wallet-entry-balance--error text:first-child, .wallet-entry-balance--error text:last-child { font-size: 27rpx; line-height: 1.4; font-weight: 900; color: var(--ui-danger, #a13d35); text-decoration: underline; }
 .wallet-entry-recharge { flex-shrink: 0; padding: 14rpx 34rpx; border-radius: 999rpx; color: #fff; font-size: 25rpx; font-weight: 900; background: var(--ui-gradient); box-shadow: 0 10rpx 22rpx var(--ui-shadow, rgba(31,124,75,.18)); }
 .wallet-entry-recharge--disabled { color: var(--ui-danger, #76504d); background: var(--ui-soft, #f4d5d1); box-shadow: none; }
-.wallet-entry-foot { margin-top: 20rpx; padding-top: 18rpx; display: flex; align-items: center; justify-content: space-between; gap: 16rpx; border-top: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.07)); font-size: 22rpx; }
-.wallet-entry-foot text:first-child { color: var(--ui-muted, #687665); }
-.wallet-entry-foot text:last-child { color: var(--ui-accent, #1f7c4b); font-weight: 900; }
+.wallet-entry-foot { margin-top: 20rpx; padding-top: 18rpx; display: flex; align-items: center; justify-content: flex-end; gap: 16rpx; border-top: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.07)); font-size: 22rpx; }
+.wallet-entry-foot text { color: var(--ui-accent, #1f7c4b); font-weight: 900; }
 .vip-room-card { margin-top: 0; padding: 28rpx; }
 .vip-room-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; }
 .vip-room-head text { display: block; }
-.vip-room-eyebrow { color: var(--ui-gold, #a87520); font-size: 21rpx; font-weight: 900; }
-.vip-room-title { margin-top: 6rpx; color: var(--ui-text, #172116); font-size: 34rpx; font-weight: 900; }
+.vip-room-title { color: var(--ui-text, #172116); font-size: 34rpx; font-weight: 900; }
 .vip-room-state { padding: 8rpx 14rpx; border-radius: 999rpx; color: var(--ui-gold, #9a6a16); font-size: 20rpx; font-weight: 900; background: var(--ui-soft, #fff3d4); }
 .vip-room-state--active { color: var(--ui-accent, #1f7c4b); background: var(--ui-soft, #e8f7ec); }
 .vip-room-state--pending_configuration { color: var(--ui-gold, #9a6a16); background: var(--ui-soft, #fff3d4); }
@@ -518,7 +509,6 @@ onShow(async () => {
 .vip-room-threshold { display: block; margin-top: 10rpx; color: var(--ui-gold, #a87520); font-size: 22rpx; font-weight: 900; }
 .form-card { margin-top: 24rpx; }
 .form-head { align-items: flex-start; }
-.helper { color: var(--ui-muted, #687665); font-size: 22rpx; }
 .form-body { display: flex; flex-direction: column; gap: 22rpx; }
 .field-label { display: block; margin-bottom: 12rpx; color: var(--ui-muted, #526153); font-size: 24rpx; font-weight: 900; }
 .readonly { padding: 20rpx; border-radius: 22rpx; background: var(--ui-soft, #f7faf4); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); }

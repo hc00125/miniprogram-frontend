@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="profile-settings-page">
-    <view class="hero-card"><text class="eyebrow">PLAYER PROFILE</text><text class="hero-title">陪玩资料设置</text><text class="hero-sub">简介和语音修改提交审核，审核通过后才替换公开资料</text></view>
+    <view class="hero-card"><text class="hero-title">陪玩资料设置</text><text class="hero-sub">简介和语音修改提交审核，审核通过后才替换公开资料</text></view>
     <view v-if="settings?.pending_update" class="review-card review-pending"><text>资料审核中</text><text>提交时间：{{ dateTime(settings.pending_update.submitted_at) }}</text><text>审核期间，老板端仍然展示你当前已通过的资料。</text></view>
     <view v-else-if="settings?.latest_update?.status === 'rejected'" class="review-card review-rejected"><text>上次修改未通过</text><text>{{ settings.latest_update.reject_reason || '请修改后重新提交' }}</text></view>
 
@@ -13,13 +13,13 @@
 
     <view class="card escort-card" @tap="go('/pages/player/service-management/index')">
       <view class="escort-icon"><image class="secondary-pictogram" :src="uiIcons.terms" mode="aspectFit" /></view>
-      <view class="escort-main"><text class="card-title">我的服务</text><text class="card-sub">从平台共享规格中申请上架、暂停或下架服务</text></view>
+      <view class="escort-main"><text class="card-title">我的服务</text></view>
       <view class="escort-status"><text>管理</text><text>›</text></view>
     </view>
 
     <view class="card escort-card" @tap="go('/pages/player/escort-qualification/index')">
       <view class="escort-icon"><image class="secondary-pictogram" :src="uiIcons.shield" mode="aspectFit" /></view>
-      <view class="escort-main"><text class="card-title">护航资格</text><text class="card-sub">独立专业资格，申请后由后台审核</text></view>
+      <view class="escort-main"><text class="card-title">护航资格</text></view>
       <view class="escort-status"><text>{{ settings?.player.escort_status_text || '未申请' }}</text><text>›</text></view>
     </view>
 
@@ -99,9 +99,9 @@ onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.de
 .profile-settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 30%), radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
 .hero-card, .card, .review-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, rgba(255,255,255,.97)); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
 .hero-card { color: #fff; background: var(--ui-gradient); }
-.eyebrow, .hero-title, .hero-sub { display: block; }
-.eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.hero-title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
+.hero-title, .hero-sub { display: block; }
+
+.hero-title { font-size: 40rpx; font-weight: 900; }
 .hero-sub { margin-top: 10rpx; color: rgba(255,255,255,.74); font-size: 22rpx; line-height: 1.5; }
 .review-card text { display: block; }
 .review-card text:first-child { font-size: 28rpx; font-weight: 900; }

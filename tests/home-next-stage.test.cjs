@@ -141,7 +141,7 @@ test('Arena artwork identified by actual featured game name or code keeps its re
     const html = await h.html()
     assert.match(html, /src="\/images\/home-redesign\/arena-breakout.jpg"/)
     assert.match(html, /暗区突围无限/)
-    assert.match(html, /组队开局，一起寻金/)
+    assert.doesNotMatch(html, /组队开局，一起寻金/)
     button.props.onTap()
     assert.deepEqual(h.calls.at(-1), ['/pages/shop/category/index'])
     assert.equal(h.storage['catalog:requested-game-id'], 73)

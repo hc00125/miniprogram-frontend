@@ -4,7 +4,7 @@
       <text class="eyebrow">冠名 · 包天</text>
       <view v-if="catalog?.player" class="player-row">
         <image v-if="catalog.player.avatar_url" class="avatar" :src="catalog.player.avatar_url" mode="aspectFill" />
-        <view><text class="title">{{ catalog.player.name }}</text><text class="muted">为喜欢的陪玩留下你的支持</text></view>
+        <view><text class="title">{{ catalog.player.name }}</text></view>
       </view>
       <text v-else class="title">冠名与包天</text>
       <text class="notice">{{ catalog?.player?.is_archived ? '该陪玩已离开，不能新购；历史记录及原交易核对保留。' : catalog?.purchase_enabled === true ? '使用现有钻石余额，确认后购买。' : '购买尚未开放，仅可查看套餐与报价。' }}</text>

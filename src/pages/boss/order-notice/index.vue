@@ -2,20 +2,15 @@
   <view :style="$appThemeStyle" class="notice-page">
     <scroll-view scroll-y class="notice-scroll">
       <view class="notice-hero">
-        <view class="hero-badge">TOUCHI CLUB</view>
         <view class="hero-title">偷吃电竞 · 下单须知</view>
-        <view class="hero-subtitle">请老板下单前仔细阅读，避免因信息不清影响后续服务体验</view>
       </view>
 
       <view class="notice-card intro-card">
-        <view class="welcome-title">欢迎各位老板来到偷吃电竞！</view>
-        <view class="welcome-text">感谢各位老板的光顾与支持！</view>
         <view class="minor-warning">未成年人禁止消费！</view>
         <view class="business-row">
           <text>营业时间</text>
           <text>24小时营业</text>
         </view>
-        <view class="section-desc">下单前请老板务必仔细阅读以下内容，避免因信息不清影响后续服务体验。</view>
       </view>
 
       <view class="notice-image-card">
@@ -29,7 +24,6 @@
         />
         <view v-else class="image-placeholder">
           <view class="placeholder-title">下单流程图加载失败</view>
-          <view class="placeholder-desc">请检查图片地址是否可以访问：{{ flowImageUrl }}</view>
         </view>
       </view>
 
@@ -61,11 +55,6 @@
             <view class="rule-text">{{ item }}</view>
           </view>
         </view>
-      </view>
-
-      <view class="thanks-card">
-        <view>感谢各位老板对偷吃电竞的支持</view>
-        <text>我们会持续优化服务流程，提升服务体验。</text>
       </view>
 
       <view class="bottom-space"></view>
@@ -140,27 +129,10 @@ function previewFlowImage() {
   box-sizing: border-box;
 }
 
-.hero-badge {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 22rpx;
-  font-weight: 900;
-  letter-spacing: 3rpx;
-}
-
 .hero-title {
-  margin-top: 16rpx;
   font-size: 46rpx;
   font-weight: 900;
   line-height: 1.16;
-}
-
-.hero-subtitle {
-  margin-top: 14rpx;
-  max-width: 590rpx;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 25rpx;
-  font-weight: 600;
-  line-height: 1.55;
 }
 
 .notice-card {
@@ -177,24 +149,8 @@ function previewFlowImage() {
   background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf0));
 }
 
-.welcome-title {
-  color: var(--ui-danger, #e65f34);
-  font-size: 34rpx;
-  font-weight: 900;
-  line-height: 1.4;
-}
-
-.welcome-text {
-  margin-top: 12rpx;
-  color: var(--ui-text, #404040);
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 1.5;
-}
-
 .minor-warning {
   display: inline-flex;
-  margin-top: 18rpx;
   padding: 10rpx 18rpx;
   border-radius: 999rpx;
   color: #fff;
@@ -224,14 +180,6 @@ function previewFlowImage() {
   color: var(--ui-danger, #e65f34);
   font-size: 38rpx;
   font-weight: 900;
-}
-
-.section-desc {
-  margin-top: 18rpx;
-  color: var(--ui-muted, #555);
-  font-size: 26rpx;
-  font-weight: 600;
-  line-height: 1.72;
 }
 
 .notice-image-card {
@@ -264,12 +212,6 @@ function previewFlowImage() {
   color: var(--ui-muted, #5d6f4f);
   font-size: 30rpx;
   font-weight: 900;
-}
-
-.placeholder-desc {
-  color: var(--ui-muted, #999);
-  font-size: 23rpx;
-  line-height: 1.5;
 }
 
 .section-title {
@@ -337,31 +279,6 @@ function previewFlowImage() {
 
 .notice-card--rules {
   background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf5));
-}
-
-.thanks-card {
-  margin: 22rpx 24rpx 0;
-  padding: 30rpx 28rpx;
-  border-radius: 24rpx;
-  text-align: center;
-  color: #fff;
-  background:var(--ui-gradient);
-  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(93, 111, 79, 0.14));
-}
-
-.thanks-card view {
-  font-size: 31rpx;
-  font-weight: 900;
-  line-height: 1.4;
-}
-
-.thanks-card text {
-  display: block;
-  margin-top: 10rpx;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 24rpx;
-  font-weight: 700;
-  line-height: 1.5;
 }
 
 .bottom-space {

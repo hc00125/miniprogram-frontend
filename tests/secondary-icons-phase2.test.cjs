@@ -52,12 +52,14 @@ function stripCheckoutV2(source) {
  exact("  submitting.value = true\n  try {\n    const openid = await ensureOpenid(); if (!openid) { toast('微信身份获取失败'); return }\n    setStorage('boss_wechat', form.contact.trim())","  const openid = await ensureOpenid(); if (!openid) return toast('微信身份获取失败')\n  submitting.value = true\n  try {\n    setStorage('boss_wechat', form.contact.trim())")
  return source
 }
-test('phase2 all original scripts, directives, button text and monetary interpolations are preserved',()=>{
+test('phase2 approved scripts, directives, button text and monetary interpolations are preserved',()=>{
  const {contract,files}=require('./secondary-icons-phase2-helpers.cjs'),expected=require('./secondary-icons-phase2-contracts.json');
  // Approved commerce host additions are covered by commerce-hosts.test.cjs.
  // Strip only those exact additions; keep the service/payment contract hashes.
  // Payment script/status expressions include the approved login-recovery fix;
  // real API/SFC behavior is guarded by order-balance-payment*.test.cjs.
+ // Fixtures include approved copy removal and real-description visibility gates;
+ // payment/checkout scripts and every button hash remain unchanged by that cleanup.
  for(const p of files){
    let source=read(p).replace(' :style="$appThemeStyle"', '').replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
      .replace('    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />\n','')

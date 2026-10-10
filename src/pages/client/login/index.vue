@@ -5,9 +5,6 @@
       <view class="brand-glow brand-glow--right"></view>
       <view class="brand-mark">竞</view>
       <text class="brand-name">偷吃电竞</text>
-      <text class="brand-tagline">专业陪玩平台 · 资深客服</text>
-      <view class="brand-slogan"><text>今晚一起</text><text>开局</text></view>
-      <text class="brand-sub">登录后可点单、查看订单进度、申请成为陪玩师</text>
     </view>
 
     <view class="login-form">
@@ -42,7 +39,6 @@
       </button>
 
       <button class="skip-btn" :disabled="loading" @tap="leaveLogin">暂不登录，返回首页</button>
-      <text class="guest-tip">游客仍可浏览首页、商品、陪玩列表、服务条款和客服信息。</text>
     </view>
   </view>
 </template>
@@ -136,9 +132,7 @@ async function wechatLogin() {
 .brand-card{position:relative;overflow:hidden;padding:38rpx 26rpx;border-radius:30rpx;text-align:center;background:var(--ui-gradient);box-shadow:0 18rpx 42rpx var(--ui-shadow, rgba(23,52,38,.18))}
 .brand-glow{position:absolute;width:260rpx;height:260rpx;border-radius:50%;filter:blur(48rpx);opacity:.45}.brand-glow--left{left:-100rpx;top:-120rpx;background:#d8a144}.brand-glow--right{right:-100rpx;bottom:-120rpx;background:var(--ui-primary, #5fb78a)}
 .brand-mark{position:relative;width:92rpx;height:92rpx;margin:0 auto;display:flex;align-items:center;justify-content:center;border-radius:26rpx;color:var(--ui-text, #173426);font-size:40rpx;font-weight:900;background:linear-gradient(135deg,var(--ui-gold-soft, #f3d79b),#d8a144)}
-.brand-name,.brand-tagline,.brand-sub{position:relative;display:block}.brand-name{margin-top:16rpx;color:#fffaf0;font-size:36rpx;font-weight:900}.brand-tagline{margin:8rpx auto 0;color:var(--ui-gold, #f3d79b);font-size:21rpx}.brand-slogan{position:relative;margin-top:24rpx;display:flex;justify-content:center;gap:8rpx;color:#fff;font-size:54rpx;font-weight:900}.brand-slogan text:last-child{color:var(--ui-gold, #f3d79b)}.brand-sub{margin-top:14rpx;color:rgba(255,255,255,.78);font-size:22rpx;line-height:1.5}
-.login-form{margin-top:24rpx;padding:30rpx 26rpx;border-radius:28rpx;background:var(--ui-surface, #fff);border:1rpx solid var(--ui-line, rgba(42,63,48,.07));box-shadow:0 14rpx 36rpx var(--ui-shadow, rgba(38,69,54,.06))}
+.brand-name{position:relative;display:block}.brand-name{margin-top:16rpx;color:#fffaf0;font-size:36rpx;font-weight:900}.login-form{margin-top:24rpx;padding:30rpx 26rpx;border-radius:28rpx;background:var(--ui-surface, #fff);border:1rpx solid var(--ui-line, rgba(42,63,48,.07));box-shadow:0 14rpx 36rpx var(--ui-shadow, rgba(38,69,54,.06))}
 .avatar-section{display:flex;flex-direction:column;align-items:center;gap:10rpx;margin-bottom:26rpx}.avatar-btn{width:144rpx;height:144rpx;padding:0;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;color:var(--ui-accent, #1f7c4b);font-size:25rpx;font-weight:900;background:var(--ui-soft, #eef8f1);border:2rpx dashed var(--ui-accent-line, rgba(47,155,99,.32))}.avatar-btn.disabled{opacity:.56}.avatar-img{width:100%;height:100%}.avatar-hint{color:var(--ui-muted, #828a7e);font-size:21rpx}.avatar-btn::after{border:none}
 .agreement-card{display:flex;align-items:flex-start;gap:14rpx;padding:18rpx;border-radius:18rpx;background:var(--ui-soft, #f7faf4);border:1rpx solid var(--ui-accent-line, rgba(39,61,42,.08))}.checkbox{width:36rpx;height:36rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:8rpx;color:#fff;font-size:22rpx;font-weight:900;background:var(--ui-surface, #fff);border:2rpx solid var(--ui-line, #aeb7ad);box-sizing:border-box}.checkbox.checked{background:var(--ui-primary, #2f9b63);border-color:var(--ui-accent-line, #2f9b63)}.agreement-text{flex:1;color:var(--ui-muted, #687665);font-size:22rpx;line-height:1.65}.agreement-link{color:var(--ui-accent, #1f7c4b);font-weight:900;text-decoration:underline}.agreement-hint{display:block;margin-top:10rpx;color:var(--ui-muted, #9aa197);font-size:20rpx}
-.wechat-btn,.skip-btn{width:100%;border-radius:23rpx;font-weight:900}.wechat-btn{height:92rpx;margin-top:24rpx;display:flex;align-items:center;justify-content:center;gap:12rpx;color:#fff;font-size:30rpx;background:var(--ui-gradient)}.wechat-btn[disabled]{opacity:.46}.wechat-icon{width:42rpx;height:42rpx;display:flex;align-items:center;justify-content:center;border-radius:11rpx;background:rgba(255,255,255,.2)}.skip-btn{height:76rpx;margin-top:15rpx;color:var(--ui-text, #415444);font-size:26rpx;background:var(--ui-soft, #f6f8f4);border:1rpx solid var(--ui-line, rgba(42,63,48,.1))}.wechat-btn::after,.skip-btn::after{border:none}.guest-tip{display:block;margin-top:13rpx;color:var(--ui-muted, #8a9286);font-size:20rpx;line-height:1.5;text-align:center}
-</style>
+.wechat-btn,.skip-btn{width:100%;border-radius:23rpx;font-weight:900}.wechat-btn{height:92rpx;margin-top:24rpx;display:flex;align-items:center;justify-content:center;gap:12rpx;color:#fff;font-size:30rpx;background:var(--ui-gradient)}.wechat-btn[disabled]{opacity:.46}.wechat-icon{width:42rpx;height:42rpx;display:flex;align-items:center;justify-content:center;border-radius:11rpx;background:rgba(255,255,255,.2)}.skip-btn{height:76rpx;margin-top:15rpx;color:var(--ui-text, #415444);font-size:26rpx;background:var(--ui-soft, #f6f8f4);border:1rpx solid var(--ui-line, rgba(42,63,48,.1))}.wechat-btn::after,.skip-btn::after{border:none}</style>

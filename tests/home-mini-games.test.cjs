@@ -17,11 +17,12 @@ test('mini-game poster always opens catalogue with explicit intent, never custom
 })
 test('catalogue does not masquerade the first game as missing mini-games; selecting another game is explicit',async t=>{
  const s=category([{id:2,name:'三角洲行动',code:'delta-force',groups:[]}],{'catalog:requested-game-kind':'mini-games'});t.after(()=>s.scope.stop());s.life.load[0]();await s.life.show[0]()
- assert.match(s.text(),/小游戏服务暂未上架，请选择其他游戏/);assert.match(s.text(),/TOUCHI CLUB · 小游戏陪玩/);assert.equal(s.h.storage['catalog:requested-game-kind'],undefined)
- s.tree().find(n=>n.props?.class?.includes('game-tab')&&n.props?.onTap).props.onTap();assert.doesNotMatch(s.text(),/小游戏服务暂未上架/);assert.match(s.text(),/TOUCHI CLUB · 三角洲行动/)
+ assert.match(s.text(),/小游戏服务暂未上架，请选择其他游戏/);assert.equal(s.tree().filter(n=>n.props?.class==='game-tab active').length,0);assert.equal(s.h.storage['catalog:requested-game-kind'],undefined)
+ s.tree().find(n=>n.props?.class?.includes('game-tab')&&n.props?.onTap).props.onTap();assert.doesNotMatch(s.text(),/小游戏服务暂未上架/)
+ const active=s.tree().filter(n=>n.props?.class==='game-tab active');assert.equal(active.length,1);assert.ok(nodes(active[0]).some(n=>n.children==='三角洲行动'))
 })
 test('catalogue resolves mini-games from real directory instead of stale id and preserves empty categories',async t=>{
  const s=category([{id:2,name:'三角洲行动',code:'delta-force',groups:[]},{id:18,name:'小游戏陪玩',code:'steam',groups:[]}],{'catalog:requested-game-kind':'mini-games','catalog:requested-game-id':2});t.after(()=>s.scope.stop());s.life.load[0]();await s.life.show[0]()
- assert.match(s.text(),/TOUCHI CLUB · 小游戏陪玩/);assert.match(s.text(),/该游戏暂未配置套餐分类/);assert.doesNotMatch(s.text(),/小游戏服务暂未上架/)
+ assert.match(s.text(),/该游戏暂未配置套餐分类/);assert.doesNotMatch(s.text(),/小游戏服务暂未上架/)
  const active=s.tree().filter(n=>n.props?.class==='game-tab active');assert.equal(active.length,1);assert.ok(nodes(active[0]).some(n=>n.children==='小游戏陪玩'))
 })

@@ -34,7 +34,8 @@ test('player SFC semantic icons preserve notice count, income label and voice co
   for (const playing of [false, true]) {
     const audio = await render('player/profile-settings', 'audio-card', { form: { audio_intro_url: 'voice.m4a' }, isPlaying: playing, toggleAudio() {}, removeAudio() {} }); asset(audio, 'microphone'); assert.ok(audio.includes(playing ? '暂停' : '试听')); assert.match(audio, /移除/)
   }
-  const tags = await render('player/apply', 'hero-tags'); for (const key of ['apply', 'microphone', 'order']) asset(tags, key)
+  // The application hero's decorative tags were removed in the approved copy cleanup.
+  assert.doesNotMatch(parse(read('src/pages/player/apply/index.vue')).descriptor.template.content, /class="hero-tags"/)
   asset(await render('player/apply', 'audio-icon'), 'microphone')
   for (const page of ['player/my-orders','player/profile-settings','player/apply']) assert.doesNotMatch(parse(read('src/pages/' + page + '/index.vue')).descriptor.template.content, />[铃鱼服护声证单]</)
 })
@@ -51,9 +52,10 @@ test('shop SFC keeps home/cart/badge and designated product visibility without f
   assert.doesNotMatch(source, /•••|🛒|⌂/); assert.match(source, /@tap="goBack"/)
   assert.match(source, /class="recommend-card" @tap="openProduct\(item.id\)"/)
 })
-test('all seven real SFCs preserve business scripts, directives, button markup and interpolations byte-for-byte', () => {
+test('all seven real SFCs preserve the approved scripts, directives, button markup and interpolations byte-for-byte', () => {
   const hash = s => require('node:crypto').createHash('sha256').update(s).digest('hex')
   const contracts = require('./secondary-icons-contracts.json')
+  // Fixtures include only approved copy/visibility changes; action and amount hashes remain guarded.
   for (const [page, expected] of Object.entries(contracts)) {
     const d = parse(read('src/pages/' + page + '/index.vue').replace(' :style="$appThemeStyle"', '')).descriptor
     const bindings = [], buttons = [], expressions = []

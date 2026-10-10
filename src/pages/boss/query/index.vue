@@ -14,7 +14,7 @@
 
     <view class="cart-entry-card" :class="{ 'cart-entry-card--compact': cartCount === 0 }" @tap="openCart"><view class="cart-entry-icon">🛒</view><view class="cart-entry-main"><text class="cart-entry-title">{{ isLoggedIn && cartCount === 0 ? '购物车为空' : '购物车' }}</text><text v-if="cartCount > 0" class="cart-entry-sub">{{ cartSummaryText }}</text></view><button class="cart-entry-btn" @tap.stop="openCart">{{ isLoggedIn ? (cartCount > 0 ? '去结算' : '查看') : '去登录' }}</button></view>
 
-    <view v-if="!isLoggedIn" class="login-card"><view class="login-icon">微</view><view class="login-text"><text class="login-title">请先微信登录</text><text class="login-sub">登录后可查看当前账号的全部点单记录</text></view><button class="club-btn club-btn--primary login-btn" @tap="go('/pages/client/login/index')">去登录</button></view>
+    <view v-if="!isLoggedIn" class="login-card"><view class="login-icon">微</view><view class="login-text"><text class="login-title">请先微信登录</text></view><button class="club-btn club-btn--primary login-btn" @tap="go('/pages/client/login/index')">去登录</button></view>
 
     <template v-else>
       <view class="tabs"><view v-for="tab in tabs" :key="tab.key" class="tab" :class="{ active: activeTab === tab.key }" @tap="activeTab = tab.key"><text>{{ tab.label }}</text><text class="tab-count">{{ tab.count }}</text></view></view>
@@ -34,7 +34,7 @@
         </view>
       </view>
 
-      <view v-else-if="loaded" class="empty-card"><view class="empty-orb"><view class="empty-icon">单</view></view><text class="empty-title">暂无点单记录</text><text class="empty-sub">去点单大厅选择套餐，今晚一起开局</text><button class="club-btn club-btn--primary" @tap="goMain('order')">去点单</button></view>
+    <view v-else-if="loaded" class="empty-card"><view class="empty-orb"><view class="empty-icon">单</view></view><text class="empty-title">暂无点单记录</text><button class="club-btn club-btn--primary" @tap="goMain('order')">去点单</button></view>
       <view v-else class="loading-card"><view class="loading-spinner"></view><text>加载中...</text></view>
     </template>
 

@@ -3,7 +3,6 @@
     <view class="hero-card">
       <view class="hero-top">
         <view>
-          <text class="eyebrow">PLAYER WALLET</text>
           <text class="hero-title">鱼干收益中心</text>
           <text class="hero-sub">订单完成后进入{{ overview?.review_days || 3 }}天审核期，无异常即可提现</text>
         </view>
@@ -116,7 +115,7 @@
           <text v-else>可提现 {{ fish(item.available_amount) }} · 提现中 {{ fish(item.withdrawing_amount) }} · 已提现 {{ fish(item.withdrawn_amount) }} 鱼干</text>
         </view>
       </view>
-      <view v-if="!loading && !settlements.length" class="empty-card">暂无工资记录，完成订单后会自动生成。</view>
+      <view v-if="!loading && !settlements.length" class="empty-card">暂无工资记录</view>
     </view>
 
     <view v-else class="list-section">
@@ -137,7 +136,7 @@
           <view v-if="item.reject_reason"><text>处理说明</text><text class="reject-text">{{ item.reject_reason }}</text></view>
         </view>
       </view>
-      <view v-if="!loading && !withdrawals.length" class="empty-card">暂无提现记录。</view>
+      <view v-if="!loading && !withdrawals.length" class="empty-card">暂无提现记录</view>
     </view>
 
     <view v-if="loading" class="loading-state">收益数据加载中...</view>
@@ -314,9 +313,9 @@ onShow(async () => {
 .hero-card { padding: 30rpx; color: #fff; background: var(--ui-gradient); }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
 .hero-top > view { flex: 1; min-width: 0; }
-.eyebrow, .hero-title, .hero-sub { display: block; }
-.eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.hero-title { margin-top: 8rpx; font-size: 40rpx; font-weight: 900; }
+.hero-title, .hero-sub { display: block; }
+
+.hero-title { font-size: 40rpx; font-weight: 900; }
 .hero-sub { margin-top: 8rpx; color: rgba(255,255,255,.72); font-size: 22rpx; line-height: 1.5; }
 .refresh-btn { min-width: 110rpx; height: 58rpx; margin: 0; padding: 0 20rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; font-weight: 900; background: rgba(255,255,255,.14); }
 .refresh-btn::after, .withdraw-btn::after { border: none; }

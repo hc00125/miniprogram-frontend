@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="kook-page">
-    <text class="eyebrow">接单通知</text><text class="title">连接你的 KOOK</text>
+    <text class="title">连接你的 KOOK</text>
     <text class="subtitle">指定邀请发给本人，接单仍在小程序完成。</text>
     <view v-if="s.error" class="notice">{{ s.error }}</view>
     <view v-if="!loggedIn" class="card"><text>请先使用已审核陪玩师的微信账号登录</text><button class="primary" @tap="login">微信登录</button></view>
@@ -75,8 +75,8 @@ onUnload(() => { visible = false; stop(); c.reset(); uni.$off(SESSION_EXPIRED_EV
 </script>
 <style scoped>
 .kook-page { min-height: 100vh; box-sizing: border-box; padding: 40rpx 28rpx 80rpx; background: var(--ui-soft, #fbf7ef); color: var(--ui-text, #243c2d); }
-.eyebrow, .title, .subtitle, .heading, .identity, .hint, .code, .result { display: block; }
-.eyebrow { color: var(--ui-accent, #2f9b63); font-size: 24rpx; font-weight: 700; }.title { margin-top: 12rpx; font-size: 46rpx; font-weight: 800; }.subtitle { margin: 16rpx 0 32rpx; color: var(--ui-muted, #728075); font-size: 25rpx; line-height: 1.7; }
+.title, .subtitle, .heading, .identity, .hint, .code, .result { display: block; }
+.title { font-size: 46rpx; font-weight: 800; }.subtitle { margin: 16rpx 0 32rpx; color: var(--ui-muted, #728075); font-size: 25rpx; line-height: 1.7; }
 .card { background: var(--ui-surface, #fffefb); border: 1rpx solid var(--ui-line, #e1e9dd); border-radius: 30rpx; padding: 28rpx; margin-top: 22rpx; }.heading { font-size: 31rpx; font-weight: 700; }.identity { margin: 20rpx 0; overflow-wrap: anywhere; }.hint { margin: 16rpx 0; color: var(--ui-muted, #768275); font-size: 24rpx; line-height: 1.6; }.notice { padding: 24rpx; border-radius: 24rpx; background: var(--ui-soft, #fff0d7); color: var(--ui-gold, #82622d); font-size: 26rpx; }.code { margin: 24rpx 0; padding: 28rpx 12rpx; background: var(--ui-soft, #eef5e9); border-radius: 20rpx; text-align: center; font-family: monospace; font-size: 34rpx; }.row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 18rpx 0; }.actions { display: flex; gap: 16rpx; }.result { margin-top: 20rpx; color: var(--ui-accent, #2f7f54); font-size: 26rpx; }
 button { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 92rpx; box-sizing: border-box; padding: 22rpx 28rpx; margin: 18rpx 0 0; border-radius: 24rpx; background: var(--ui-soft, #edf3e8); color: var(--ui-accent, #2c6541); font-size: 27rpx; line-height: 1.4; }button::after { border: 0; }button.primary { background: var(--ui-primary, #2f9b63); color: #fff; }button[disabled] { opacity: .45; }.small { width: auto; min-height: 64rpx; margin: 0; padding: 12rpx 20rpx; }
 </style>

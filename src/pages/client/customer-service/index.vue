@@ -1,9 +1,7 @@
 <template>
   <view :style="$appThemeStyle" class="support-page">
     <view class="support-hero">
-      <text class="support-eyebrow">SUPPORT CENTER</text>
       <text class="support-title">联系客服</text>
-      <text class="support-sub">可通过微信官方客服或复制人工客服微信号联系我们</text>
     </view>
 
     <view class="feedback-entry">
@@ -18,7 +16,6 @@
 
     <view v-if="loading" class="state-card">
       <text class="state-title">客服信息加载中</text>
-      <text class="state-sub">请稍候...</text>
     </view>
 
     <template v-else>
@@ -32,14 +29,12 @@
         <view class="channel-icon channel-icon--official">微</view>
         <view class="channel-main">
           <text class="channel-title">微信官方客服</text>
-          <text class="channel-description">通过微信小程序客服会话咨询订单、支付、退款和平台规则</text>
         </view>
         <button class="channel-action official-action" open-type="contact">进入客服</button>
       </view>
 
       <view class="section-head">
         <view>
-          <text class="section-eyebrow">人工客服</text>
           <text class="section-title">客服微信号</text>
         </view>
         <text v-if="contacts.length" class="section-count">{{ contacts.length }}位</text>
@@ -127,10 +122,8 @@ onShow(loadSupportCenter)
 <style lang="scss" scoped>
 .support-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.13)), transparent 32%), radial-gradient(circle at 88% 12%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
 .support-hero { padding: 34rpx 30rpx; border-radius: 30rpx; color: #fff; background: var(--ui-gradient); box-shadow: 0 18rpx 42rpx var(--ui-shadow, rgba(23,52,38,.18)); }
-.support-eyebrow,.support-title,.support-sub { display: block; }
-.support-eyebrow { color: rgba(255,255,255,.66); font-size: 20rpx; font-weight: 900; letter-spacing: 3rpx; }
-.support-title { margin-top: 10rpx; font-size: 44rpx; font-weight: 900; }
-.support-sub { margin-top: 12rpx; color: rgba(255,255,255,.78); font-size: 23rpx; line-height: 1.55; }
+.support-title { display: block; }
+.support-title { font-size: 44rpx; font-weight: 900; }
 .feedback-entry { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 20rpx; padding: 18rpx 26rpx; border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); border-radius: 24rpx; background: var(--ui-surface, rgba(255,255,255,.92)); }
 .feedback-title { min-width: 0; color: var(--ui-text, #172116); font-size: 27rpx; font-weight: 700; }
 .feedback-action { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 132rpx; height: 64rpx; margin: 0; padding: 12rpx 20rpx; box-sizing: border-box; border: 1rpx solid var(--ui-accent-line, rgba(31,124,75,.18)); border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); background: var(--ui-soft, #eef8f1); font-size: 23rpx; font-weight: 700; line-height: 1.2; }
@@ -155,8 +148,7 @@ onShow(loadSupportCenter)
 .copy-action { color: var(--ui-accent, #1f7c4b); border: 1rpx solid var(--ui-accent-line, rgba(31,124,75,.18)); background: var(--ui-soft, #eef8f1); }
 .section-head { margin-top: 30rpx; display: flex; align-items: flex-end; justify-content: space-between; gap: 16rpx; padding: 0 6rpx; }
 .section-head text { display: block; }
-.section-eyebrow { color: var(--ui-gold, #a87520); font-size: 19rpx; font-weight: 900; letter-spacing: 2rpx; }
-.section-title { margin-top: 5rpx; color: var(--ui-text, #172116); font-size: 32rpx; font-weight: 900; }
+.section-title { color: var(--ui-text, #172116); font-size: 32rpx; font-weight: 900; }
 .section-count { color: var(--ui-muted, #879083); font-size: 21rpx; }
 .contact-list { display: flex; flex-direction: column; }
 .contact-card { align-items: flex-start; }

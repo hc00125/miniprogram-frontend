@@ -27,7 +27,7 @@ function page() {
     '@/utils/nav': { go: x => calls.push(['go', x]), goMain: x => calls.push(['tab', x]) },
     '@/utils/storage': {}, '@/utils/sessionExpiry': { SESSION_EXPIRED_EVENT: 'expired' }
   }
-  const names = 'profile,isLoggedIn,onlineUpdating,refreshing,walletOverview,walletLoadFailed,displayAvatarUrl,displayName,displayInitial,profileIdText,accountRestriction,walletBalance,canAcceptOrders,isPlayerOnline,playerRatingText,statusText,statusClass,playerActionTitle,playerActionSub,playerCenterTitle,playerCenterSub,playerEmptyTitle,playerEmptySub,handleHeroTap,retryWalletOverview,goRecharge,goWallet,openLogin,switchMainTab,togglePlayerOnline,handlePlayerAction,handlePlayerCenterAction,handleManualRefresh,handleService,handleSettings,handleMainTabSelect,go'
+  const names = 'profile,isLoggedIn,onlineUpdating,refreshing,walletOverview,walletLoadFailed,displayAvatarUrl,displayName,displayInitial,profileIdText,accountRestriction,walletBalance,canAcceptOrders,isPlayerOnline,playerRatingText,statusText,statusClass,playerActionTitle,playerActionStatus,playerCenterTitle,playerEmptyTitle,handleHeroTap,retryWalletOverview,goRecharge,goWallet,openLogin,switchMainTab,togglePlayerOnline,handlePlayerAction,handlePlayerCenterAction,handleManualRefresh,handleService,handleSettings,handleMainTabSelect,go'
   const module = { exports: {} }
   vm.runInNewContext(ts.transpileModule(descriptor().scriptSetup.content + '\nmodule.exports = {' + names + '}', { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports, require: n => mocks[n], uni: { $on() {}, $off() {} } })
   return { state: { ...module.exports, uiIcons: mocks['@/utils/uiIcons'].uiIcons }, calls }
@@ -100,6 +100,8 @@ test('profile real SFC renders local pictograms across guest, application and ap
     assert.equal(html.includes('/icons/themes/mist/apply.png'), !approved)
     assert.equal(html.includes('/icons/themes/mist/notification.png'), approved)
     assert.equal(html.includes('wallet-entry-card'), status !== 'guest')
+    assert.equal(html.includes('申请审核中'), status === 'pending')
+    assert.equal(html.includes('申请未通过'), status === 'rejected')
     assert.equal(html.includes('接单已暂停') || html.includes('接单权限已暂停'), status === 'paused')
     assert.ok(!/class="(?:quick-icon|list-icon)[^"]*">[点查抢评陪通服客诉设]</.test(html))
     state.walletLoadFailed.value = true

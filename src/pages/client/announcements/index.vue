@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="announcement-page">
-    <view class="page-heading"><text class="page-title">通报记录</text><text class="page-caption">记录每一份心意</text></view>
+    <view class="page-heading"><text class="page-title">通报记录</text></view>
     <view class="feed-tabs">
       <button v-for="tab in tabs" :key="tab.kind" class="feed-tab" :class="{ active: kind === tab.kind }" :data-action="`filter-${tab.kind}`" @tap="selectKind(tab.kind)">{{ tab.label }}</button>
     </view>
@@ -74,7 +74,6 @@ onUnload(hide)
 .announcement-page { min-height: 100vh; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); background: var(--ui-soft, #f7f5ee); box-sizing: border-box; }
 .page-heading { display: flex; flex-direction: column; gap: 10rpx; margin: 10rpx 4rpx 26rpx; }
 .page-title { color: var(--ui-text, #253b2f); font-size: 36rpx; font-weight: 800; }
-.page-caption { color: var(--ui-muted, #8a9489); font-size: 24rpx; }
 .feed-tabs { display: flex; gap: 14rpx; margin-bottom: 24rpx; }
 .feed-tab { flex: 1; display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 72rpx; margin: 0; padding: 14rpx 8rpx; border-radius: 36rpx; background: var(--ui-soft, #eaece3); color: var(--ui-muted, #778273); font-size: 25rpx; line-height: 1.4; box-sizing: border-box; }
 .feed-tab.active { background: var(--ui-primary, #1f7c4b); color: #fffefa; font-weight: 700; }

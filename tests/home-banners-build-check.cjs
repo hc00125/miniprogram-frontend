@@ -13,7 +13,7 @@ vm.runInNewContext(fs.readFileSync(base + '.js', 'utf8'), {
 const loop = wxml.match(/<swiper-item wx:for="{{(\w+)}}" wx:for-item="banner"/)[1]
 const image = wxml.match(/<image wx:if="{{banner\.(\w+)}}" class="hero-slide__image[^>]*src="{{banner\.(\w+)}}"[^>]*binderror="{{banner\.(\w+)}}"/)
 const fallback = wxml.match(/class="hero-slide__fallback[^>]*><text[^>]*>{{banner\.(\w+)}}/)[1]
-const titles = ['国庆赏金赛，查看活动规则', '欢迎来到偷吃电竞，一起开黑，一起开心', '暗区突围无限，S7赛季已上线，查看暗区服务']
+const titles = ['国庆赏金赛，查看活动规则', '偷吃电竞', '暗区突围无限，S7赛季已上线，查看暗区服务']
 for (let index = 0; index < 3; index++) {
   const scope = vue.effectScope()
   try {

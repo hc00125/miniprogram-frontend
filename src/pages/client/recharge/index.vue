@@ -1,7 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="recharge-page">
     <view class="balance-card">
-      <text class="recharge-eyebrow">DIAMOND RECHARGE</text>
       <text class="recharge-title">钻石充值中心</text>
       <text class="recharge-subtitle">{{ isIOS ? 'iOS充值固定1元=7钻石，仅支持10元/30元档位' : '人民币1元固定兑换10钻石' }}</text>
       <view class="balance-divider"></view>
@@ -12,7 +11,6 @@
       <view v-else class="balance-row balance-row--error" @tap="loadData">
         <text>余额加载失败 · 点击重试</text>
       </view>
-      <text class="secure-tip">微信官方小程序虚拟支付 · Android / iOS 均可充值</text>
     </view>
 
     <view v-if="rechargeConfirming" class="card confirming-card">
@@ -103,7 +101,7 @@
     </view>
 
     <view v-if="rechargeHistory.length" class="card history-card">
-      <view class="card-head"><text>最近充值</text><text>服务器记录</text></view>
+      <view class="card-head"><text>最近充值</text></view>
       <view v-for="item in rechargeHistory" :key="item.recharge_no" class="history-row">
         <view class="history-main">
           <text class="history-diamonds">+💎{{ diamonds(item.diamonds) }}</text>
@@ -508,18 +506,17 @@ onUnload(() => { pageAlive = false; clearConfirmationTimer() })
 .recharge-page { min-height: 100vh; padding: 24rpx 24rpx 70rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 8% 0%, rgba(216,161,68,.14), transparent 30%), var(--ui-soft, #f7f3ea); }
 .card, .balance-card, .error-card, .support-card { margin-bottom: 20rpx; padding: 26rpx; border-radius: 28rpx; background: var(--ui-surface, #fff); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
 .balance-card { color: #fff; text-align: center; background: var(--ui-gradient); }
-.recharge-eyebrow, .recharge-title, .recharge-subtitle, .balance-label, .secure-tip { display: block; }
-.recharge-eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.recharge-title { margin-top: 8rpx; font-size: 42rpx; font-weight: 900; }
+.recharge-title, .recharge-subtitle, .balance-label { display: block; }
+.recharge-title { font-size: 42rpx; font-weight: 900; }
 .recharge-subtitle { margin-top: 8rpx; color: rgba(255,255,255,.78); font-size: 22rpx; line-height: 1.5; }
 .balance-divider { height: 1rpx; margin: 22rpx 0; background: rgba(255,255,255,.16); }
-.balance-label, .secure-tip { color: rgba(255,255,255,.78); font-size: 23rpx; }
+.balance-label { color: rgba(255,255,255,.78); font-size: 23rpx; }
 .balance-row { display: flex; justify-content: center; align-items: baseline; gap: 8rpx; margin: 14rpx 0 22rpx; }
 .balance-row text:first-child { font-size: 36rpx; }.balance-row text:last-child { font-size: 72rpx; font-weight: 900; }
 .balance-row--error text { font-size: 28rpx !important; text-decoration: underline; }
 .package-card { border: 2rpx solid var(--ui-accent-line, rgba(31,124,75,.08)); }
 .card-head { display: flex; justify-content: space-between; gap: 16rpx; margin-bottom: 18rpx; }
-.card-head text:first-child, .section-title { font-size: 30rpx; font-weight: 900; }.card-head text:last-child { color: var(--ui-accent, #1f7c4b); font-size: 22rpx; font-weight: 800; }
+.card-head text:first-child, .section-title { font-size: 30rpx; font-weight: 900; }.card-head text + text { color: var(--ui-accent, #1f7c4b); font-size: 22rpx; font-weight: 800; }
 .section-desc { display: block; margin-top: 10rpx; color: var(--ui-muted, #687665); font-size: 23rpx; }
 .package-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
 .package-grid--ios { grid-template-columns: repeat(2, 1fr); }

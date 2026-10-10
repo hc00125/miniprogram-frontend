@@ -1,7 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="escort-page">
     <view class="hero">
-      <text class="eyebrow">ESCORT QUALIFICATION</text>
       <text class="title">护航资格申请</text>
       <text class="subtitle">护航资格独立于娱乐陪、技术陪等等级，通过后台审核后生效。</text>
     </view>
@@ -114,9 +113,9 @@ onShow(async () => {
 .escort-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: var(--ui-soft, #f7f3ea); }
 .hero, .card, .status-card, .review-card, .complete-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, #fff); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
 .hero { color: #fff; background: var(--ui-gradient); }
-.eyebrow, .title, .subtitle { display: block; }
-.eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.title { margin-top: 10rpx; font-size: 40rpx; font-weight: 900; }
+.title, .subtitle { display: block; }
+
+.title { font-size: 40rpx; font-weight: 900; }
 .subtitle { margin-top: 10rpx; color: rgba(255,255,255,.76); font-size: 22rpx; line-height: 1.55; }
 .status-head, .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18rpx; }
 .status-head text { display: block; }

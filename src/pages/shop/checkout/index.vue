@@ -13,7 +13,7 @@
         <image :src="productImage" mode="aspectFill" />
         <view class="grow">
           <view class="head"><text class="title">{{ product.name }}</text><text class="pill">{{ isTargetedPlayerProduct ? '指定服务' : `需${requiredPlayers}人` }}</text></view>
-          <text class="sub">{{ selectedSpec?.name || product.description || '精选陪玩服务' }}</text>
+          <text v-if="selectedSpec?.name || product.description" class="sub">{{ selectedSpec?.name || product.description }}</text>
           <view class="price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ diamondAmount(basePrice) }}{{ hourlyCurrent ? '/小时' : '/单' }}</text></view>
         </view>
       </view>
@@ -24,7 +24,7 @@
       </view>
 
       <view v-if="!isCartCheckout && product && allSpecs.length" class="card">
-        <view class="head"><view><text class="title">选择规格</text><text class="sub">服务规格由平台统一配置，钻石价格以此页为准</text></view><text class="pill">{{ allSpecs.length }}档</text></view>
+        <view class="head"><text class="title">选择规格</text><text class="pill">{{ allSpecs.length }}档</text></view>
         <view class="specs">
           <view v-for="spec in allSpecs" :key="spec.id" class="spec" :class="{ active: selectedSpec?.id === spec.id }" @tap="chooseSpec(spec)">
             <text>{{ spec.name }}</text><text v-if="spec.listing_description || spec.description" class="muted">{{ spec.listing_description || spec.description }}</text><view class="spec-price diamond-value"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>{{ specDiamonds(spec) }}{{ hourlyCurrent ? '/小时' : '' }}</text></view>

@@ -3,9 +3,7 @@
     <view class="hero-card">
       <view class="hero-top">
         <view>
-          <text class="eyebrow">DIAMOND WALLET</text>
           <text class="hero-title">我的钻石</text>
-          <text class="hero-sub">可用钻石可直接支付平台商品与服务</text>
         </view>
         <button class="refresh-btn" @tap="reloadAll">刷新</button>
       </view>
@@ -47,7 +45,7 @@
         </view>
       </view>
 
-      <view v-if="!loading && !transactions.length" class="empty-card">暂无钻石记录，充值或消费后会在这里展示。</view>
+      <view v-if="!loading && !transactions.length" class="empty-card">暂无钻石记录</view>
       <view v-if="loadingMore" class="list-foot">正在加载更多...</view>
       <view v-else-if="!loading && transactions.length && !hasMore" class="list-foot">已显示全部交易记录</view>
     </view>
@@ -182,10 +180,7 @@ onReachBottom(() => {
 .hero-card { padding: 30rpx; color: #fff; background: var(--ui-gradient); }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
 .hero-top > view { flex: 1; min-width: 0; }
-.eyebrow, .hero-title, .hero-sub { display: block; }
-.eyebrow { color: rgba(255,255,255,.68); font-size: 20rpx; font-weight: 900; letter-spacing: 2rpx; }
-.hero-title { margin-top: 8rpx; font-size: 40rpx; font-weight: 900; }
-.hero-sub { margin-top: 8rpx; color: rgba(255,255,255,.72); font-size: 22rpx; line-height: 1.5; }
+.hero-title { display: block; font-size: 40rpx; font-weight: 900; }
 .refresh-btn { min-width: 110rpx; height: 58rpx; margin: 0; padding: 0 20rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; font-weight: 900; background: rgba(255,255,255,.14); }
 .refresh-btn::after, .recharge-btn::after { border: none; }
 .balance-block { margin-top: 28rpx; padding: 24rpx; border-radius: 24rpx; background: rgba(255,255,255,.12); }
@@ -203,7 +198,7 @@ onReachBottom(() => {
 .total-note { display: block; margin-top: 14rpx; color: rgba(255,255,255,.68); font-size: 20rpx; line-height: 1.55; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 26rpx 6rpx 14rpx; }
 .section-head text:first-child { font-size: 30rpx; font-weight: 900; }
-.section-head text:last-child { color: var(--ui-muted, #879083); font-size: 21rpx; }
+.section-head text + text { color: var(--ui-muted, #879083); font-size: 21rpx; }
 .list-section { display: flex; flex-direction: column; gap: 16rpx; }
 .record-card { padding: 22rpx 24rpx; }
 .record-main { display: flex; align-items: flex-start; gap: 16rpx; }

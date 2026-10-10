@@ -51,7 +51,6 @@
 .virtual-head { display: flex; align-items: center; gap: 18rpx; }
 .virtual-head view:last-child text { display: block; }
 .virtual-head view:last-child text:first-child { font-size: 30rpx; font-weight: 900; }
-.virtual-head view:last-child text:last-child { margin-top: 6rpx; color: var(--ui-muted, #7d877a); font-size: 22rpx; }
 .wechat-icon { width: 72rpx; height: 72rpx; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 22rpx; color: #fff; font-size: 29rpx; font-weight: 900; background: linear-gradient(135deg, var(--ui-primary, #2fbd68), var(--ui-primary, #16954d)); }
 .pay-methods { margin-top: 22rpx; display: flex; flex-direction: column; gap: 14rpx; }
 .pay-method { display: flex; align-items: center; gap: 16rpx; padding: 20rpx; border-radius: 22rpx; background: var(--ui-surface, #f7faf4); border: 3rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); }
