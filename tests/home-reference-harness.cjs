@@ -4,12 +4,14 @@ const {parse,compileScript}=require('@vue/compiler-sfc')
 const {compile}=require('@vue/compiler-dom')
 const {renderToString}=require('@vue/server-renderer')
 const root=path.join(__dirname,'..'),source=fs.readFileSync(path.join(root,'src/pages/boss/home/index.vue'),'utf8')
+const nationalBountyModule={exports:{}}
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,'src/constants/nationalBounty.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:nationalBountyModule,exports:nationalBountyModule.exports})
 const descriptor=parse(source).descriptor
 const render=new Function('Vue',compile(descriptor.template.content,{mode:'function',prefixIdentifiers:true,isCustomElement:t=>['view','text','image','scroll-view','swiper','swiper-item'].includes(t)}).code)(vue)
 function homeHarness(options={}){
  const hooks={show:[],hide:[]},events={},calls=[],storage={token:options.guest?'':'home-fixture-token',client_profile:options.guest?null:{id:7,...options.profile}}
  const uni={getStorageSync:k=>storage[k],setStorageSync:(k,v)=>storage[k]=v,removeStorageSync:k=>delete storage[k],$on:(k,f)=>events[k]=f,$off:k=>delete events[k]}
- const mocks={vue,'@dcloudio/uni-app':{onShow:f=>hooks.show.push(f),onHide:f=>hooks.hide.push(f),onShareAppMessage(){},onShareTimeline(){}},
+ const mocks={vue,'@/constants/nationalBounty':nationalBountyModule.exports,'@dcloudio/uni-app':{onShow:f=>hooks.show.push(f),onHide:f=>hooks.hide.push(f),onShareAppMessage(){},onShareTimeline(){}},
   '@/api/boss':{getPackages:async()=>{if(options.packageFail)throw Error('offline');return options.packages||[]},getPlayerList:async()=>{if(options.playerFail)throw Error('offline');return options.players||[]}},
   '@/api/catalog':{getCatalogNavigation:async()=>{if(options.catalogFail)throw Error('offline');return {games:options.games||[]}}},
   '@/api/wallet':{getWalletOverview:async()=>{calls.push(['wallet-read']);if(options.walletRead)return options.walletRead();if(options.walletFail)throw Error('offline');return {balance_diamonds:options.balance??123.4}}},

@@ -1,57 +1,96 @@
 <template>
   <view :style="$appThemeStyle" class="activity-page">
-    <image class="activity-poster" src="/images/home-redesign/national-bounty-2026.jpg" mode="widthFix" aria-label="偷吃电竞国庆赏金赛" />
-    <view class="activity-heading">
-      <text class="activity-title">国庆赏金赛</text>
-    </view>
-    <view class="rule-card">
-      <text class="section-title">活动时段</text>
-      <text class="activity-time">10月1日15:00 — 10月14日24:00</text>
-    </view>
-    <view class="rule-card">
-      <text class="section-title">活动奖金</text>
-      <view class="award-grid">
-        <view class="award"><text class="award-place">第一名</text><text class="award-value">888<text class="award-unit">元</text></text></view>
-        <view class="award"><text class="award-place">第二名</text><text class="award-value">666<text class="award-unit">元</text></text></view>
-        <view class="award"><text class="award-place">第三名</text><text class="award-value">333<text class="award-unit">元</text></text></view>
+    <view class="activity-content">
+      <view class="activity-heading">
+        <view class="activity-status-row">
+          <text class="activity-club">偷吃电竞</text>
+          <text class="activity-status">{{ NATIONAL_BOUNTY_STATUS }}</text>
+        </view>
+        <text class="activity-title">{{ NATIONAL_BOUNTY_TITLE }}</text>
+        <text class="activity-subtitle">圆满收官</text>
       </view>
+
+      <view class="result-card">
+        <text class="section-title">最终排行榜</text>
+        <view class="result-header">
+          <text class="result-rank">名次</text>
+          <text class="result-name">选手</text>
+          <text class="result-score">总成绩</text>
+        </view>
+        <view
+          v-for="result in NATIONAL_BOUNTY_RESULTS"
+          :key="result.rank"
+          class="result-row"
+          :class="{ 'result-row--first': result.rank === 1 }"
+        >
+          <text class="result-rank">第{{ result.rank }}名</text>
+          <text class="result-name">{{ result.name }}</text>
+          <text class="result-score" selectable>{{ formatNationalBountyScore(result.score) }}</text>
+        </view>
+        <text class="result-congratulations">恭喜三位选手！</text>
+      </view>
+
+      <view class="reward-card">
+        <view class="reward-heading">
+          <text class="section-title">活动奖励</text>
+          <text class="reward-status">已全部发放</text>
+        </view>
+        <text class="activity-copy" selectable>{{ NATIONAL_BOUNTY_REWARD_NOTICE }}</text>
+      </view>
+
+      <view class="thanks-card">
+        <text class="activity-copy">本次冲榜竞争激烈，前三名的分数一直紧咬。感谢所有参与成员，也感谢大家在国庆期间的辛勤付出。</text>
+        <text class="activity-copy">之后还会推出更多活动和更丰富的奖励，下一次榜首等你来拿！</text>
+      </view>
+
+      <button class="activity-contact" data-action="customer-service" hover-class="activity-contact--pressed" @tap="contactService">联系客服</button>
     </view>
-    <view class="rule-card">
-      <text class="section-title">参与规则</text>
-      <text class="rule-copy" selectable>老板可下单三名陪玩参与本次活动。对局结单后，提交本局价值最高的三张截图参赛，我们将依据截图内容核算，评选出本次活动前三名。</text>
-    </view>
-    <view class="rule-card">
-      <text class="section-title">活动须知</text>
-      <view class="notice-row"><text class="notice-number">1</text><text class="rule-copy" selectable>截图必须为本局真实对局截图，禁止P图、盗用他人截图，一经发现取消参赛资格。</text></view>
-      <view class="notice-row"><text class="notice-number">2</text><text class="rule-copy" selectable>本活动真实有效，最终金额以现金或其他等额为准（老板选择）。</text></view>
-      <view class="notice-row"><text class="notice-number">3</text><text class="rule-copy" selectable>带出核算以截图内物资价值为准，最终解释权归本俱乐部所有。</text></view>
-    </view>
-    <button class="activity-contact" @tap="contactService">联系客服</button>
   </view>
 </template>
 
 <script setup lang="ts">
+import {
+  NATIONAL_BOUNTY_RESULTS,
+  NATIONAL_BOUNTY_TITLE,
+  NATIONAL_BOUNTY_STATUS,
+  NATIONAL_BOUNTY_REWARD_NOTICE,
+  formatNationalBountyScore
+} from '@/constants/nationalBounty'
 import { go } from '@/utils/nav'
-function contactService() { go('/pages/client/customer-service/index') }
+
+function contactService() {
+  go('/pages/client/customer-service/index')
+}
 </script>
 
 <style scoped>
-.activity-page { min-height: 100vh; padding: 24rpx 28rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; color: var(--ui-text); }
-.activity-poster { display: block; width: 100%; height: auto; border-radius: 24rpx; }
-.activity-heading { padding: 32rpx 4rpx 8rpx; }
-.activity-title, .section-title, .activity-time, .award-place, .award-value { display: block; }
-.activity-title { font-size: 44rpx; font-weight: 800; line-height: 1.3; }
-.rule-card { margin-top: 24rpx; padding: 28rpx; border: 1rpx solid var(--ui-line); border-radius: 24rpx; background: var(--ui-surface); }
-.section-title { margin-bottom: 18rpx; font-size: 34rpx; font-weight: 700; line-height: 1.5; }
-.activity-time { color: var(--ui-accent); font-size: 30rpx; font-weight: 600; line-height: 1.7; }
-.award-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14rpx; }
-.award { padding: 24rpx 4rpx; border-radius: 16rpx; background: var(--ui-accent-soft); text-align: center; }
-.award-place { font-size: 28rpx; line-height: 1.5; }
-.award-value { margin-top: 10rpx; color: var(--ui-accent); font-size: 44rpx; font-weight: 800; line-height: 1.2; }
-.award-unit { margin-left: 4rpx; font-size: 24rpx; font-weight: 500; }
-.rule-copy { flex: 1; min-width: 0; font-size: 32rpx; line-height: 1.8; overflow-wrap: anywhere; }
-.notice-row { display: flex; align-items: flex-start; gap: 16rpx; margin-top: 24rpx; }
-.notice-number { flex-shrink: 0; width: 40rpx; margin-top: 8rpx; border-radius: 12rpx; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 26rpx; line-height: 40rpx; text-align: center; font-weight: 700; }
-.activity-contact { display: flex; justify-content: center; align-items: center; min-height: 96rpx; margin: 28rpx 0 0; padding: 24rpx; border-radius: 24rpx; background: var(--ui-gradient); color: var(--ui-on-primary); font-size: 32rpx; font-weight: 700; line-height: 1.5; }
+.activity-page { min-height: 100vh; padding: 24rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); box-sizing: border-box; background: var(--ui-bg); color: var(--ui-text); }
+.activity-content { max-width: 900rpx; margin: 0 auto; }
+.activity-heading { padding: 16rpx 8rpx 28rpx; }
+.activity-status-row { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 22rpx; }
+.activity-club { color: var(--ui-muted); font-size: 28rpx; line-height: 1.5; }
+.activity-status, .reward-status { flex-shrink: 0; padding: 8rpx 18rpx; border-radius: 999rpx; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 26rpx; font-weight: 700; line-height: 1.5; }
+.activity-title, .activity-subtitle, .section-title, .activity-copy, .result-congratulations { display: block; }
+.activity-title { font-size: 42rpx; font-weight: 800; line-height: 1.35; }
+.activity-subtitle { margin-top: 10rpx; color: var(--ui-gold); font-size: 32rpx; font-weight: 700; line-height: 1.5; }
+.result-card, .reward-card { padding: 26rpx; border: 1rpx solid var(--ui-line); border-radius: 24rpx; background: var(--ui-surface); }
+.section-title { font-size: 34rpx; font-weight: 700; line-height: 1.5; }
+.result-header, .result-row { display: flex; align-items: center; gap: 12rpx; }
+.result-header { margin-top: 20rpx; padding: 0 12rpx 16rpx; color: var(--ui-muted); font-size: 26rpx; line-height: 1.5; }
+.result-row { min-height: 100rpx; padding: 12rpx; border-top: 1rpx solid var(--ui-line); box-sizing: border-box; font-size: 32rpx; line-height: 1.5; }
+.result-row--first { border-top: 0; border-radius: 16rpx; background: var(--ui-gold-soft); }
+.result-rank { flex-shrink: 0; width: 96rpx; }
+.result-name { flex: 1; min-width: 0; }
+.result-row .result-name { font-weight: 700; }
+.result-score { flex-shrink: 0; width: 194rpx; text-align: right; font-variant-numeric: tabular-nums; }
+.result-row .result-score { font-weight: 700; }
+.result-congratulations { margin-top: 20rpx; font-size: 30rpx; line-height: 1.5; }
+.reward-card { margin-top: 22rpx; }
+.reward-heading { display: flex; align-items: center; justify-content: space-between; gap: 12rpx; margin-bottom: 16rpx; }
+.activity-copy { font-size: 32rpx; line-height: 1.65; overflow-wrap: anywhere; }
+.thanks-card { padding: 24rpx 8rpx 0; }
+.thanks-card .activity-copy + .activity-copy { margin-top: 16rpx; }
+.activity-contact { display: flex; justify-content: center; align-items: center; min-height: 96rpx; margin: 28rpx 0 0; padding: 22rpx; border-radius: 24rpx; background: var(--ui-gradient); color: var(--ui-on-primary); font-size: 32rpx; font-weight: 700; line-height: 1.5; }
 .activity-contact::after { border: 0; }
+.activity-contact--pressed { opacity: 0.8; }
 </style>

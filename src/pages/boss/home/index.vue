@@ -10,7 +10,17 @@
           <swiper class="hero-swiper" circular autoplay interval="4200" duration="480" @change="handleHeroChange">
             <swiper-item v-for="banner in heroBanners" :key="banner.id">
               <view class="hero-slide" :role="banner.target === 'brand' ? 'img' : 'button'" :aria-label="banner.title" @tap="handleHeroBannerTap(banner.target)">
-                <image v-if="!failedHeroImages[banner.id]" class="hero-slide__image" :src="banner.image" mode="aspectFill" @error="handleHeroImageError(banner)" />
+                <view v-if="banner.target === 'national-bounty'" class="event-result-banner" data-section="national-bounty-results">
+                  <view class="event-result-heading"><text>偷吃电竞 · 国庆冲榜</text><text class="event-result-status">{{ NATIONAL_BOUNTY_STATUS }}</text></view>
+                  <text class="event-result-title">国庆冲榜圆满结束</text>
+                  <view class="event-result-winners">
+                    <view v-for="winner in NATIONAL_BOUNTY_RESULTS" :key="winner.rank" class="event-result-winner">
+                      <text class="event-result-place">第{{ winner.rank }}名</text><text class="event-result-name">{{ winner.name }}</text><text class="event-result-score">{{ formatNationalBountyScore(winner.score) }}</text>
+                    </view>
+                  </view>
+                  <view class="event-result-footer"><text>奖励已全部发放</text><text>查看收官公告 ›</text></view>
+                </view>
+                <image v-else-if="!failedHeroImages[banner.id]" class="hero-slide__image" :src="banner.image" mode="aspectFill" @error="handleHeroImageError(banner)" />
                 <view v-else class="hero-slide__fallback"><text>{{ banner.title }}</text></view>
               </view>
             </swiper-item>
@@ -109,14 +119,15 @@ import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
 import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { formatDiamonds } from '@/utils/diamonds'
 import { toast } from '@/utils/feedback'
+import { NATIONAL_BOUNTY_RESULTS, NATIONAL_BOUNTY_STATUS, formatNationalBountyScore } from '@/constants/nationalBounty'
 
 type HeroTarget = 'national-bounty' | 'brand' | 'arena'
-type HeroBanner = { id: string; image: string; target: HeroTarget; title: string }
-const homeHero = '/images/home-redesign/national-bounty-2026.jpg'
+type HeroBanner = { id: string; image?: string; target: HeroTarget; title: string }
+const homeHero = '/images/home-redesign/club-welcome.jpg'
 const currentHeroIndex = ref(0)
 const failedHeroImages = ref<Record<string, boolean>>({})
 const heroBanners: HeroBanner[] = [
-  { id: 'national-bounty', image: homeHero, target: 'national-bounty', title: '国庆赏金赛，查看活动规则' },
+  { id: 'national-bounty', target: 'national-bounty', title: '国庆冲榜已结束，奖励已全部发放，查看最终排名' },
   { id: 'club-welcome', image: '/images/home-redesign/club-welcome.jpg', target: 'brand', title: '偷吃电竞' },
   { id: 'arena-s7', image: '/images/home-redesign/arena-s7-utopia.jpg', target: 'arena', title: '暗区突围无限，S7赛季已上线，查看暗区服务' }
 ]
@@ -232,6 +243,18 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .hero-slide { position: relative; height: 100%; overflow: hidden; border-radius: 28rpx; background: var(--ui-primary, #15261b); }
 .hero-slide__fallback { display: flex; align-items: center; justify-content: center; height: 100%; padding: 32rpx; box-sizing: border-box; background: var(--ui-gradient); color: var(--ui-on-primary); font-size: 32rpx; font-weight: 700; text-align: center; line-height: 1.7; }
 .hero-slide__image { display: block; width: 100%; height: 327rpx; }
+.event-result-banner { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 24rpx 28rpx; box-sizing: border-box; border: 1rpx solid var(--ui-gold-line); border-radius: 28rpx; background: var(--ui-gold-soft); color: var(--ui-text); }
+.event-result-heading, .event-result-footer { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; font-size: 24rpx; line-height: 1.5; }
+.event-result-heading { color: var(--ui-gold); font-weight: 600; }
+.event-result-status { flex-shrink: 0; padding: 2rpx 12rpx; border: 1rpx solid var(--ui-gold-line); border-radius: 10rpx; }
+.event-result-title { display: block; font-size: 36rpx; font-weight: 800; line-height: 1.35; }
+.event-result-winners { display: flex; gap: 12rpx; }
+.event-result-winner { flex: 1; min-width: 0; }
+.event-result-place, .event-result-name, .event-result-score { display: block; }
+.event-result-place { font-size: 22rpx; line-height: 1.5; color: var(--ui-muted); }
+.event-result-name { font-size: 28rpx; font-weight: 700; line-height: 1.5; }
+.event-result-score { font-size: 24rpx; font-weight: 600; line-height: 1.5; color: var(--ui-gold); font-variant-numeric: tabular-nums; }
+.event-result-footer { color: var(--ui-gold); }
 .hero-meta { display: flex; justify-content: center; margin-top: 14rpx; }
 .hero-dots { display: flex; gap: 10rpx; }
 .hero-dots text { display: block; width: 18rpx; height: 6rpx; border-radius: 999rpx; background: var(--ui-accent-line); }
