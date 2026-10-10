@@ -98,3 +98,15 @@ final result: blocked (native visual review pending)
 本轮未操作窗口。横向字幕的实际速度、循环衔接、字体和“我的”页完整布局由使用者重新编译后确认；源码及隔离运行时检查不构成原生视觉验收。
 
 final result: blocked (native visual review pending)
+
+## 2026-10-11 编译热重载与页面数据错位
+
+使用者反馈个人页显示图标资源路径、按钮标题显示 false，同时冠名条只剩皇冠和暂停图标。当前磁盘相关 JS/WXML/WXSS/JSON 来自同一次构建；本次个人页只新增 VIP 挂载和 import，没有修改登录、快捷入口或会话逻辑。
+
+在独立目录构建前一提交 8aada6f，使用真实旧 JS 配新 WXML 复现截图特征：新个人页状态文字字段读取旧 reviews 图标路径，按钮标题读取旧条件布尔值；冠名新模板把旧 slide 的头像条件当成嵌套消息数组、把旧 autoplay 当轨道 style，导致内部内容为空，两侧固定图标仍显示。匹配版本的产物正确显示标题、资料和完整老板消息。此证据支持热重载的旧实例/新模板错配；未读取使用者实际窗口确认运行缓存。
+
+本地 project.private.config.json 原启用 compileHotReLoad，已先备份，再仅将该开关改为 false。登录缓存没有清除；project.config.json 与 .env.local 的 SHA-256 保持不变。本地私有配置不进入 PR。重新生成整套小程序产物，并补充按实际 WXML 字段核对真实编译个人页的检查，覆盖游客、已登录陪玩、接单暂停、过期、VIP 父子数据、钱包/成长区分和原跳转。
+
+验证：428 项测试、mp-weixin 构建及 9 项编译产物检查通过。实际使用者需要退出当前项目、重新打开并点“编译”，重建页面实例，再核对两处显示。本轮未操作窗口，不把匹配版本的隔离运行时检查当作原生视觉通过。
+
+final result: blocked (native visual review pending)
