@@ -1,8 +1,8 @@
 import { getPlayerList, type OnlinePlayer } from '@/api/boss'
-import { getPatronageCrowns, type PatronageCrown } from '@/api/patronage'
+import { getPatronageCrowns, getPatronageWallSummary, type PatronageCrown } from '@/api/patronage'
 import { getClientSessionGeneration } from '@/utils/sessionExpiry'
 
-export interface PatronageWallEntry { player: OnlinePlayer; crowns: PatronageCrown[] }
+export interface PatronageWallEntry { player: Pick<OnlinePlayer, 'id' | 'name' | 'avatar_url' | 'type_name'>; crowns: PatronageCrown[] }
 export interface PatronageWallUpdate {
   completed: number
   total: number
@@ -111,8 +111,8 @@ export function invalidatePatronageWallCache() {
   if (activeScan) stop(activeScan, cancelled())
 }
 
-/** Public players are one complete, unpaginated array; crowns need per-player reads.
- * Updates are partial until complete=true. The promise resolves only a complete scan.
+/** Prefer the complete public summary; only HTTP 404 permits per-player reads.
+ * Compatibility updates stay partial until complete=true; resolve only a complete wall.
  * Only successful complete results are cached, in memory for the current session.
  */
 export async function loadPatronageWall({ isCurrent = () => true, onProgress, onUpdate, forceRefresh = false }: PatronageWallOptions = {}): Promise<PatronageWallEntry[]> {
@@ -165,6 +165,18 @@ export async function loadPatronageWall({ isCurrent = () => true, onProgress, on
 async function runScan(scan: Scan) {
   try {
     checkScan(scan)
+    // New servers return the complete wall in one read. Only an explicit 404
+    // permits the old per-player scan during the backend deployment transition.
+    const summary = await getPatronageWallSummary()
+    checkScan(scan)
+    if (summary !== null) {
+      scan.ready = true
+      scan.total = scan.completed = summary.length
+      scan.results = copy(summary)
+      publish(scan, false, true)
+      finishScan(scan)
+      return
+    }
     const response = await getPlayerList({})
     checkScan(scan)
     if (!Array.isArray(response)) throw new Error('陪玩列表响应异常，请重试')
@@ -198,13 +210,17 @@ async function runScan(scan: Scan) {
     }
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, players.length) }, () => worker()))
     checkScan(scan)
-    // One completion time also removes grants expiring during a long full scan.
-    const now = Date.now(), entries = activeEntries(scan.results, now)
-    publish(scan, true, false, entries)
-    cache = { key: scan.key, savedAt: now, total: scan.total, entries: copy(entries) }
-    if (activeScan === scan) activeScan = undefined
-    scan.stopped = true
-    for (const subscriber of scan.subscribers) subscriber.resolve(copy(entries))
-    scan.subscribers.clear()
+    finishScan(scan)
   } catch (error) { stop(scan, error) }
+}
+
+function finishScan(scan: Scan) {
+  // Recheck expiry at the same completion time for either loading path.
+  const now = Date.now(), entries = activeEntries(scan.results, now)
+  publish(scan, true, false, entries)
+  cache = { key: scan.key, savedAt: now, total: scan.total, entries: copy(entries) }
+  if (activeScan === scan) activeScan = undefined
+  scan.stopped = true
+  for (const subscriber of scan.subscribers) subscriber.resolve(copy(entries))
+  scan.subscribers.clear()
 }

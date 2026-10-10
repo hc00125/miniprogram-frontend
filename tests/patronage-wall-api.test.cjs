@@ -3,12 +3,12 @@ const { harness } = require('./commerce-sfc-harness.cjs')
 const tick = () => new Promise(resolve => setImmediate(resolve))
 const player = id => ({ id, name: `陪玩${id}`, type_name: '技术陪', is_online: true })
 const crown = id => ({ id, boss_name: `老板${id}`, boss_avatar_url: '', package_name: '周冠', starts_at: '2020-01-01T00:00:00Z', expires_at: '2099-01-01T00:00:00Z', source: 'purchase' })
-function setup(players, crowns) {
+function setup(players, crowns, summary = async () => null) {
   const calls = []
   let generation = '0'
   const h = harness({
     '@/api/boss': { getPlayerList: async params => { calls.push(params); return typeof players === 'function' ? players() : players } },
-    '@/api/patronage': { getPatronageCrowns: crowns },
+    '@/api/patronage': { getPatronageCrowns: crowns, getPatronageWallSummary: summary },
     '@/utils/sessionExpiry': { getClientSessionGeneration: () => generation }
   })
   const api = h.load('src/api/patronageWall.ts')
@@ -109,7 +109,9 @@ test('crown response errors are not converted into empty membership', async () =
 test('wall uses the real crown date parser so expired, future and malformed intervals never produce active entries', async () => {
   const h = harness({ '@/api/boss': { getPlayerList: async () => [player(7)] } })
   let request
-  h.uni.request = options => { request = options; options.success({ statusCode: 200, data: { results: [
+  h.uni.request = options => {
+    if (options.url.endsWith('/wall/')) { options.success({ statusCode: 404, data: { detail: 'not deployed' } }); return }
+    request = options; options.success({ statusCode: 200, data: { results: [
     { ...crown(1), expires_at: '2020-01-02T00:00:00Z' },
     { ...crown(2), starts_at: '2098-01-01T00:00:00Z' },
     { ...crown(3), expires_at: 'bad' }
@@ -117,6 +119,37 @@ test('wall uses the real crown date parser so expired, future and malformed inte
   assert.deepEqual(await h.load('src/api/patronageWall.ts').loadPatronageWall(), [])
   assert.equal(request.method, 'GET'); assert.equal(request.url, 'https://fixture.invalid/api/patronage/crowns/')
   assert.deepEqual(request.data, { player_id: 7 })
+})
+
+test('deployed summary completes the wall without a player list or per-player reads, then reuses its complete cache', async () => {
+  let reads = 0
+  const updates = [], result = [{ player: { id: 7, name: '陪玩甲', avatar_url: '', type_name: '技术陪' }, crowns: [crown(7)] }]
+  const s = setup(() => { throw Error('must not read public list') }, () => { throw Error('must not scan crowns') }, async () => { reads++; return result })
+  assert.deepEqual(await s.api.loadPatronageWall({ onUpdate: (entries, meta) => updates.push({ entries, meta }) }), result)
+  assert.equal(reads, 1); assert.equal(s.calls.length, 0); assert.equal(updates.at(-1).meta.complete, true)
+  result[0].player.name = '外部修改'
+  assert.equal((await s.api.loadPatronageWall())[0].player.name, '陪玩甲'); assert.equal(reads, 1)
+  await s.api.loadPatronageWall({ forceRefresh: true }); assert.equal(reads, 2)
+})
+
+test('an empty summary is complete while summary errors never trigger an expensive fallback scan', async () => {
+  const empty = setup(() => { throw Error('unexpected list') }, () => { throw Error('unexpected crowns') }, async () => [])
+  assert.deepEqual(await empty.api.loadPatronageWall(), []); assert.equal(empty.calls.length, 0)
+  for (const reason of [Error('malformed summary'), Error('503'), Error('network timeout')]) {
+    const s = setup([player(1)], async () => [crown(1)], async () => { throw reason })
+    await assert.rejects(s.api.loadPatronageWall(), e => e === reason); assert.equal(s.calls.length, 0)
+  }
+})
+
+test('two entrances share one pending summary and a hidden subscriber cannot invalidate the other entrance', async () => {
+  let reads = 0, finish, firstVisible = true
+  const s = setup([], async () => [], () => { reads++; return new Promise(resolve => { finish = resolve }) })
+  const first = s.api.loadPatronageWall({ isCurrent: () => firstVisible })
+  const cancelled = assert.rejects(first, /已取消/)
+  const second = s.api.loadPatronageWall()
+  firstVisible = false
+  finish([{ player: player(7), crowns: [crown(7)] }])
+  await cancelled; assert.equal((await second)[0].player.id, 7); assert.equal(reads, 1)
 })
 
 test('completion rechecks every crown against one shared time and removes grants that expired while other players loaded', async t => {
@@ -148,7 +181,7 @@ test('wall works in an isolated older runtime without Array.prototype.flatMap', 
   const mod = { exports: {} }, requests = []
   const imports = {
     '@/api/boss': { getPlayerList: async () => [player(1), player(2), player(3)] },
-    '@/api/patronage': { getPatronageCrowns: async id => {
+    '@/api/patronage': { getPatronageWallSummary: async () => null, getPatronageCrowns: async id => {
       requests.push(id)
       return id === 2 ? [] : [crown(id), { ...crown(id + 10), expires_at: '2020-01-02T00:00:00Z' }]
     } }

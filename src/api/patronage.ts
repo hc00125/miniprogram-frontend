@@ -35,6 +35,10 @@ export async function getPatronageQuote(playerId: number, packageCode: Patronage
   return result
 }
 export interface PatronageCrown { id: number; boss_name: string; boss_avatar_url: string; package_name: string; starts_at: string; expires_at: string; source: 'purchase' | 'day_pass_bonus' }
+export interface PatronageWallSummaryEntry {
+  player: { id: number; name: string; avatar_url: string; type_name: string }
+  crowns: PatronageCrown[]
+}
 export interface PatronageRecord extends PatronageServiceTerms {
   purchase_no: string; idempotency_key: string; price_version: string; player_id: number; player_name: string; package_code: PatronageCode; package_name: string
   amount_yuan: string; amount_diamonds: string; payment_status: 'created' | 'processing' | 'unknown' | 'paid' | 'failed'
@@ -44,15 +48,52 @@ export interface PatronageRecords { count: number; next: string | null; previous
 function validDate(value: any): boolean { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T.*(Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value)) }
 function date(value: any): string { if (!validDate(value)) invalid(); return value }
 function optionalDate(value: any): string | null { return value === null ? null : date(value) }
+function parseCrown(value: unknown): PatronageCrown {
+  const raw = object(value)
+  if (!['purchase', 'day_pass_bonus'].includes(raw.source)) invalid()
+  return { id: integer(raw.id, 1), boss_name: text(raw.boss_name), boss_avatar_url: text(raw.boss_avatar_url), package_name: text(raw.package_name), starts_at: date(raw.starts_at), expires_at: date(raw.expires_at), source: raw.source }
+}
 export async function getPatronageCrowns(playerId: number, now = Date.now()): Promise<PatronageCrown[]> {
   const v = object(await request('GET', 'crowns', { player_id: integer(playerId, 1) }))
   return list(v.results).filter(raw => {
     const c = object(raw)
     return validDate(c.starts_at) && validDate(c.expires_at) && Date.parse(c.starts_at) <= now && Date.parse(c.expires_at) > now
-  }).map(raw => {
-    if (!['purchase', 'day_pass_bonus'].includes(raw.source)) invalid()
-    return { id: integer(raw.id, 1), boss_name: text(raw.boss_name), boss_avatar_url: text(raw.boss_avatar_url), package_name: text(raw.package_name), starts_at: date(raw.starts_at), expires_at: date(raw.expires_at), source: raw.source }
-  })
+  }).map(parseCrown)
+}
+/** One complete public wall. Only a real HTTP 404 means an older server. */
+export async function getPatronageWallSummary(): Promise<PatronageWallSummaryEntry[] | null> {
+  const response = await request('GET', 'wall', undefined, false, { allowNotFound: true, publicRead: true })
+  if (response === wallNotFound) return null
+  const v = object(response), rows = list(v.results)
+  version(v.contract_version)
+  if (integer(v.count) !== rows.length) invalid()
+  // A partial page must never be mistaken for the complete crown wall.
+  for (const key of ['next', 'previous', 'page', 'page_size', 'total_pages', 'has_more', 'pagination']) {
+    if (Object.prototype.hasOwnProperty.call(v, key)) invalid()
+  }
+  const now = Date.now(), playerIds = new Set<number>(), crownOwners = new Map<number, number>(), entries: PatronageWallSummaryEntry[] = []
+  for (const row of rows) {
+    const entry = object(row), rawPlayer = object(entry.player)
+    const player = { id: integer(rawPlayer.id, 1), name: text(rawPlayer.name), avatar_url: text(rawPlayer.avatar_url), type_name: text(rawPlayer.type_name) }
+    if (playerIds.has(player.id)) invalid()
+    playerIds.add(player.id)
+    const rawCrowns = list(entry.crowns), unique = new Map<number, PatronageCrown>()
+    if (!rawCrowns.length) invalid()
+    // Validate every record before filtering expiry, so malformed rows cannot
+    // quietly remove a player. Project only the public contract fields.
+    for (const raw of rawCrowns) {
+      const crown = parseCrown(raw)
+      if (Date.parse(crown.expires_at) <= Date.parse(crown.starts_at)) invalid()
+      const owner = crownOwners.get(crown.id), existing = unique.get(crown.id)
+      if (owner !== undefined && owner !== player.id) invalid()
+      if (existing && JSON.stringify(existing) !== JSON.stringify(crown)) invalid()
+      crownOwners.set(crown.id, player.id)
+      unique.set(crown.id, crown)
+    }
+    const crowns = Array.from(unique.values()).filter(crown => Date.parse(crown.starts_at) <= now && Date.parse(crown.expires_at) > now)
+    if (crowns.length) entries.push({ player, crowns })
+  }
+  return entries
 }
 const paymentLabels = { created: '待支付', processing: '支付处理中', unknown: '支付结果待确认', paid: '已支付', failed: '支付失败' }
 export function patronagePaymentLabel(status: PatronageRecord['payment_status']): string { return paymentLabels[status] || '状态待确认' }
@@ -118,19 +159,24 @@ export function createPatronagePaymentAdapter(transport: PatronagePaymentTranspo
 export function patronageSession() { return String(uni.getStorageSync('token') || '') }
 // This namespace is not covered by the shared helper's client-token prefixes.
 // Explicitly bind client credentials; never fall back to an administrator token.
-async function request(method: 'GET' | 'POST', endpoint: string, data?: object, authenticated = false): Promise<unknown> {
+const wallNotFound = Object.freeze({})
+async function request(method: 'GET' | 'POST', endpoint: string, data?: object, authenticated = false, options: { allowNotFound?: boolean; publicRead?: boolean } = {}): Promise<unknown> {
   const sentToken = patronageSession(), sentGeneration = getClientSessionGeneration()
   if (authenticated && !sentToken) throw new Error('请先登录后查看')
   const path = `/patronage/${endpoint}/`
   return new Promise((resolve, reject) => uni.request({
     url: `${BASE_URL.replace(/\/$/, '')}${path}`, method, data,
-    header: sentToken ? { Authorization: `Bearer ${sentToken}` } : {},
+    // The complete wall is deliberately anonymous even for a logged-in user.
+    // Keep the captured session identity solely to reject old responses.
+    header: !options.publicRead && sentToken ? { Authorization: `Bearer ${sentToken}` } : {},
     success: res => {
       if (sentToken !== patronageSession() || sentGeneration !== getClientSessionGeneration()) { reject(new Error('登录状态已改变，请刷新')); return }
-      if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data)
+      if (res.statusCode === 404 && options.allowNotFound) resolve(wallNotFound)
+      else if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data)
       else {
         const body = res.data && typeof res.data === 'object' ? res.data : { detail: '冠名服务暂不可用，请稍后重试' }
-        reject(handleSessionExpiry(res.statusCode, body, path, 'token', sentToken) || body)
+        // A credential-free public read cannot expire the client's login.
+        reject(options.publicRead ? body : handleSessionExpiry(res.statusCode, body, path, 'token', sentToken) || body)
       }
     }, fail: () => reject(new Error('网络异常，请稍后重试'))
   }))
