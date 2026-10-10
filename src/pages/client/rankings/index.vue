@@ -5,12 +5,12 @@
       <view class="heading-emblem"><view class="emblem-bar bar-short" /><view class="emblem-bar bar-tall" /><view class="emblem-bar bar-middle" /></view>
     </view>
     <view class="board-tabs">
-      <button v-for="tab in boards" :key="tab.value" class="board-tab" :class="{ active: board === tab.value }" :aria-pressed="board === tab.value" :data-action="`board-${tab.value}`" @tap="selectBoard(tab.value)">
+      <button v-for="tab in boards" :key="tab.value" class="board-tab" hover-class="board-tab--pressed" :class="{ active: board === tab.value }" :aria-pressed="board === tab.value" :data-action="`board-${tab.value}`" @tap="selectBoard(tab.value)">
         <text class="board-title">{{ tab.label }}</text>
       </button>
-      <button class="board-tab board-tab--patronage" hover-class="board-tab--pressed" data-action="open-patronage-wall" @tap="openPatronageWall"><text class="board-title">冠名榜单</text></button>
     </view>
-    <view class="ranking-card">
+    <PatronageWallPanel v-if="board === 'patronage'" embedded />
+    <view v-else class="ranking-card">
       <view class="period-tabs">
         <button v-for="tab in periods" :key="tab.value" class="period-tab" :class="{ active: period === tab.value }" :aria-pressed="period === tab.value" :data-action="`period-${tab.value}`" @tap="selectPeriod(tab.value)">{{ tab.label }}</button>
       </view>
@@ -35,10 +35,11 @@
 import { computed, ref, onBeforeUnmount } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { getRankings, type RankingBoard, type RankingPeriod, type RankingResult } from '@/api/rankings'
-import { go } from '@/utils/nav'
-const boards: { value: RankingBoard; label: string }[] = [{ value: 'boss', label: '老板贡献榜' }, { value: 'player', label: '陪玩接单榜' }]
+import PatronageWallPanel from '@/components/PatronageWallPanel.vue'
+type RankingTab = 'patronage' | RankingBoard
+const boards: { value: RankingTab; label: string }[] = [{ value: 'patronage', label: '冠名榜单' }, { value: 'boss', label: '老板贡献榜' }, { value: 'player', label: '陪玩接单榜' }]
 const periods: { value: RankingPeriod; label: string }[] = [{ value: 'day', label: '日榜' }, { value: 'week', label: '周榜' }, { value: 'month', label: '月榜' }]
-const board = ref<RankingBoard>('boss'), period = ref<RankingPeriod>('day')
+const board = ref<RankingTab>('patronage'), period = ref<RankingPeriod>('day')
 const status = ref<'loading' | 'error' | 'unavailable' | 'ready'>('loading'), result = ref<RankingResult | null>(null)
 const failedImages = ref<Record<string, boolean>>({})
 const items = computed(() => result.value?.available ? result.value.results : [])
@@ -48,15 +49,15 @@ async function load() {
   if (!visible) return
   const ticket = ++generation, requestedBoard = board.value, requestedPeriod = period.value
   status.value = 'loading'; result.value = null; failedImages.value = {}
+  if (requestedBoard === 'patronage') { status.value = 'ready'; return }
   try {
     const data = await getRankings(requestedBoard, requestedPeriod)
     if (!visible || ticket !== generation) return
     result.value = data; status.value = data.available ? 'ready' : 'unavailable'
   } catch { if (visible && ticket === generation) status.value = 'error' }
 }
-function selectBoard(value: RankingBoard) { if (value === board.value) return; board.value = value; return load() }
-function selectPeriod(value: RankingPeriod) { if (value === period.value) return; period.value = value; return load() }
-function openPatronageWall() { go('/pages/client/patronage-wall/index') }
+function selectBoard(value: RankingTab) { if (value === board.value) return; board.value = value; return load() }
+function selectPeriod(value: RankingPeriod) { if (board.value === 'patronage' || value === period.value) return; period.value = value; return load() }
 function hide() { visible = false; generation++ }
 onShow(() => { visible = true; return load() })
 onHide(hide); onUnload(hide); onBeforeUnmount(hide)
@@ -72,7 +73,6 @@ onHide(hide); onUnload(hide); onBeforeUnmount(hide)
 .board-tabs { display: flex; gap: 12rpx; margin-bottom: 24rpx; }
 .board-tab { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 88rpx; margin: 0; padding: 22rpx 8rpx; box-sizing: border-box; border-radius: 22rpx; border: 1rpx solid var(--ui-line, #e2e7da); background: var(--ui-surface, #fffefa); color: var(--ui-muted, #61725e); line-height: 1.5; text-align: center; }
 .board-tab.active { background: var(--ui-primary, #1f7c4b); color: #fffefa; border-color: var(--ui-accent-line, #1f7c4b); }
-.board-tab--patronage { color: var(--ui-gold, #94651e); background: var(--ui-gold-soft, #fbf5e9); border-color: var(--ui-gold-line, #dcc39a); }
 .board-tab--pressed { opacity: .85; }
 .board-tab::after, .period-tab::after, .retry-button::after { border: 0; }
 .board-title { display: block; white-space: nowrap; font-size: 26rpx; font-weight: 800; }

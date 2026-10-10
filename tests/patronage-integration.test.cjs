@@ -7,7 +7,8 @@ test('same-token login completion advances non-secret session generation',()=>{
 })
 const purchase='src/pages/client/patronage/index.vue'
 function livePage(options={}) {
- const p=setup(purchase),requests=[],modals=[],logins=[];let replyKey='',status='paid'
+ let wallInvalidations=0
+ const p=setup(purchase, {}, {}, {'@/api/patronageWall':{invalidatePatronageWallCache:()=>wallInvalidations++}}),requests=[],modals=[],logins=[];let replyKey='',status='paid'
  p.h.uni.showModal=o=>modals.push(o)
  p.h.uni.login=o=>{logins.push(o);o.success({code:'temporary-wechat-code'})}
  p.h.uni.request=o=>{
@@ -19,17 +20,20 @@ function livePage(options={}) {
   o.success({statusCode:200,data})
  }
  p.life.load[0]({playerId:'7'})
- return {...p,requests,modals,logins,setStatus:v=>status=v}
+ return {...p,requests,modals,logins,setStatus:v=>status=v,wallInvalidations:()=>wallInvalidations}
 }
 test('enabled real SFC confirms before one POST, verifies original-key GET then explicitly buys again; cancel never sends',async()=>{
- const p=livePage();await p.life.show[0]();assert.equal(p.action('purchase').props.disabled,false)
+ const p=livePage();await p.life.show[0]();assert.equal(p.action('purchase').props.disabled,false);assert.equal(p.wallInvalidations(),0)
  const cancelled=p.action('purchase').props.onTap();await tick();assert.equal(p.modals.length,1);assert.equal(p.requests.filter(o=>o.url.endsWith('/purchases/')).length,0);p.modals[0].success({confirm:false});await cancelled
+ assert.equal(p.wallInvalidations(),0)
  const buying=p.action('purchase').props.onTap();await tick();await p.action('purchase').props.onTap();assert.equal(p.modals.length,2);p.modals[1].success({confirm:true});await buying
  const posts=()=>p.requests.filter(o=>o.url.endsWith('/purchases/'));assert.equal(posts().length,1);assert.equal(posts()[0].data.code,'temporary-wechat-code')
  assert.equal(p.requests.at(-1).url.endsWith('/purchases/by-key/'),true);assert.equal(p.requests.at(-1).data.idempotency_key,posts()[0].data.idempotency_key)
  assert.match(p.text(),/购买成功/);assert.equal(p.action('purchase').props.disabled,true);assert.ok(p.action('buy-again'))
+ assert.equal(p.wallInvalidations(),1)
  const again=p.action('buy-again').props.onTap();await tick();p.modals[2].success({confirm:true});await again
  assert.equal(posts().length,2);assert.notEqual(posts()[0].data.idempotency_key,posts()[1].data.idempotency_key)
+ assert.equal(p.wallInvalidations(),2)
  assert.equal(Object.keys(p.h.storage).filter(k=>k.includes(':archive:')).length,1);assert.doesNotMatch(JSON.stringify(Object.entries(p.h.storage).filter(([k])=>k.startsWith('patronage:'))),/temporary-wechat-code|fixture-session/);p.scope.stop()
 })
 test('same-token relogin while initial quote is pending cannot rebrand the late response or open purchasing',async()=>{
@@ -50,6 +54,7 @@ test('cross-device pending is recovered by original server key only and count co
  const p=livePage({pending:{count:21,next:'https://evil.invalid',previous:null,results:[record()]}});await p.life.show[0]()
  assert.match(p.text(),/未决交易 21 笔/);await p.action('pending-PN-fixture').props.onTap()
  const reads=p.requests.filter(o=>o.url.endsWith('/by-key/'));assert.equal(reads.length,1);assert.equal(reads[0].data.idempotency_key,key);assert.equal(p.requests.some(o=>o.url.endsWith('/purchases/')),false);assert.equal(p.action('purchase').props.disabled,true);assert.equal(p.modals.length,0);p.scope.stop()
+ assert.equal(p.wallInvalidations(),1)
 })
 test('POST timeout survives hide/show; HTTP 404 then unknown then paid recovery never reposts or rotates key',async()=>{
  let readStatus=404;const p=livePage({request:(o,end)=>{if(end==='purchases/'){o.fail({errMsg:'timeout'});return true}if(end==='purchases/by-key/' && readStatus===404){o.success({statusCode:404,data:{detail:'not found'}});return true}}})
@@ -57,13 +62,15 @@ test('POST timeout survives hide/show; HTTP 404 then unknown then paid recovery 
  const sent=p.requests.find(o=>o.url.endsWith('/purchases/')).data.idempotency_key;assert.doesNotMatch(p.text(),/购买成功/);assert.equal(p.action('buy-again'),undefined)
  p.life.hide[0]();await p.life.show[0]();await p.action('recover').props.onTap();assert.equal(p.action('purchase').props.disabled,true)
  readStatus=200;p.setStatus('unknown');await p.action('recover').props.onTap();assert.equal(p.action('buy-again'),undefined)
+ assert.equal(p.wallInvalidations(),0)
  p.setStatus('paid');await p.action('recover').props.onTap();assert.match(p.text(),/购买成功/);assert.ok(p.action('buy-again'));assert.equal(p.requests.filter(o=>o.url.endsWith('/purchases/')).length,1)
+ assert.equal(p.wallInvalidations(),1)
  assert.ok(p.requests.filter(o=>o.url.endsWith('/by-key/')).every(o=>o.data.idempotency_key===sent));p.scope.stop()
 })
 test('POST paid is not success when by-key verification fails, and explicit again rechecks pending before a new key',async()=>{
  let failRead=true,blocked=false;const p=livePage({request:(o,end)=>{if(end==='purchases/by-key/'&&failRead){o.success({statusCode:503,data:{detail:'unavailable'}});return true}if(end==='purchases/pending/'&&blocked){o.success({statusCode:200,data:{count:1,next:null,previous:null,results:[record()]}});return true}}})
  await p.life.show[0]();const buy=p.action('purchase').props.onTap();await tick();p.modals[0].success({confirm:true});await buy
- assert.doesNotMatch(p.text(),/购买成功/);assert.equal(p.action('buy-again'),undefined);failRead=false;await p.action('recover').props.onTap();assert.match(p.text(),/购买成功/)
+ assert.doesNotMatch(p.text(),/购买成功/);assert.equal(p.action('buy-again'),undefined);assert.equal(p.wallInvalidations(),0);failRead=false;await p.action('recover').props.onTap();assert.match(p.text(),/购买成功/);assert.equal(p.wallInvalidations(),1)
  const before=JSON.stringify(Object.entries(p.h.storage).filter(([k])=>k.startsWith('patronage:')));blocked=true;await p.action('buy-again').props.onTap();assert.equal(p.modals.length,1);assert.equal(JSON.stringify(Object.entries(p.h.storage).filter(([k])=>k.startsWith('patronage:'))),before);p.scope.stop()
 })
 test('hide unload relogin and account switch discard late login and never POST',async()=>{

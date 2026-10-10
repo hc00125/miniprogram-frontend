@@ -41,16 +41,64 @@ test('rankings enforce competitive ranks 1,1,3 rather than trusting malformed ra
   }
 })
 function page() {
-  const requests = [], unmount = []
-  const h = harness({ vue: { ...vue, onBeforeUnmount: f => unmount.push(f) }, '@/api/rankings': { getRankings: (board, period) => new Promise((resolve, reject) => requests.push({ board, period, resolve, reject })) } })
+  const requests = [], unmount = [], calls = []
+  const h = harness({ vue: { ...vue, onBeforeUnmount: f => unmount.push(f) }, '@/components/PatronageWallPanel.vue': { default: { name: 'PatronageWallPanel', props: ['embedded'] } }, '@/api/rankings': { getRankings: (board, period) => new Promise((resolve, reject) => requests.push({ board, period, resolve, reject })) }, '@/utils/nav': { go: (...args) => calls.push(args) } })
   const scope = vue.effectScope(), C = h.load('src/pages/client/rankings/index.vue').default, draw = scope.run(() => C.setup({}, { expose() {} }))
   const tree = () => nodes(draw({}, [])), text = () => tree().filter(n => typeof n.children === 'string').map(n => n.children).join('|'), action = id => tree().find(n => n.props?.['data-action'] === id)
-  return { requests, h, text, action, close: () => { unmount.forEach(f => f()); scope.stop() } }
+  return { requests, calls, h, tree, text, action, close: () => { unmount.forEach(f => f()); scope.stop() } }
 }
+test('rankings defaults to the inline crown wall with three ordered tabs and no statistics request or period controls', async () => {
+  const p = page()
+  try {
+    await p.h.hooks.show[0]()
+    assert.deepEqual(p.tree().filter(n => String(n.props?.['data-action']).startsWith('board-')).map(n => n.props['data-action']), ['board-patronage', 'board-boss', 'board-player'])
+    assert.equal(p.action('board-patronage').props['aria-pressed'], true)
+    assert.equal(p.tree().find(n => n.type?.name === 'PatronageWallPanel').props.embedded, '')
+    for (const id of ['period-day', 'period-week', 'period-month', 'loading', 'open-patronage-wall']) assert.equal(p.action(id), undefined)
+    assert.deepEqual(p.requests, []); assert.deepEqual(p.calls, [])
+    await p.action('board-patronage').props.onTap(); p.h.hooks.hide[0](); await p.h.hooks.show[0]()
+    assert.deepEqual(p.requests, []); assert.deepEqual(p.calls, [])
+  } finally { p.close() }
+})
+test('switching to the crown wall discards pending statistics success or error and retains the chosen period for a fresh return', async () => {
+  const p = page()
+  try {
+    await p.h.hooks.show[0](); p.action('board-boss').props.onTap()
+    const stalePeriod = p.action('period-month').props.onTap
+    p.action('period-week').props.onTap(); p.action('board-patronage').props.onTap()
+    await stalePeriod(); assert.equal(p.requests.length, 2)
+    p.requests[0].resolve(response('boss', 'day', [row('迟到老板')])); p.requests[1].reject(new Error('late error')); await tick()
+    assert.equal(p.action('loading'), undefined); assert.equal(p.action('error'), undefined); assert.doesNotMatch(p.text(), /迟到老板/)
+    assert.ok(p.tree().find(n => n.type?.name === 'PatronageWallPanel'))
+    p.action('board-player').props.onTap()
+    assert.deepEqual([p.requests[2].board, p.requests[2].period], ['player', 'week'])
+    assert.equal(p.tree().find(n => n.type?.name === 'PatronageWallPanel'), undefined)
+    p.requests[2].resolve(response('player', 'week', [row('当前陪玩')])); await tick(); assert.match(p.text(), /当前陪玩/)
+    assert.deepEqual(p.calls, [])
+  } finally { p.close() }
+})
+test('both statistics tabs retain all six board and period request combinations without requesting a patronage ranking', async () => {
+  const p = page()
+  try {
+    await p.h.hooks.show[0]()
+    for (const board of ['boss', 'player']) {
+      p.action(`board-${board}`).props.onTap()
+      for (const period of ['day', 'week', 'month']) {
+        p.action(`period-${period}`).props.onTap()
+        const current = p.requests.at(-1)
+        assert.deepEqual([current.board, current.period], [board, period])
+        current.resolve(response(board, period, [row(`${board}-${period}`)])); await tick()
+        assert.match(p.text(), new RegExp(`${board}-${period}`))
+      }
+    }
+    assert.deepEqual([...new Set(p.requests.map(r => `${r.board}:${r.period}`))].sort(), ['boss:day', 'boss:month', 'boss:week', 'player:day', 'player:month', 'player:week'])
+    assert.ok(p.requests.every(r => r.board === 'boss' || r.board === 'player'))
+  } finally { p.close() }
+})
 test('ranking tabs discard stale responses and preserve selected board and period after returning', async () => {
   const p = page()
   try {
-    p.h.hooks.show[0](); assert.ok(p.action('loading')); assert.deepEqual([p.requests[0].board, p.requests[0].period], ['boss', 'day']); assert.equal(p.action('board-boss').props['aria-pressed'], true)
+    p.h.hooks.show[0](); p.action('board-boss').props.onTap(); assert.ok(p.action('loading')); assert.deepEqual([p.requests[0].board, p.requests[0].period], ['boss', 'day']); assert.equal(p.action('board-boss').props['aria-pressed'], true)
     p.action('board-player').props.onTap(); p.action('period-week').props.onTap()
     assert.deepEqual([p.requests[2].board, p.requests[2].period], ['player', 'week'])
     assert.equal(p.action('board-boss').props['aria-pressed'], false); assert.equal(p.action('board-player').props['aria-pressed'], true); assert.equal(p.action('period-week').props['aria-pressed'], true)
@@ -64,7 +112,7 @@ test('ranking tabs discard stale responses and preserve selected board and perio
 test('ranking pages keep real row data without explanatory small print on either board', async () => {
   const p = page()
   try {
-    p.h.hooks.show[0](); p.requests[0].resolve(response()); await tick()
+    p.h.hooks.show[0](); p.action('board-boss').props.onTap(); p.requests[0].resolve(response()); await tick()
     assert.match(p.text(), /公开昵称/); assert.match(p.text(), /1,200/); assert.match(p.text(), /钻石/)
     assert.equal(p.action('ranking-rules'), undefined)
     assert.doesNotMatch(p.text(), /消费钻石合计|充值不计入|成功退款|北京时间|同分并列|统计时间|更新于|最多展示/)
@@ -79,7 +127,7 @@ test('ranking pages keep real row data without explanatory small print on either
 test('ranking error retry, empty results and failed avatar have distinct honest display states', async () => {
   const p = page()
   try {
-    p.h.hooks.show[0](); p.requests[0].reject(new Error('offline')); await tick(); assert.ok(p.action('error'))
+    p.h.hooks.show[0](); p.action('board-boss').props.onTap(); p.requests[0].reject(new Error('offline')); await tick(); assert.ok(p.action('error'))
     p.action('retry').props.onTap(); p.requests[1].resolve(response('boss', 'day', [])); await tick(); assert.ok(p.action('empty'))
     p.action('period-month').props.onTap(); p.requests[2].resolve(response('boss', 'month', [{ ...row(), value: 1234.5 }])); await tick(); assert.ok(p.action('avatar-public-1')); assert.match(p.text(), /1,234\.5/)
     p.action('avatar-public-1').props.onError(); assert.equal(p.action('avatar-public-1'), undefined); assert.match(p.text(), /公开昵称/); assert.match(p.text(), /钻石/)

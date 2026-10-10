@@ -1,10 +1,10 @@
 const vue = require('vue')
 const { harness, nodes } = require('./commerce-sfc-harness.cjs')
 const tick = () => new Promise(setImmediate)
-function setup(file, apiOverrides={}, props={}) {
+function setup(file, apiOverrides={}, props={}, moduleOverrides={}) {
  const life={load:[],show:[],hide:[],unload:[],unmount:[]},calls=[],emitted=[]
  const apiProxy={};let epoch=0
- const h=harness({vue:{...vue,resolveComponent:name=>['swiper','swiper-item'].includes(name)?name:vue.resolveComponent(name),onUnmounted:f=>life.unmount.push(f),onBeforeUnmount:f=>life.unmount.push(f)},'@dcloudio/uni-app':{onLoad:f=>life.load.push(f),onShow:f=>life.show.push(f),onHide:f=>life.hide.push(f),onUnload:f=>life.unload.push(f)},'@/api/patronage':apiProxy,'@/utils/sessionExpiry':{SESSION_EXPIRED_EVENT:'session:expired',getClientSessionGeneration:()=>String(epoch),handleSessionExpiry:()=>null},'@/utils/nav':{go:(...args)=>calls.push(args)}})
+ const h=harness({vue:{...vue,resolveComponent:name=>['swiper','swiper-item'].includes(name)?name:vue.resolveComponent(name),onUnmounted:f=>life.unmount.push(f),onBeforeUnmount:f=>life.unmount.push(f)},'@dcloudio/uni-app':{onLoad:f=>life.load.push(f),onShow:f=>life.show.push(f),onHide:f=>life.hide.push(f),onUnload:f=>life.unload.push(f)},'@/api/patronage':apiProxy,'@/utils/sessionExpiry':{SESSION_EXPIRED_EVENT:'session:expired',getClientSessionGeneration:()=>String(epoch),handleSessionExpiry:()=>null},'@/utils/nav':{go:(...args)=>calls.push(args)},...moduleOverrides})
  h.uni.navigateTo=o=>calls.push(o);h.uni.request=o=>{throw Error(`Unexpected request ${o.method} ${o.url}`)}
  h.uni.setStorageSync=(k,v)=>{h.storage[k]=structuredClone(v)}
  const api=h.load('src/api/patronage.ts')

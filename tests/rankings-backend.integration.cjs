@@ -20,7 +20,7 @@ new Function('require', 'module', 'exports', 'uni', ts.transpileModule(source, {
     options.success(response)
   }
 })
-const h = harness({ vue: { ...vue, onBeforeUnmount() {} }, '@/api/rankings': mod.exports })
+const h = harness({ vue: { ...vue, onBeforeUnmount() {} }, '@/components/PatronageWallPanel.vue': { default: { name: 'PatronageWallPanel', props: ['embedded'] } }, '@/api/rankings': mod.exports })
 const scope = vue.effectScope(), C = h.load('src/pages/client/rankings/index.vue').default
 const draw = scope.run(() => C.setup({}, { expose() {} }))
 const tree = () => nodes(draw({}, []))
@@ -30,6 +30,7 @@ const tick = () => new Promise(setImmediate)
 ;(async () => {
   try {
     await h.hooks.show[0](); await tick()
+    assert.equal(requests.length, 0, 'the default crown tab must not fetch contribution/order statistics')
     for (const board of ['boss', 'player']) {
       action(`board-${board}`).props.onTap(); await tick()
       for (const period of ['day', 'week', 'month']) {

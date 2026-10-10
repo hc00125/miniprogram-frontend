@@ -63,6 +63,15 @@ test('direct rankings, homepage float and native tab compatibility aliases all s
   assert.deepEqual(calls, Array.from({ length: 5 }, () => ({ method: 'switchTab', url: rankingPath })))
 })
 
+test('the crown wall stays an ordinary page for the announcements entry while rankings stays a native tab', () => {
+  const wallPath = '/pages/client/patronage-wall/index'
+  assert.ok(manifest.pages.some(page => page.path === wallPath.slice(1)))
+  assert.equal(tabPaths.has(wallPath), false)
+  const { nav, calls } = harness()
+  nav.go(wallPath); nav.go(rankingPath)
+  assert.deepEqual(calls, [{ method: 'navigateTo', url: wallPath }, { method: 'switchTab', url: rankingPath }])
+})
+
 test('order detail return uses stack when available and redirectTo otherwise', () => {
   const stacked = harness([{ route: 'pages/client/profile/index' }, { route: orderPath.slice(1) }, { route: 'pages/boss/payment/index' }])
   stacked.nav.backToRoute(orderPath)

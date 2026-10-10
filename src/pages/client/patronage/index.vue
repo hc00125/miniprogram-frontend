@@ -83,6 +83,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import { onLoad, onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { getPatronageCatalog, getPatronageQuote, getPatronagePending, createPatronagePaymentAdapter, patronagePaymentLabel, patronageSession, type PatronageRecord, type PatronageCatalog, type PatronagePackage, type PatronageQuote } from '@/api/patronage'
 import { SESSION_EXPIRED_EVENT, getClientSessionGeneration } from '@/utils/sessionExpiry'
+import { invalidatePatronageWallCache } from '@/api/patronageWall'
 import { go } from '@/utils/nav'
 import { createPatronagePaymentIntent, type PatronageIntent } from '@/utils/patronagePaymentIntent'
 import { getClientPlatform, isIOSPurchaseEnabled } from '@/utils/purchaseAvailability'
@@ -200,6 +201,7 @@ async function refreshPending() {
 }
 function confirmedMessage() {
   intent.value = controller!.snapshot()
+  if (intent.value?.confirmed_by_key && intent.value.payment_status === 'paid') invalidatePatronageWallCache()
   paymentMessage.value = intent.value?.confirmed_by_key && intent.value.payment_status === 'paid' ? '购买成功，冠名权益与收益已由服务端确认。' : intent.value?.confirmed_by_key ? '原交易失败已核实，可明确再次购买。' : '交易结果待确认，请查询原交易；不会重新扣款。'
 }
 async function buy(again: boolean) {
@@ -253,6 +255,7 @@ async function recoverPending(item: PatronageRecord) {
     const result = await adapter.byKey(item.idempotency_key)
     if (!guard(ticket, owner)) return
     if (result.purchase_no !== item.purchase_no || result.price_version !== item.price_version || result.player_id !== item.player_id || result.package_code !== item.package_code) throw new Error('原单信息不匹配')
+    if (result.payment_status === 'paid') invalidatePatronageWallCache()
     paymentMessage.value = `原单 ${result.purchase_no}：${patronagePaymentLabel(result.payment_status)}；仅查询，不会重提购买。`
     await checkPending(ticket, owner)
   } catch (e) { if (guard(ticket, owner)) paymentMessage.value = message(e) }

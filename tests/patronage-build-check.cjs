@@ -45,7 +45,7 @@ function load(file,options={}){
  const realm=vm.createContext({console,getCurrentPages:()=>[]})
  if(options.missingFlatMap)vm.runInContext('delete Array.prototype.flatMap',realm)
  function transportValue(value){realm.__transportJson=JSON.stringify(value);try{return vm.runInContext('JSON.parse(__transportJson)',realm)}finally{delete realm.__transportJson}}
- let C,enabled=options.enabled!==false,status='paid',pendingCount=0
+ let C,enabled=options.enabled!==false,status='paid',pendingCount=0,wallInvalidations=0
  const index={getStorageSync:k=>storage[k],setStorageSync:(k,v)=>storage[k]=JSON.parse(JSON.stringify(v)),removeStorageSync:k=>delete storage[k],$on:(name,f)=>events[name]=f,$off:name=>delete events[name],$emit:(name,...args)=>events[name]?.(...args),showModal:o=>modals.push(o),login:o=>o.success({code:'fixture-code'}),request:o=>{
   requests.push(o);assert.ok(o.url.startsWith('https://fixture.invalid/api/patronage/'))
   const endpoint=o.url.split('/patronage/')[1]
@@ -69,11 +69,12 @@ function load(file,options={}){
   const exports={};cache[file]=exports
   const execute=vm.runInContext('(function(require,exports,wx){'+read(file)+'\n})',realm,{filename:file})
   execute(name=>module(path.posix.normalize(path.posix.join(path.posix.dirname(file),name))),exports,{createPage:c=>C=c,createComponent:c=>C=c})
+  if(file==='api/patronageWall.js'){const invalidate=exports.invalidatePatronageWallCache;exports.invalidatePatronageWallCache=()=>{wallInvalidations++;invalidate()}}
   return exports
  }
  module(file+'.js');const scope=vue.effectScope(),render=scope.run(()=>C.setup(options.props||{}, {expose(){},emit:(...args)=>emitted.push(args)})),draw=()=>render({},{})
  function tag(action){return read(file+'.wxml').match(new RegExp('<button[^>]*data-action="'+action+'"[^>]*>'))[0]}
- return {hooks,events,calls,scope,requests,modals,emitted,storage,crownApi:()=>module('api/patronage.js'),arrayPrototype:()=>vm.runInContext('Array.prototype',realm),setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
+ return {hooks,events,calls,scope,requests,modals,emitted,storage,wallInvalidations:()=>wallInvalidations,crownApi:()=>module('api/patronage.js'),arrayPrototype:()=>vm.runInContext('Array.prototype',realm),setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
 }
 async function confirm(page,action='purchase'){
  const task=page.tap(action);await tick();assert.ok(page.modals.length);page.modals.at(-1).success({confirm:true});await task
@@ -85,10 +86,14 @@ async function run(){
  const page=load('pages/client/patronage/index');page.hooks.load({playerId:'7'});await page.hooks.show();assert.equal(page.disabled('purchase'),false);assert.match(page.text(),/2000.0/);assert.match(page.text(),/26.5/);assert.match(page.text(),/70.9/);assert.match(page.text(),/365天（1年）/)
  const task=page.tap('purchase');await tick();await page.tap('purchase');assert.equal(page.modals.length,1);assert.match(page.modals[0].content,/26.5 小时/);page.modals[0].success({confirm:true});await task
  const posts=()=>page.requests.filter(o=>o.url.endsWith('/purchases/'));assert.equal(posts().length,1);assert.equal(page.requests.at(-1).url.endsWith('/by-key/'),true);assert.equal(page.requests.at(-1).data.idempotency_key,posts()[0].data.idempotency_key);assert.match(page.text(),/购买成功/)
+ assert.equal(page.wallInvalidations(),1,'confirmed original-key payment must clear the crown cache')
  await confirm(page,'buy-again');assert.equal(posts().length,2);assert.notEqual(posts()[0].data.idempotency_key,posts()[1].data.idempotency_key);assert.equal(Object.keys(page.storage).filter(k=>k.includes(':archive:')).length,1)
+ assert.equal(page.wallInvalidations(),2)
  page.tap('support');assert.equal(JSON.stringify(page.calls[0]),JSON.stringify(['/pages/client/customer-service/index']));page.hooks.hide();assert.doesNotMatch(page.text(),/2000.0/);page.scope.stop()
  const recovery=load('pages/client/patronage/index',{timeout:true});recovery.hooks.load({playerId:'7'});await recovery.hooks.show();await confirm(recovery);assert.doesNotMatch(recovery.text(),/购买成功/);const original=recovery.requests.find(o=>o.url.endsWith('/purchases/')).data.idempotency_key
+ assert.equal(recovery.wallInvalidations(),0,'unknown payment must keep the current completed cache')
  recovery.hooks.hide();await recovery.hooks.show();assert.equal(recovery.disabled('purchase'),true);await recovery.tap('recover');assert.match(recovery.text(),/购买成功/);assert.equal(recovery.requests.at(-1).data.idempotency_key,original);assert.equal(recovery.requests.filter(o=>o.url.endsWith('/purchases/')).length,1);recovery.scope.stop()
+ assert.equal(recovery.wallInvalidations(),1)
  const blocked=load('pages/client/patronage/index');blocked.setPending(30);blocked.hooks.load({playerId:'7'});await blocked.hooks.show();assert.equal(blocked.disabled('purchase'),true);await blocked.tap('purchase');assert.equal(blocked.modals.length,0);blocked.scope.stop()
  const records=load('pages/client/patronage/records');await records.hooks.show();assert.match(records.text(),/支付结果待确认/);assert.match(records.text(),/PN-record-key/);records.tap('support');records.events['session:expired']('token');assert.doesNotMatch(records.text(),/PN-record-key/);records.scope.stop()
  const now=Date.now(),crown=(id)=>({id,boss_name:`真实老板${id}`,boss_avatar_url:'https://fixture.invalid/boss.png',package_name:id===1?'年冠':'周冠',starts_at:new Date(now-60000).toISOString(),expires_at:new Date(now+60000).toISOString(),source:'purchase'})
