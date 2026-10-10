@@ -20,7 +20,7 @@ function failureInfo(error: any) {
 
 // Callback style avoids an unhandled Promise rejection in uni's no-callback API.
 // Native setClipboardData owns the success toast; never read clipboard contents back.
-export function copyText(data: string, source: 'kook-binding' | 'customer-service') {
+export function copyText(data: string, source: 'kook-binding' | 'customer-service' | 'order-notice') {
   const fail = (error: any) => {
     const info = failureInfo(error)
     uni.showModal({

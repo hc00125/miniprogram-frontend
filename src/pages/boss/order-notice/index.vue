@@ -1,287 +1,393 @@
 <template>
   <view :style="$appThemeStyle" class="notice-page">
-    <scroll-view scroll-y class="notice-scroll">
-      <view class="notice-hero">
-        <view class="hero-title">偷吃电竞 · 下单须知</view>
+    <view class="notice-content">
+      <view class="notice-summary">
+        <text class="business-hours">24小时营业</text>
+        <text class="minor-warning">未成年人禁止消费</text>
       </view>
 
-      <view class="notice-card intro-card">
-        <view class="minor-warning">未成年人禁止消费！</view>
-        <view class="business-row">
-          <text>营业时间</text>
-          <text>24小时营业</text>
-        </view>
-      </view>
-
-      <view class="notice-image-card">
-        <image
-          v-if="!flowImageError"
-          class="notice-flow-image"
-          :src="flowImageUrl"
-          mode="widthFix"
-          @tap="previewFlowImage"
-          @error="flowImageError = true"
-        />
-        <view v-else class="image-placeholder">
-          <view class="placeholder-title">下单流程图加载失败</view>
-        </view>
-      </view>
-
-      <view class="notice-card">
-        <view class="section-title">服务流程</view>
-        <view class="ordered-list">
-          <view v-for="(item, index) in serviceFlow" :key="index" class="ordered-item">
-            <view class="ordered-index">{{ padIndex(index + 1) }}</view>
-            <view class="ordered-text">{{ item }}</view>
+      <view class="notice-card flow-card">
+        <text class="section-title">下单流程</text>
+        <view class="flow-list">
+          <view v-for="(step, index) in serviceFlow" :key="step.id" class="flow-step">
+            <view class="step-marker" aria-hidden="true">{{ index + 1 }}</view>
+            <view class="step-content">
+              <text class="step-title">{{ step.title }}</text>
+              <text class="step-description">{{ step.description }}</text>
+              <view v-if="step.id === 'kook'" class="kook-channel">
+                <text class="channel-value" user-select selectable>{{ KOOK_CHANNEL }}</text>
+                <button
+                  class="copy-button"
+                  data-action="copy-kook"
+                  hover-class="button--pressed"
+                  aria-label="复制 KOOK 频道号 TC8888"
+                  @tap="copyKookChannel"
+                >复制频道号</button>
+              </view>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="notice-card notice-card--green">
-        <view class="section-title">为什么建议进入 KOOK？</view>
-        <view class="ordered-list">
-          <view v-for="(item, index) in kookReasons" :key="index" class="ordered-item ordered-item--green">
-            <view class="ordered-index">{{ index + 1 }}</view>
-            <view class="ordered-text">{{ item }}</view>
+      <view class="notice-card aftercare-card">
+        <text class="section-title">售后与补偿</text>
+        <view class="aftercare-deadline">
+          <text>售后、反馈或投诉，请在</text>
+          <text class="deadline-value">下单后24小时内</text>
+          <text>联系官方客服；超过24小时，原则上不再受理。</text>
+        </view>
+        <text class="compensation-title">服务中订单异常补偿保底</text>
+        <view class="compensation-list">
+          <view v-for="item in compensationRules" :key="item.label" class="compensation-item">
+            <text class="compensation-label">{{ item.label }}</text>
+            <text class="compensation-value">{{ item.amount }}</text>
+          </view>
+        </view>
+        <text class="compensation-condition">具体以实际订单情况和客服核实结果为准。</text>
+      </view>
+
+      <view class="notice-card detail-card">
+        <view v-for="section in detailSections" :key="section.id" class="detail-section">
+          <button
+            class="detail-toggle"
+            data-action="toggle-detail"
+            :data-section="section.id"
+            :aria-expanded="openSections.includes(section.id)"
+            :aria-controls="`notice-detail-${section.id}`"
+            hover-class="button--pressed"
+            @tap="toggleSection(section.id)"
+          >
+            <text class="detail-title">{{ section.title }}</text>
+            <text class="detail-state">{{ openSections.includes(section.id) ? '收起' : '展开' }}</text>
+          </button>
+          <view
+            v-if="openSections.includes(section.id)"
+            :id="`notice-detail-${section.id}`"
+            class="detail-list"
+          >
+            <view v-for="(item, index) in section.items" :key="index" class="detail-item">
+              <view class="detail-dot" aria-hidden="true"></view>
+              <text class="detail-text">{{ item }}</text>
+            </view>
           </view>
         </view>
       </view>
 
-      <view class="notice-card notice-card--rules">
-        <view class="section-title">老板须知</view>
-        <view class="rule-list">
-          <view v-for="(item, index) in bossRules" :key="index" class="rule-item">
-            <view class="rule-index">{{ index + 1 }}</view>
-            <view class="rule-text">{{ item }}</view>
-          </view>
-        </view>
+      <view class="notice-actions">
+        <button
+          class="notice-action notice-action--primary"
+          data-action="customer-service"
+          hover-class="button--pressed"
+          @tap="openCustomerService"
+        >联系客服</button>
+        <button
+          class="notice-action notice-action--secondary"
+          data-action="complaints"
+          hover-class="button--pressed"
+          @tap="openComplaints"
+        >投诉与反馈</button>
       </view>
-
-      <view class="bottom-space"></view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { copyText } from '@/utils/clipboard'
 
-const flowImageError = ref(false)
-const flowImageUrl = 'https://api.huc125.cn/media/order-notice/order-notice-flow.jpg'
+const KOOK_CHANNEL = 'TC8888'
+const openSections = ref<string[]>([])
 
 const serviceFlow = [
-  '下单前请先联系官方客服，确认所需服务内容、当前是否可接单、排期情况及相关注意事项。',
-  '下单后请将订单截图发送给客服，并按照客服指引进入官方接待渠道等待安排。',
-  '建议老板提前准备好 KOOK，可使用手机 App 或网页版，进入官方接待区等待客服接待。排队期间请不要随意退出，以免影响安排顺序。KOOK 频道号：TC8888。',
-  '如小程序客服暂未回复，超过 5 分钟仍无回应，可前往官方接待区联系在线客服咨询订单安排。',
-  '客服会根据订单信息与老板预留的游戏昵称 / ID，安排对应服务人员进行对接。',
-  '服务人员与老板确认服务内容、注意事项及开始时间后，即可开始服务。',
-  '服务完成后，客服会协助确认服务结果。',
-  '请老板在小程序内确认收货，并根据实际体验进行评价。',
-  '如老板对本次服务满意，或有任何建议、反馈、投诉，可在老板意见箱中填写，我们会认真查看并及时处理。'
+  { id: 'support', title: '先联系客服', description: '确认服务内容、接单情况和排期。' },
+  { id: 'order', title: '提交订单', description: '把订单截图发给客服，等待安排。' },
+  { id: 'kook', title: 'KOOK接待', description: '进入官方接待区，按指引等待接待。' },
+  { id: 'player', title: '对接陪玩', description: '确认服务内容和开始时间后开打。' },
+  { id: 'review', title: '完成评价', description: '客服协助核对结果，订单完成后可评价。' }
 ]
 
-const kookReasons = [
-  '方便老板实时了解服务进度，减少等待过程中的不确定性。',
-  '服务过程更加公开透明，便于客服与管理员同步跟进。',
-  '老板可了解服务人员的操作思路与沟通方式，提升整体体验。',
-  '管理员会对服务过程进行监督，保障服务质量。',
-  'KOOK 是俱乐部主要接待与沟通渠道，后续活动通知、服务安排、问题反馈都会更加方便。'
+const compensationRules = [
+  { label: '普通情况', amount: '+40W' },
+  { label: '机场地图', amount: '+60W' },
+  { label: '三角洲', amount: '+80W' }
 ]
 
-const bossRules = [
-  '服务过程中，如服务人员私下索要联系方式、绕开平台单独交易或私下对接，请老板保留相关证据并提交给俱乐部。经核实后，我们将按店内规则严肃处理。',
-  '服务过程中请老板配合服务人员的合理沟通与安排。如因老板长时间无回应、不配合、挂机或其他个人原因导致服务受影响，服务人员有权提醒一次；提醒无效的，可申请中止服务并进入结单流程。',
-  '服务过程中如出现异常情况，将按照订单规则进行核实处理。',
-  '若服务过程中出现订单异常，普通情况补偿保底 +40W；机场地图补偿保底 +60W；三角洲补偿保底 +80W，具体以实际订单情况和客服核实结果为准。',
-  '相关售后、反馈或客诉问题，请老板在下单后 24 小时内联系官方客服处理。超过 24 小时后，原则上不再受理。',
-  '如出现服务异常、损失争议等问题，俱乐部会根据订单记录、沟通记录及服务过程进行核查；如确认为服务人员责任，将按照店内规则进行补偿处理。',
-  '如老板需要仓库整理等附加服务，可提前联系官方客服咨询。',
-  '本店严格禁止未成年人消费。如隐瞒年龄或提供虚假信息下单，造成的后果由下单人自行承担，本店有权取消服务并按规则处理。'
+const detailSections = [
+  {
+    id: 'reception',
+    title: '接待与KOOK说明',
+    items: [
+      '下单前先联系官方客服，确认服务内容、当前是否可接单、排期和注意事项。下单后把订单截图发给客服，按指引进入官方接待渠道等待安排。',
+      '建议提前准备好 KOOK，手机 App 或网页版都可以使用。排队期间请不要随意退出，以免影响安排顺序。',
+      '小程序客服超过5分钟仍未回复，可到官方接待区联系在线客服，咨询订单安排。',
+      '客服会根据订单和你预留的游戏昵称 / ID，安排陪玩对接。双方确认服务内容、注意事项和开始时间后，再开始服务。',
+      '接单后，请进入系统分配的 KOOK 接单房间。若陪玩未到，请联系官方客服。',
+      '在 KOOK 可以实时了解服务进度、陪玩的操作思路和沟通方式。服务过程便于客服与管理员同步跟进，管理员会监督服务过程，保障服务质量。',
+      'KOOK 是俱乐部主要接待和沟通渠道，也用于活动通知、服务安排与问题反馈。'
+    ]
+  },
+  {
+    id: 'rules',
+    title: '服务规则',
+    items: [
+      '服务中若陪玩私下索要联系方式、绕开平台单独交易或私下对接，请保留证据并提交俱乐部；核实后按店内规则严肃处理。',
+      '请配合陪玩的合理沟通与安排。若因长时间无回应、不配合、挂机或其他个人原因影响服务，陪玩有权提醒一次；提醒无效时，可申请中止服务并进入结单流程。',
+      '需要仓库整理等附加服务，请提前联系官方客服咨询。',
+      '未成年人禁止消费。隐瞒年龄或提供虚假信息下单的，后果由下单人承担，俱乐部有权取消服务并按规则处理。'
+    ]
+  },
+  {
+    id: 'aftercare',
+    title: '责任核实与反馈',
+    items: [
+      '服务中出现异常，按订单规则核实处理。如有服务异常或损失争议，俱乐部会结合订单记录、沟通记录和服务过程核查；确认属于陪玩责任的，按店内规则补偿。',
+      '服务结束后，客服会协助核对服务结果。订单完成后，可在小程序内根据实际体验评价。',
+      '对本次服务满意，或有建议、反馈、投诉，都可以通过“投诉与反馈”提交，俱乐部会认真查看并及时处理。'
+    ]
+  }
 ]
 
-function padIndex(value: number) {
-  return String(value).padStart(2, '0')
+function toggleSection(id: string) {
+  openSections.value = openSections.value.includes(id)
+    ? openSections.value.filter(item => item !== id)
+    : [...openSections.value, id]
 }
 
-function previewFlowImage() {
-  uni.previewImage({ urls: [flowImageUrl], current: flowImageUrl })
+function copyKookChannel() {
+  copyText(KOOK_CHANNEL, 'order-notice')
+}
+
+function openCustomerService() {
+  uni.navigateTo({ url: '/pages/client/customer-service/index' })
+}
+
+function openComplaints() {
+  uni.navigateTo({ url: '/pages/client/complaints/index' })
 }
 </script>
 
 <style lang="scss" scoped>
 .notice-page {
   min-height: 100vh;
-  background: var(--ui-soft, #f7f3ea);
-  color: var(--ui-text, #202124);
+  background: var(--ui-bg);
+  color: var(--ui-text);
 }
 
-.notice-scroll {
-  height: 100vh;
-}
-
-.notice-hero {
-  margin: 24rpx 24rpx 0;
-  padding: 42rpx 32rpx;
-  border-radius: 30rpx;
-  color: #fff;
-  background: var(--ui-gradient);
-  box-shadow: 0 18rpx 40rpx var(--ui-shadow, rgba(75, 92, 55, 0.18));
+.notice-content {
+  max-width: 900rpx;
+  margin: 0 auto;
+  padding: 24rpx 24rpx calc(32rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
-.hero-title {
-  font-size: 46rpx;
-  font-weight: 900;
-  line-height: 1.16;
+.notice-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 0 4rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.6;
 }
+
+.business-hours { color: var(--ui-text); }
+.minor-warning { color: var(--ui-danger); }
 
 .notice-card {
-  margin: 22rpx 24rpx 0;
-  padding: 28rpx 26rpx;
+  margin-top: 20rpx;
+  padding: 24rpx;
+  border: 1rpx solid var(--ui-line);
   border-radius: 24rpx;
-  background: var(--ui-surface, #fff);
-  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(35, 42, 30, 0.06));
+  background: var(--ui-surface);
   box-sizing: border-box;
-}
-
-.intro-card {
-  border: 1rpx solid var(--ui-accent-line, rgba(100, 122, 79, 0.16));
-  background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf0));
-}
-
-.minor-warning {
-  display: inline-flex;
-  padding: 10rpx 18rpx;
-  border-radius: 999rpx;
-  color: #fff;
-  font-size: 28rpx;
-  font-weight: 900;
-  background: linear-gradient(135deg, var(--ui-danger-fill, #ef4444), var(--ui-danger-fill, #b91c1c));
-}
-
-.business-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 20rpx;
-  margin-top: 22rpx;
-  padding: 18rpx 20rpx;
-  border-radius: 18rpx;
-  background: var(--ui-soft, #f8f3e5);
-}
-
-.business-row text:first-child {
-  color: var(--ui-muted, #5d6f4f);
-  font-size: 26rpx;
-  font-weight: 900;
-}
-
-.business-row text:last-child {
-  color: var(--ui-danger, #e65f34);
-  font-size: 38rpx;
-  font-weight: 900;
-}
-
-.notice-image-card {
-  margin: 22rpx 24rpx 0;
-  overflow: hidden;
-  border-radius: 24rpx;
-  background: var(--ui-surface, #fff);
-  box-shadow: 0 14rpx 30rpx var(--ui-shadow, rgba(35, 42, 30, 0.06));
-}
-
-.notice-flow-image {
-  width: 100%;
-  display: block;
-}
-
-.image-placeholder {
-  min-height: 260rpx;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 12rpx;
-  padding: 30rpx;
-  text-align: center;
-  box-sizing: border-box;
-  background: var(--ui-surface, #fffaf0);
-}
-
-.placeholder-title {
-  color: var(--ui-muted, #5d6f4f);
-  font-size: 30rpx;
-  font-weight: 900;
 }
 
 .section-title {
-  color: var(--ui-text, #2f3a2b);
-  font-size: 32rpx;
-  font-weight: 900;
-  line-height: 1.3;
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
-.ordered-list,
-.rule-list {
-  margin-top: 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
+.flow-list { margin-top: 20rpx; }
 
-.ordered-item,
-.rule-item {
+.flow-step {
+  position: relative;
   display: flex;
+  align-items: flex-start;
   gap: 18rpx;
-  padding: 20rpx;
-  border-radius: 18rpx;
-  background: var(--ui-soft, #fafafa);
-  border: 1rpx solid var(--ui-line, #f0f0f0);
+  padding-bottom: 20rpx;
 }
 
-.ordered-item--green {
-  background: var(--ui-soft, #f7faf3);
-  border-color: var(--ui-line, rgba(93, 111, 79, 0.12));
+.flow-step:last-child { padding-bottom: 0; }
+
+.flow-step:not(:last-child)::after {
+  position: absolute;
+  top: 46rpx;
+  bottom: 2rpx;
+  left: 21rpx;
+  width: 2rpx;
+  background: var(--ui-line);
+  content: '';
 }
 
-.ordered-index,
-.rule-index {
-  width: 58rpx;
-  height: 58rpx;
-  flex-shrink: 0;
+.step-marker {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 18rpx;
-  color: #fff;
-  font-size: 22rpx;
-  font-weight: 900;
-  background:var(--ui-gradient);
+  flex-shrink: 0;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.rule-index {
-  background: linear-gradient(135deg, #e6883a, var(--ui-danger-fill, #c45a1d));
+.step-content { flex: 1; min-width: 0; }
+
+.step-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  line-height: 1.6;
 }
 
-.ordered-text,
-.rule-text {
+.step-description {
+  display: block;
+  color: var(--ui-muted);
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.kook-channel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-top: 8rpx;
+}
+
+.channel-value {
+  color: var(--ui-accent);
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.copy-button,
+.detail-toggle,
+.notice-action {
+  min-height: 48px;
+  margin: 0;
+  padding: 12rpx 20rpx;
+  border: 0;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.copy-button::after,
+.detail-toggle::after,
+.notice-action::after { border: 0; }
+
+.copy-button {
+  flex-shrink: 0;
+  color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+}
+
+.aftercare-deadline {
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+.deadline-value { color: var(--ui-danger); font-weight: 800; }
+
+.compensation-title {
+  display: block;
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.compensation-list {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.compensation-item {
   flex: 1;
   min-width: 0;
-  color: var(--ui-text, #4a4a4a);
-  font-size: 25rpx;
-  font-weight: 600;
-  line-height: 1.66;
+  padding: 12rpx 4rpx;
+  border-radius: 14rpx;
+  color: var(--ui-gold);
+  background: var(--ui-gold-soft);
+  text-align: center;
 }
 
-.notice-card--green {
-  background:var(--ui-gradient);
+.compensation-label,
+.compensation-value { display: block; font-size: 28rpx; line-height: 1.6; }
+.compensation-value { font-size: 32rpx; font-weight: 800; }
+
+.compensation-condition {
+  display: block;
+  margin-top: 14rpx;
+  color: var(--ui-muted);
+  font-size: 28rpx;
+  line-height: 1.6;
 }
 
-.notice-card--rules {
-  background: linear-gradient(180deg, var(--ui-surface, #fff), var(--ui-surface, #fffaf5));
+.detail-card { padding: 0 24rpx; }
+.detail-section + .detail-section { border-top: 1rpx solid var(--ui-line); }
+
+.detail-toggle {
+  width: 100%;
+  justify-content: space-between;
+  gap: 16rpx;
+  padding: 18rpx 0;
+  border-radius: 0;
+  color: var(--ui-text);
+  background: transparent;
+  text-align: left;
 }
 
-.bottom-space {
-  height: 90rpx;
+.detail-title { flex: 1; font-size: 30rpx; font-weight: 700; }
+.detail-state { flex-shrink: 0; color: var(--ui-accent); }
+.detail-list { padding: 0 0 24rpx; }
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14rpx;
 }
+
+.detail-item + .detail-item { margin-top: 18rpx; }
+
+.detail-dot {
+  flex-shrink: 0;
+  width: 8rpx;
+  height: 8rpx;
+  margin-top: 19rpx;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+
+.detail-text { flex: 1; min-width: 0; font-size: 28rpx; line-height: 1.6; }
+
+.notice-actions { display: flex; gap: 16rpx; margin-top: 24rpx; }
+.notice-action { flex: 1; min-width: 0; font-size: 30rpx; font-weight: 700; }
+.notice-action--primary { color: var(--ui-on-primary); background: var(--ui-primary); }
+.notice-action--secondary { color: var(--ui-accent); background: var(--ui-accent-soft); }
+.button--pressed { opacity: 0.72; }
 </style>
