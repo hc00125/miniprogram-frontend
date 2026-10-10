@@ -6,8 +6,9 @@
       <button :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button>
     </view>
 
-    <view class="brand-poster">
-      <view class="club-title">选择你想指定的陪玩师</view>
+    <view class="discovery-tabs">
+      <button class="discovery-tab" :class="{ active: discoveryMode === 'random' }" :aria-pressed="discoveryMode === 'random'" hover-class="discovery-tab--pressed" @tap="selectDiscoveryMode('random')">随机陪玩</button>
+      <button class="discovery-tab" :class="{ active: discoveryMode === 'quality' }" :aria-pressed="discoveryMode === 'quality'" hover-class="discovery-tab--pressed" @tap="selectDiscoveryMode('quality')">优质陪玩</button>
     </view>
 
     <view class="search-panel">
@@ -54,6 +55,7 @@ import { relaunch, navigateToTab, type MainTab, go } from '@/utils/nav'
 import { success, toast } from '@/utils/feedback'
 
 const filters = ['全部', '女陪', '技术陪', '金牌陪', '明星陪', '在线']
+const discoveryMode = ref<'random' | 'quality'>('random')
 const activeFilter = ref('全部')
 const loaded = ref(false)
 const players = ref<OnlinePlayer[]>([])
@@ -72,6 +74,8 @@ const filteredPlayers = computed(() => {
 const normalizedSearchKeyword = computed(() => searchKeyword.value.trim())
 const searchSummary = computed(() => normalizedSearchKeyword.value ? `找到 ${filteredPlayers.value.length} 位相关陪玩` : activeFilter.value !== '全部' ? `当前分类 ${filteredPlayers.value.length} 位陪玩` : `共 ${visiblePlayers.value.length} 位陪玩`)
 const emptyText = computed(() => normalizedSearchKeyword.value ? `没有找到“${normalizedSearchKeyword.value}”相关陪玩` : '暂无符合条件的陪玩')
+// Discovery rules will be connected separately; this selector currently controls the UI only.
+function selectDiscoveryMode(mode: 'random' | 'quality') { discoveryMode.value = mode }
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 
 async function fetchPlayers() {
@@ -106,6 +110,11 @@ onUnmounted(() => uni.$off('player-presence-updated', applyOwnPresence))
 
 <style lang="scss" scoped>
 .player-list-page { padding-bottom: 150rpx; }
+.discovery-tabs { display: flex; gap: 16rpx; }
+.discovery-tab { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 88rpx; margin: 0; padding: 18rpx 12rpx; box-sizing: border-box; border: 2rpx solid var(--ui-line, #cad9c8); border-radius: 24rpx; background: var(--ui-surface, #fff); color: var(--ui-muted, #687665); font-size: 30rpx; font-weight: 800; line-height: 1.4; }
+.discovery-tab::after { border: 0; }
+.discovery-tab.active { border-color: transparent; background: var(--ui-gradient, linear-gradient(135deg, #2f9b63, #1f7c4b)); color: #fff; }
+.discovery-tab--pressed { opacity: .85; }
 .player-actions { display: flex; align-items: center; gap: 16rpx; margin-top: 16rpx; }
 .player-patronage, .player-gift { flex: 1; min-width: 0; }
 .player-patronage, .player-gift :deep(.gift-entry--compact) { display: flex; align-items: center; justify-content: center; min-height: 88rpx; margin: 0; padding: 16rpx 4rpx; border: 1rpx solid var(--ui-line, #cad9c8); border-radius: 18rpx; background: var(--ui-surface, #fffefa); color: var(--ui-accent, #1f7c4b); font-size: 24rpx; line-height: 1.4; white-space: nowrap; box-sizing: border-box; }
