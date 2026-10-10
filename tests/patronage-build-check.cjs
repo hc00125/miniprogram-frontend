@@ -19,7 +19,16 @@ const compactSwiper=crownsWxml.match(/<swiper\b[^>]*class="crown-swiper\b[^>]*>/
 assert.ok(compactSwiper,'compact crowns must compile to a native swiper')
 assert.match(compactSwiper,/\bvertical(?:\s|=)/);assert.match(compactSwiper,/\bcircular(?:\s|=)/);assert.match(compactSwiper,/\bautoplay="{{\w+}}"/)
 assert.match(crownsWxml,/class="plaque-message/);assert.match(crownsWxml,/class="[^"]*\bplaque-prefix\b/);assert.match(crownsWxml,/class="[^"]*\bplaque-suffix\b/)
-for(const selector of ['crown-plaque','crown-swiper'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
+for(const selector of ['crown-plaque','crown-viewport','crown-swiper'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
+assert.match(crownsWxml,/<view[^>]*class="crown-viewport[^>]*><swiper/,'native swiper needs a regular view with explicit bounds')
+function rule(selector){const match=crownsStyles.match(new RegExp('\\.'+selector+'(?:\\.[\\w-]+)*\\{([^}]+)\\}'));assert.ok(match,`${selector} must have native styles`);return match[1]}
+const viewportStyle=rule('crown-viewport'),crownStyle=rule('plaque-crown'),rotationStyle=rule('rotation-icon')
+for(const declaration of ['position:absolute','left:40rpx','right:32rpx','height:60rpx','overflow:hidden'])assert.ok(viewportStyle.includes(declaration),`viewport needs ${declaration}`)
+assert.match(rule('crown-swiper'),/width:100%/);assert.match(rule('crown-plaque'),/position:relative/)
+for(const [style,side] of [[crownStyle,'left'],[rotationStyle,'right']]){assert.match(style,/position:absolute/);assert.ok(style.includes(`${side}:10rpx`),'crown and pause must keep their own outside bounds')}
+function rpx(style,property){const match=style.match(new RegExp('(?:^|;)'+property+':(\\d+(?:\\.\\d+)?)rpx'));assert.ok(match,`${property} needs an explicit native length`);return Number(match[1])}
+assert.ok(rpx(crownStyle,'left')+rpx(crownStyle,'width')<=rpx(viewportStyle,'left'),'viewport starts after the crown')
+assert.ok(rpx(rotationStyle,'right')+rpx(rotationStyle,'width')<=rpx(viewportStyle,'right'),'viewport ends before the pause icon')
 assert.match(read('pages/player/detail/index.wxml'),/<patronage-crowns/);assert.match(read('pages/player/detail/index.wxml'),/<gift-host/)
 assert.match(read('pages/client/profile/index.wxml'),/冠名 \/ 包天记录/)
 assert.ok(fs.existsSync(path.join(root,'utils/patronagePaymentIntent.js')),'real controller must be in the purchase dependency graph')
@@ -28,6 +37,9 @@ for(const file of ['index','records'])assert.match(read(`pages/client/patronage/
 const record=(key,status='paid')=>({purchase_no:'PN-'+key,idempotency_key:key,price_version:'a'.repeat(64),player_id:7,player_name:'陪玩甲',package_code:'day',package_name:'日冠',amount_yuan:'188.00',amount_diamonds:'1880.0',payment_status:status,created_at:'2026-09-29T00:00:00Z',paid_at:status==='paid'?'2026-09-29T00:01:00Z':null,starts_at:status==='paid'?'2026-09-29T00:01:00Z':null,expires_at:status==='paid'?'2026-09-30T00:01:00Z':null,bonus_naming_days:0,blockers:[]})
 function load(file,options={}){
  const hooks={},events={},calls=[],requests=[],modals=[],emitted=[],storage={token:options.anonymous?'':'fixture-token',client_profile:{id:1}},cache={}
+ const realm=vm.createContext({console,getCurrentPages:()=>[]})
+ if(options.missingFlatMap)vm.runInContext('delete Array.prototype.flatMap',realm)
+ function transportValue(value){realm.__transportJson=JSON.stringify(value);try{return vm.runInContext('JSON.parse(__transportJson)',realm)}finally{delete realm.__transportJson}}
  let C,enabled=options.enabled!==false,status='paid',pendingCount=0
  const index={getStorageSync:k=>storage[k],setStorageSync:(k,v)=>storage[k]=JSON.parse(JSON.stringify(v)),removeStorageSync:k=>delete storage[k],$on:(name,f)=>events[name]=f,$off:name=>delete events[name],$emit:(name,...args)=>events[name]?.(...args),showModal:o=>modals.push(o),login:o=>o.success({code:'fixture-code'}),request:o=>{
   requests.push(o);assert.ok(o.url.startsWith('https://fixture.invalid/api/patronage/'))
@@ -40,7 +52,7 @@ function load(file,options={}){
   const data=endpoint==='catalog/'?c:endpoint==='quotes/'?{...quote(),service_hours:'26.5',hourly_amount_yuan:'7.09',hourly_amount_diamonds:'70.9',service_terms_source:'player_override',service_terms_version:'2026-10-table-v1',can_submit:enabled,blockers:enabled?[]:['PURCHASE_NOT_ENABLED']}:
    endpoint==='purchases/pending/'?{count:pendingCount,next:pendingCount?'https://evil.invalid':null,previous:null,results:[]}:
    endpoint==='records/'?{count:1,next:null,previous:null,results:[record('record-key','unknown')]}:endpoint==='crowns/'?{results:options.crowns||[]}:record(o.data.idempotency_key,status)
-  o.success({statusCode:200,data})
+  o.success({statusCode:200,data:transportValue(data)})
  }}
  const vendor={...vue,s: x => x || '',index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,onUnmounted(){},_export_sfc:x=>x,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(items,fn)=>items.map(fn)}
  function module(file){
@@ -50,12 +62,13 @@ function load(file,options={}){
   if(file==='utils/nav.js')return {go:(...args)=>calls.push(args)}
   if(file==='utils/purchaseAvailability.js')return {getClientPlatform:()=>options.ios?'ios':'android',isIOSPurchaseEnabled:()=>!options.ios}
   const exports={};cache[file]=exports
-  vm.runInNewContext(read(file),{require:name=>module(path.posix.normalize(path.posix.join(path.posix.dirname(file),name))),wx:{createPage:c=>C=c,createComponent:c=>C=c},console,exports,getCurrentPages:()=>[]},{filename:file})
+  const execute=vm.runInContext('(function(require,exports,wx){'+read(file)+'\n})',realm,{filename:file})
+  execute(name=>module(path.posix.normalize(path.posix.join(path.posix.dirname(file),name))),exports,{createPage:c=>C=c,createComponent:c=>C=c})
   return exports
  }
  module(file+'.js');const scope=vue.effectScope(),render=scope.run(()=>C.setup(options.props||{}, {expose(){},emit:(...args)=>emitted.push(args)})),draw=()=>render({},{})
  function tag(action){return read(file+'.wxml').match(new RegExp('<button[^>]*data-action="'+action+'"[^>]*>'))[0]}
- return {hooks,events,calls,scope,requests,modals,emitted,storage,setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
+ return {hooks,events,calls,scope,requests,modals,emitted,storage,crownApi:()=>module('api/patronage.js'),arrayPrototype:()=>vm.runInContext('Array.prototype',realm),setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
 }
 async function confirm(page,action='purchase'){
  const task=page.tap(action);await tick();assert.ok(page.modals.length);page.modals.at(-1).success({confirm:true});await task
@@ -78,8 +91,12 @@ async function run(){
  const tapKey=crownControl.match(/catchtap="{{(\w+)}}"/)[1],ariaKey=crownControl.match(/aria-label="{{(\w+)}}"/)[1],autoplayKey=compactSwiper.match(/autoplay="{{(\w+)}}"/)[1]
  const slidesKey=crownsWxml.match(/<swiper-item[^>]*wx:for="{{(\w+)}}"[^>]*wx:for-item="slide"/)[1]
  const bossKey=crownsWxml.match(/<text[^>]*class="plaque-boss[^>]*>{{slide\.(\w+)}}/)[1],packageKey=crownsWxml.match(/<text[^>]*class="plaque-package[^>]*>{{slide\.(\w+)}}/)[1]
- for(const rows of [[crown(1)],[crown(1),crown(2)]]){
-  const host=load('components/PatronageCrowns',{props:{playerId:7,compact:true},crowns:rows,anonymous:true});await host.hooks.show()
+ const nodeFlatMap=Array.prototype.flatMap
+ for(const missingFlatMap of [false,true])for(const rows of [[crown(1)],[crown(1),crown(2)]]){
+  const host=load('components/PatronageCrowns',{props:{playerId:7,compact:true},crowns:rows,anonymous:true,missingFlatMap});await host.hooks.show()
+  const parsed=await host.crownApi().getPatronageCrowns(7)
+  assert.equal(Object.getPrototypeOf(parsed),host.arrayPrototype(),'the actual API parser must return an array from the same isolated JS realm')
+  assert.equal(typeof parsed.flatMap,missingFlatMap?'undefined':'function','the legacy regression must exercise a genuinely missing built-in on API results')
   const data=host.render();assert.equal(data[autoplayKey],true);assert.equal(data[slidesKey].length,rows.length*2)
   assert.equal(JSON.stringify(data[slidesKey].map(r=>[r[bossKey],r[packageKey]])),JSON.stringify(rows.flatMap(r=>[[r.boss_name,r.package_name],[r.boss_name,r.package_name]])))
   for(const name of rows.map(r=>r.boss_name))assert.ok(data[ariaKey].includes(`感谢 ${name} 老板冠名`))
@@ -88,7 +105,8 @@ async function run(){
   host.render()[tapKey]();assert.equal(host.render()[autoplayKey],true);assert.equal(host.calls.length,0)
   host.hooks.hide();assert.deepEqual(host.emitted.at(-1),['active-change',false]);host.scope.stop()
  }
+ assert.equal(Array.prototype.flatMap,nodeFlatMap,'legacy compatibility checks must not mutate the Node process prototype')
  console.log('PASS actual WeChat setup/render + compiled API/controller: enabled confirmation, double tap, POST→GET, explicit new key/archive, timeout original-key recovery, disabled/iOS/count gates, records, support, privacy cleanup, routes/5 tabs/styles. No live network or real funds.')
- console.log('PASS compiled crown plaque: real anonymous API projection, one/two bosses have two thanks/support slides each, real names/packages, full labels, pause/resume and hide cleanup.')
+ console.log('PASS compiled crown plaque in normal and isolated no-flatMap realms: actual API/parser arrays, one/two bosses have two thanks/support slides each, real names/packages, full labels, pause/resume, hide cleanup, and native viewport/swiper/icon bounds.')
 }
 run().catch(error=>{console.error(error);process.exitCode=1})

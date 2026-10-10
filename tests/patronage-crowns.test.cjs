@@ -5,6 +5,19 @@ const crown=(id=1)=>({id,boss_name:`老板${id}`,boss_avatar_url:'',package_name
 const swiper=p=>p.tree().find(n=>n.type==='swiper')
 const tapEvent=()=>({stopped:false,stopPropagation(){this.stopped=true}})
 
+test('thank-you plaque renders real names and packages when the runtime has no Array.flatMap',async()=>{
+ const rows=[{...crown(),boss_name:'企鹅',package_name:'年冠'}]
+ Object.defineProperty(rows,'flatMap',{value:undefined})
+ const p=setup(file,{getPatronageCrowns:async()=>rows},{playerId:7,compact:true})
+ try{
+  await p.life.show[0]()
+  assert.match(p.text(),/企鹅/);assert.match(p.text(),/年冠/)
+  assert.match(p.text(),/感谢/);assert.match(p.text(),/冠名支持/)
+  assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,2)
+  assert.equal(swiper(p).props.autoplay,true)
+ }finally{p.scope.stop()}
+})
+
 test('a single real crown rotates thanks and support copy with its package and can pause',async()=>{
  const row={...crown(),boss_avatar_url:'https://example.test/boss.png'}
  const p=setup(file,{getPatronageCrowns:async()=>[row]},{playerId:7,compact:true})

@@ -137,3 +137,25 @@ test('completion rechecks every crown against one shared time and removes grants
   assert.deepEqual(result.map(r => [r.player.id, r.crowns.map(c => c.id)]), [[2, [21]]])
   assert.equal(timeReads, 1)
 })
+
+test('wall works in an isolated older runtime without Array.prototype.flatMap', async () => {
+  const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm'), ts = require('typescript')
+  const hostFlatMap = Array.prototype.flatMap
+  const source = fs.readFileSync(path.join(__dirname, '../src/api/patronageWall.ts'), 'utf8')
+  const mod = { exports: {} }, requests = []
+  const imports = {
+    '@/api/boss': { getPlayerList: async () => [player(1), player(2), player(3)] },
+    '@/api/patronage': { getPatronageCrowns: async id => {
+      requests.push(id)
+      return id === 2 ? [] : [crown(id), { ...crown(id + 10), expires_at: '2020-01-02T00:00:00Z' }]
+    } }
+  }
+  const context = vm.createContext({ module: mod, exports: mod.exports, require: id => imports[id] })
+  vm.runInContext('Array.prototype.flatMap = undefined', context)
+  assert.equal(vm.runInContext('typeof Array.prototype.flatMap', context), 'undefined')
+  vm.runInContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText, context)
+  const result = await mod.exports.loadPatronageWall()
+  assert.deepEqual(Array.from(result, entry => [entry.player.id, Array.from(entry.crowns, c => c.id)]), [[1, [1]], [3, [3]]])
+  assert.deepEqual(requests, [1, 2, 3])
+  assert.equal(Array.prototype.flatMap, hostFlatMap)
+})

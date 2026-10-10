@@ -60,10 +60,11 @@ export async function loadPatronageWall({ isCurrent = () => true, onProgress }: 
   checkCurrent()
   // A grant read near the beginning may expire while the rest of the wall loads.
   // Recheck every entry against one completion time before exposing the result.
-  const now = Date.now()
-  return results.flatMap(entry => {
-    if (!entry) return []
+  const now = Date.now(), active: PatronageWallEntry[] = []
+  for (const entry of results) {
+    if (!entry) continue
     const crowns = entry.crowns.filter(crown => Date.parse(crown.starts_at) <= now && Date.parse(crown.expires_at) > now)
-    return crowns.length ? [{ player: entry.player, crowns }] : []
-  })
+    if (crowns.length) active.push({ player: entry.player, crowns })
+  }
+  return active
 }
