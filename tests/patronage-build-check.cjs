@@ -18,6 +18,7 @@ const crownsWxml=read('components/PatronageCrowns.wxml'),crownsStyles=read('comp
 const compactSwiper=crownsWxml.match(/<swiper\b[^>]*class="crown-swiper\b[^>]*>/)?.[0]
 assert.ok(compactSwiper,'compact crowns must compile to a native swiper')
 assert.match(compactSwiper,/\bvertical(?:\s|=)/);assert.match(compactSwiper,/\bcircular(?:\s|=)/);assert.match(compactSwiper,/\bautoplay="{{\w+}}"/)
+assert.match(crownsWxml,/class="plaque-message/);assert.match(crownsWxml,/class="[^"]*\bplaque-prefix\b/);assert.match(crownsWxml,/class="[^"]*\bplaque-suffix\b/)
 for(const selector of ['crown-plaque','crown-swiper'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
 assert.match(read('pages/player/detail/index.wxml'),/<patronage-crowns/);assert.match(read('pages/player/detail/index.wxml'),/<gift-host/)
 assert.match(read('pages/client/profile/index.wxml'),/冠名 \/ 包天记录/)
@@ -26,17 +27,19 @@ assert.match(read('api/patronage.js'),/purchases\/pending/);assert.doesNotMatch(
 for(const file of ['index','records'])assert.match(read(`pages/client/patronage/${file}.wxml`),/暂不提供自助退款/)
 const record=(key,status='paid')=>({purchase_no:'PN-'+key,idempotency_key:key,price_version:'a'.repeat(64),player_id:7,player_name:'陪玩甲',package_code:'day',package_name:'日冠',amount_yuan:'188.00',amount_diamonds:'1880.0',payment_status:status,created_at:'2026-09-29T00:00:00Z',paid_at:status==='paid'?'2026-09-29T00:01:00Z':null,starts_at:status==='paid'?'2026-09-29T00:01:00Z':null,expires_at:status==='paid'?'2026-09-30T00:01:00Z':null,bonus_naming_days:0,blockers:[]})
 function load(file,options={}){
- const hooks={},events={},calls=[],requests=[],modals=[],storage={token:'fixture-token',client_profile:{id:1}},cache={}
+ const hooks={},events={},calls=[],requests=[],modals=[],emitted=[],storage={token:options.anonymous?'':'fixture-token',client_profile:{id:1}},cache={}
  let C,enabled=options.enabled!==false,status='paid',pendingCount=0
  const index={getStorageSync:k=>storage[k],setStorageSync:(k,v)=>storage[k]=JSON.parse(JSON.stringify(v)),removeStorageSync:k=>delete storage[k],$on:(name,f)=>events[name]=f,$off:name=>delete events[name],$emit:(name,...args)=>events[name]?.(...args),showModal:o=>modals.push(o),login:o=>o.success({code:'fixture-code'}),request:o=>{
-  requests.push(o);assert.ok(o.url.startsWith('https://fixture.invalid/api/patronage/'));assert.equal(o.header.Authorization,'Bearer fixture-token')
+  requests.push(o);assert.ok(o.url.startsWith('https://fixture.invalid/api/patronage/'))
   const endpoint=o.url.split('/patronage/')[1]
+  if(options.anonymous)assert.ok(!o.header.Authorization,'guest crown reads must work without a token')
+  else assert.equal(o.header.Authorization,'Bearer fixture-token')
   if(options.timeout&&endpoint==='purchases/'){o.fail({errMsg:'fixture timeout'});return}
   const c=catalog();c.purchase_enabled=enabled
   c.packages.push({code:'year',name:'年冠',kind:'naming',duration_days:365,amount_yuan:'9999.00',amount_diamonds:'99990.0',available:true,blockers:[]})
   const data=endpoint==='catalog/'?c:endpoint==='quotes/'?{...quote(),service_hours:'26.5',hourly_amount_yuan:'7.09',hourly_amount_diamonds:'70.9',service_terms_source:'player_override',service_terms_version:'2026-10-table-v1',can_submit:enabled,blockers:enabled?[]:['PURCHASE_NOT_ENABLED']}:
    endpoint==='purchases/pending/'?{count:pendingCount,next:pendingCount?'https://evil.invalid':null,previous:null,results:[]}:
-   endpoint==='records/'?{count:1,next:null,previous:null,results:[record('record-key','unknown')]}:record(o.data.idempotency_key,status)
+   endpoint==='records/'?{count:1,next:null,previous:null,results:[record('record-key','unknown')]}:endpoint==='crowns/'?{results:options.crowns||[]}:record(o.data.idempotency_key,status)
   o.success({statusCode:200,data})
  }}
  const vendor={...vue,s: x => x || '',index,onLoad:f=>hooks.load=f,onShow:f=>hooks.show=f,onHide:f=>hooks.hide=f,onUnload:f=>hooks.unload=f,onUnmounted(){},_export_sfc:x=>x,e:Object.assign,t:String,o:x=>x,p:x=>x,f:(items,fn)=>items.map(fn)}
@@ -50,9 +53,9 @@ function load(file,options={}){
   vm.runInNewContext(read(file),{require:name=>module(path.posix.normalize(path.posix.join(path.posix.dirname(file),name))),wx:{createPage:c=>C=c,createComponent:c=>C=c},console,exports,getCurrentPages:()=>[]},{filename:file})
   return exports
  }
- module(file+'.js');const scope=vue.effectScope(),render=scope.run(()=>C.setup({}, {expose(){}})),draw=()=>render({},{})
+ module(file+'.js');const scope=vue.effectScope(),render=scope.run(()=>C.setup(options.props||{}, {expose(){},emit:(...args)=>emitted.push(args)})),draw=()=>render({},{})
  function tag(action){return read(file+'.wxml').match(new RegExp('<button[^>]*data-action="'+action+'"[^>]*>'))[0]}
- return {hooks,events,calls,scope,requests,modals,storage,setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
+ return {hooks,events,calls,scope,requests,modals,emitted,storage,setStatus:v=>status=v,setPending:v=>pendingCount=v,setEnabled:v=>enabled=v,render:draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v),disabled(action){const key=tag(action).match(/disabled="{{(\w+)}}"/)[1];return draw()[key]},tap(action){const key=tag(action).match(/bindtap="{{(\w+)}}"/)[1];return draw()[key]()}}
 }
 async function confirm(page,action='purchase'){
  const task=page.tap(action);await tick();assert.ok(page.modals.length);page.modals.at(-1).success({confirm:true});await task
@@ -70,6 +73,22 @@ async function run(){
  recovery.hooks.hide();await recovery.hooks.show();assert.equal(recovery.disabled('purchase'),true);await recovery.tap('recover');assert.match(recovery.text(),/购买成功/);assert.equal(recovery.requests.at(-1).data.idempotency_key,original);assert.equal(recovery.requests.filter(o=>o.url.endsWith('/purchases/')).length,1);recovery.scope.stop()
  const blocked=load('pages/client/patronage/index');blocked.setPending(30);blocked.hooks.load({playerId:'7'});await blocked.hooks.show();assert.equal(blocked.disabled('purchase'),true);await blocked.tap('purchase');assert.equal(blocked.modals.length,0);blocked.scope.stop()
  const records=load('pages/client/patronage/records');await records.hooks.show();assert.match(records.text(),/支付结果待确认/);assert.match(records.text(),/PN-record-key/);records.tap('support');records.events['session:expired']('token');assert.doesNotMatch(records.text(),/PN-record-key/);records.scope.stop()
+ const now=Date.now(),crown=(id)=>({id,boss_name:`真实老板${id}`,boss_avatar_url:'https://fixture.invalid/boss.png',package_name:id===1?'年冠':'周冠',starts_at:new Date(now-60000).toISOString(),expires_at:new Date(now+60000).toISOString(),source:'purchase'})
+ const crownControl=crownsWxml.match(/<view[^>]*data-action="crowns-toggle"[^>]*>/)[0]
+ const tapKey=crownControl.match(/catchtap="{{(\w+)}}"/)[1],ariaKey=crownControl.match(/aria-label="{{(\w+)}}"/)[1],autoplayKey=compactSwiper.match(/autoplay="{{(\w+)}}"/)[1]
+ const slidesKey=crownsWxml.match(/<swiper-item[^>]*wx:for="{{(\w+)}}"[^>]*wx:for-item="slide"/)[1]
+ const bossKey=crownsWxml.match(/<text[^>]*class="plaque-boss[^>]*>{{slide\.(\w+)}}/)[1],packageKey=crownsWxml.match(/<text[^>]*class="plaque-package[^>]*>{{slide\.(\w+)}}/)[1]
+ for(const rows of [[crown(1)],[crown(1),crown(2)]]){
+  const host=load('components/PatronageCrowns',{props:{playerId:7,compact:true},crowns:rows,anonymous:true});await host.hooks.show()
+  const data=host.render();assert.equal(data[autoplayKey],true);assert.equal(data[slidesKey].length,rows.length*2)
+  assert.equal(JSON.stringify(data[slidesKey].map(r=>[r[bossKey],r[packageKey]])),JSON.stringify(rows.flatMap(r=>[[r.boss_name,r.package_name],[r.boss_name,r.package_name]])))
+  for(const name of rows.map(r=>r.boss_name))assert.ok(data[ariaKey].includes(`感谢 ${name} 老板冠名`))
+  assert.match(host.text(),/感谢/);assert.match(host.text(),/冠名支持/);assert.deepEqual(host.emitted.at(-1),['active-change',true])
+  data[tapKey]();assert.equal(host.render()[autoplayKey],false);assert.match(host.render()[ariaKey],/轮播已暂停，点击继续/)
+  host.render()[tapKey]();assert.equal(host.render()[autoplayKey],true);assert.equal(host.calls.length,0)
+  host.hooks.hide();assert.deepEqual(host.emitted.at(-1),['active-change',false]);host.scope.stop()
+ }
  console.log('PASS actual WeChat setup/render + compiled API/controller: enabled confirmation, double tap, POST→GET, explicit new key/archive, timeout original-key recovery, disabled/iOS/count gates, records, support, privacy cleanup, routes/5 tabs/styles. No live network or real funds.')
+ console.log('PASS compiled crown plaque: real anonymous API projection, one/two bosses have two thanks/support slides each, real names/packages, full labels, pause/resume and hide cleanup.')
 }
 run().catch(error=>{console.error(error);process.exitCode=1})

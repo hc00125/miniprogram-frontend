@@ -8,6 +8,7 @@
       <button v-for="tab in boards" :key="tab.value" class="board-tab" :class="{ active: board === tab.value }" :aria-pressed="board === tab.value" :data-action="`board-${tab.value}`" @tap="selectBoard(tab.value)">
         <text class="board-title">{{ tab.label }}</text>
       </button>
+      <button class="board-tab board-tab--patronage" hover-class="board-tab--pressed" data-action="open-patronage-wall" @tap="openPatronageWall"><text class="board-title">冠名榜单</text></button>
     </view>
     <view class="ranking-card">
       <view class="period-tabs">
@@ -34,6 +35,7 @@
 import { computed, ref, onBeforeUnmount } from 'vue'
 import { onShow, onHide, onUnload } from '@dcloudio/uni-app'
 import { getRankings, type RankingBoard, type RankingPeriod, type RankingResult } from '@/api/rankings'
+import { go } from '@/utils/nav'
 const boards: { value: RankingBoard; label: string }[] = [{ value: 'boss', label: '老板贡献榜' }, { value: 'player', label: '陪玩接单榜' }]
 const periods: { value: RankingPeriod; label: string }[] = [{ value: 'day', label: '日榜' }, { value: 'week', label: '周榜' }, { value: 'month', label: '月榜' }]
 const board = ref<RankingBoard>('boss'), period = ref<RankingPeriod>('day')
@@ -54,6 +56,7 @@ async function load() {
 }
 function selectBoard(value: RankingBoard) { if (value === board.value) return; board.value = value; return load() }
 function selectPeriod(value: RankingPeriod) { if (value === period.value) return; period.value = value; return load() }
+function openPatronageWall() { go('/pages/client/patronage-wall/index') }
 function hide() { visible = false; generation++ }
 onShow(() => { visible = true; return load() })
 onHide(hide); onUnload(hide); onBeforeUnmount(hide)
@@ -66,11 +69,13 @@ onHide(hide); onUnload(hide); onBeforeUnmount(hide)
 .heading-emblem { display: flex; align-items: flex-end; justify-content: center; gap: 7rpx; flex-shrink: 0; width: 80rpx; height: 76rpx; transform: rotate(-8deg); }
 .emblem-bar { width: 18rpx; border-radius: 5rpx 5rpx 2rpx 2rpx; background: var(--ui-primary, #1f7c4b); }
 .bar-short { height: 35rpx; opacity: .35; }.bar-tall { height: 66rpx; }.bar-middle { height: 48rpx; opacity: .65; }
-.board-tabs { display: flex; gap: 16rpx; margin-bottom: 24rpx; }
-.board-tab { flex: 1; min-width: 0; margin: 0; padding: 24rpx 12rpx; border-radius: 22rpx; border: 1rpx solid var(--ui-line, #e2e7da); background: var(--ui-surface, #fffefa); color: var(--ui-muted, #61725e); line-height: 1.5; text-align: center; }
+.board-tabs { display: flex; gap: 12rpx; margin-bottom: 24rpx; }
+.board-tab { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 88rpx; margin: 0; padding: 22rpx 8rpx; box-sizing: border-box; border-radius: 22rpx; border: 1rpx solid var(--ui-line, #e2e7da); background: var(--ui-surface, #fffefa); color: var(--ui-muted, #61725e); line-height: 1.5; text-align: center; }
 .board-tab.active { background: var(--ui-primary, #1f7c4b); color: #fffefa; border-color: var(--ui-accent-line, #1f7c4b); }
+.board-tab--patronage { color: var(--ui-gold, #94651e); background: var(--ui-gold-soft, #fbf5e9); border-color: var(--ui-gold-line, #dcc39a); }
+.board-tab--pressed { opacity: .85; }
 .board-tab::after, .period-tab::after, .retry-button::after { border: 0; }
-.board-title { display: block; font-size: 29rpx; font-weight: 800; }
+.board-title { display: block; white-space: nowrap; font-size: 26rpx; font-weight: 800; }
 .ranking-card { padding: 24rpx 20rpx 12rpx; border: 1rpx solid var(--ui-line, #e8ecdf); border-radius: 26rpx; background: var(--ui-surface, #fffefa); }
 .period-tabs { display: flex; gap: 8rpx; padding: 6rpx; border-radius: 18rpx; background: var(--ui-soft, #f0f2e9); }
 .period-tab { flex: 1; min-width: 0; margin: 0; padding: 16rpx 8rpx; border-radius: 14rpx; background: transparent; color: var(--ui-muted, #6c7c68); font-size: 26rpx; line-height: 1.4; }

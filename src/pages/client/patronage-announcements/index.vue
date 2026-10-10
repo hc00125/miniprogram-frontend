@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="announcement-page">
-    <view class="page-heading"><text class="page-title">冠名通报</text></view>
+    <view class="page-heading"><text class="page-title">冠名通报</text><button class="patronage-wall-entry" hover-class="patronage-wall-entry--pressed" data-action="open-patronage-wall" @tap="openPatronageWall">冠名榜单</button></view>
     <view class="feed-list">
       <view v-for="item in items" :key="item.id" class="record" data-action="record" @tap="openPlayer(item)">
         <view class="record-avatars">
@@ -44,6 +44,7 @@ function formatTime(value: string) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 function openPlayer(item: Announcement) { go('/pages/player/detail/index', { playerId: item.player_id }) }
+function openPatronageWall() { go('/pages/client/patronage-wall/index') }
 async function loadNext() {
   if (!visible || loading.value) return
   const ticket = generation, requestedKind = kind.value, next = page.value + 1
@@ -67,9 +68,11 @@ onUnload(hide)
 
 <style scoped>
 .announcement-page { min-height: 100vh; padding: 28rpx 24rpx calc(40rpx + env(safe-area-inset-bottom)); background: var(--ui-soft, #f7f5ee); box-sizing: border-box; }
-.page-heading { display: flex; flex-direction: column; gap: 10rpx; margin: 10rpx 4rpx 26rpx; }
-.page-title { color: var(--ui-text, #253b2f); font-size: 36rpx; font-weight: 800; }
-.more::after { border: 0; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin: 10rpx 4rpx 26rpx; }
+.page-title { min-width: 0; color: var(--ui-text, #253b2f); font-size: 36rpx; font-weight: 800; white-space: nowrap; }
+.patronage-wall-entry { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 88rpx; margin: 0; padding: 18rpx 24rpx; box-sizing: border-box; border: 1rpx solid var(--ui-gold-line, #dcc39a); border-radius: 22rpx; color: var(--ui-gold, #94651e); background: var(--ui-gold-soft, #fbf5e9); font-size: 25rpx; font-weight: 700; line-height: 1.5; white-space: nowrap; }
+.patronage-wall-entry--pressed { opacity: .85; }
+.more::after, .patronage-wall-entry::after { border: 0; }
 .feed-list { overflow: hidden; border-radius: 24rpx; background: var(--ui-surface, #fffefa); }
 .record { display: flex; align-items: center; gap: 18rpx; padding: 28rpx 20rpx; border-bottom: 1rpx solid var(--ui-line, #edf0e8); }
 .record:last-child { border-bottom: 0; }

@@ -5,21 +5,29 @@ const crown=(id=1)=>({id,boss_name:`老板${id}`,boss_avatar_url:'',package_name
 const swiper=p=>p.tree().find(n=>n.type==='swiper')
 const tapEvent=()=>({stopped:false,stopPropagation(){this.stopped=true}})
 
-test('single crown is a static plaque with real boss avatar or initial and no rotation control',async()=>{
+test('a single real crown rotates thanks and support copy with its package and can pause',async()=>{
  const row={...crown(),boss_avatar_url:'https://example.test/boss.png'}
  const p=setup(file,{getPatronageCrowns:async()=>[row]},{playerId:7,compact:true})
  await p.life.show[0]()
- assert.equal(swiper(p),undefined)
+ assert.equal(swiper(p).props.autoplay,true)
+ assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,2)
  assert.match(p.action('crowns-toggle').props['aria-label'],/老板1，日冠/)
- assert.doesNotMatch(p.action('crowns-toggle').props['aria-label'],/轮播/)
+ assert.match(p.action('crowns-toggle').props['aria-label'],/感谢 老板1 老板冠名/)
+ assert.equal(p.action('crowns-toggle').props.role,'button')
+ assert.match(p.text(),/感谢/);assert.match(p.text(),/冠名支持/)
+ assert.equal(p.tree().filter(n=>n.props?.class==='plaque-boss').length,2)
+ assert.equal(p.tree().filter(n=>n.props?.class==='plaque-package').length,2)
  assert.deepEqual(p.emitted.at(-1),['active-change',true])
  const image=p.tree().find(n=>n.props?.src===row.boss_avatar_url)
  assert.ok(image);image.props.onError()
  assert.equal(p.tree().find(n=>n.props?.src===row.boss_avatar_url),undefined)
  assert.match(p.text(),/老/)
- assert.equal(p.tree().some(n=>/\/(play|pause)-gold\.png$/.test(n.props?.src||'')),false)
+ assert.ok(p.tree().some(n=>n.props?.src==='/icons/patronage/pause-gold.png'))
  const event=tapEvent();p.action('crowns-toggle').props.onTap(event)
- assert.equal(event.stopped,true);assert.deepEqual(p.calls,[])
+ assert.equal(event.stopped,true);assert.deepEqual(p.calls,[]);assert.equal(swiper(p).props.autoplay,false)
+ assert.match(p.action('crowns-toggle').props['aria-label'],/轮播已暂停，点击继续/)
+ p.action('crowns-toggle').props.onTap(tapEvent())
+ assert.equal(swiper(p).props.autoplay,true)
  p.scope.stop()
 })
 
@@ -29,7 +37,7 @@ test('multiple crowns use vertical circular native swiper and tap toggles autopl
  const s=swiper(p);assert.ok(s)
  assert.equal(s.props.vertical,'');assert.equal(s.props.circular,'')
  assert.equal(s.props.autoplay,true);assert.equal(s.props.interval,3600);assert.equal(s.props.duration,400)
- assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,2)
+ assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,4)
  for(const name of ['老板1，日冠','老板2，周冠'])assert.ok(p.action('crowns-toggle').props['aria-label'].includes(name))
  assert.match(p.action('crowns-toggle').props['aria-label'],/轮播中，点击暂停/)
  assert.ok(p.tree().some(n=>n.props?.src==='/icons/patronage/pause-gold.png'))
@@ -40,6 +48,19 @@ test('multiple crowns use vertical circular native swiper and tap toggles autopl
  p.action('crowns-toggle').props.onTap(tapEvent())
  assert.equal(swiper(p).props.autoplay,true);assert.deepEqual(p.calls,[])
  assert.equal(p.action('patronage-entry'),undefined);p.scope.stop()
+})
+
+test('detail variant keeps complete crown records and its package entry without thank-you slides',async()=>{
+ const row={...crown(),boss_name:'真实完整老板姓名',source:'day_pass_bonus'}
+ const p=setup(file,{getPatronageCrowns:async()=>[row]},{playerId:7,compact:false})
+ await p.life.show[0]()
+ assert.equal(swiper(p),undefined);assert.equal(p.action('crowns-toggle'),undefined)
+ assert.match(p.text(),/真实完整老板姓名/);assert.match(p.text(),/日冠/);assert.match(p.text(),/包天赠送/)
+ assert.match(p.text(),/到期 2026-11-01/);assert.doesNotMatch(p.text(),/感谢/)
+ assert.equal(p.tree().some(n=>n.props?.class==='plaque-message'),false)
+ p.action('patronage-entry').props.onTap()
+ assert.deepEqual(p.calls,[['/pages/client/patronage/index',{playerId:7}]])
+ p.scope.stop()
 })
 
 test('failed or empty crowns clear decoration and retry cannot bubble to player navigation',async()=>{
