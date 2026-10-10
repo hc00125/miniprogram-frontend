@@ -21,11 +21,11 @@ test('owner settings renders server hours, saves only code and hours, ignores la
  const loading=p.life.show[0]();p.life.hide[0]();late.success({statusCode:200,data:response()});await loading
  assert.doesNotMatch(p.text(),/26.5/);p.scope.stop()
 })
-test('compact crown tags reuse real API projection without inventing ranking',async()=>{
+test('compact crown plaque reuses real API projection without inventing ranking',async()=>{
  const p=setup('src/components/PatronageCrowns.vue',{}, {playerId:7,compact:true})
  const now=Date.now()
  p.h.uni.request=o=>o.success({statusCode:200,data:{results:[{id:1,boss_name:'老板甲',boss_avatar_url:'',package_name:'日冠',source:'purchase',starts_at:new Date(now-1000).toISOString(),expires_at:new Date(now+60000).toISOString()}]}})
- await p.life.show[0]();assert.match(p.text(),/老板甲·日冠/);assert.equal(p.action('patronage-entry'),undefined);p.scope.stop()
+ await p.life.show[0]();assert.match(p.text(),/老板甲/);assert.match(p.text(),/日冠/);assert.equal(p.action('patronage-entry'),undefined);assert.deepEqual(p.emitted.at(-1),['active-change',true]);p.scope.stop()
 })
 test('purchase SFC displays quote terms separately from validity',async()=>{
  const p=setup('src/pages/client/patronage/index.vue')

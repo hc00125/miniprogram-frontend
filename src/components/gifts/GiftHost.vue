@@ -57,5 +57,5 @@ watch(()=>props.recipientId,()=>{if(props.persistentEntry){close();enabled.value
 </script>
 <style scoped>
 .gift-entry{display:flex;align-items:center;justify-content:center;min-height:88rpx;min-width:140rpx;padding:16rpx 24rpx;border-radius:22rpx;background:var(--ui-soft, #eef9ef);color:var(--ui-accent, #1f7c4b);font-size:25rpx}.gift-entry::after{border:0}
-.gift-entry--compact{width:100%;min-width:0;min-height:68rpx;margin:0;padding:12rpx 4rpx;border:1rpx solid var(--ui-line, #cad9c8);border-radius:18rpx;background:var(--ui-surface, #fffefa);font-size:22rpx;line-height:1.4;white-space:nowrap;box-sizing:border-box}
+.gift-entry--compact{width:100%;min-width:0;min-height:var(--gift-entry-compact-min-height,68rpx);margin:0;padding:12rpx 4rpx;border:1rpx solid var(--ui-line, #cad9c8);border-radius:18rpx;background:var(--ui-surface, #fffefa);font-size:22rpx;line-height:1.4;white-space:nowrap;box-sizing:border-box}
 </style>

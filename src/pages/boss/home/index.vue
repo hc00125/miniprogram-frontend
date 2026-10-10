@@ -62,13 +62,20 @@
           <view class="section-head"><text class="section-title">陪玩推荐</text><button class="section-link" @tap="goPlayerList">更多陪玩 ›</button></view>
           <view class="player-filters"><button v-for="type in playerFilters" :key="type" class="player-filter" :class="{ active: activePlayerType === type }" @tap="activePlayerType = type">{{ type }}</button></view>
           <view v-if="featuredPlayers.length" class="player-grid">
-            <view v-for="player in featuredPlayers" :key="player.id" class="player-card">
+            <view v-for="player in featuredPlayers" :key="player.id" class="player-card" :class="{ 'player-card--crowned': crownedPlayers[player.id] }">
               <view class="player-card-head" @tap="openPlayerDetail(player)">
-                <image v-if="!failedAvatars[player.id]" class="player-avatar" :src="player.avatar_url" mode="aspectFill" @error="failedAvatars[player.id] = true" />
-                <view v-else class="player-avatar player-avatar--fallback">{{ player.name.slice(0, 1) }}</view>
-                <view class="player-copy"><text class="player-name">{{ player.name }}</text><PatronageCrowns compact :player-id="player.id" /><text class="player-type">{{ player.type_name }}</text></view>
+                <view class="player-avatar-shell">
+                  <image v-if="!failedAvatars[player.id]" class="player-avatar" :src="player.avatar_url" mode="aspectFill" @error="failedAvatars[player.id] = true" />
+                  <view v-else class="player-avatar player-avatar--fallback">{{ player.name.slice(0, 1) }}</view>
+                  <image v-if="crownedPlayers[player.id]" class="player-avatar-crown" src="/icons/patronage/crown-gold.png" mode="aspectFit" aria-hidden="true" />
+                </view>
+                <view class="player-copy"><text class="player-name">{{ player.name }}</text><text class="player-type">{{ player.type_name }}</text></view>
+                <view class="player-indicators">
+                  <view class="player-status" :class="{ off: !player.presence_online }"><text></text>{{ player.presence_online ? '在线' : '离线' }}</view>
+                  <text class="player-rating">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'}` : '未评分' }}</text>
+                </view>
               </view>
-              <view class="player-meta"><view class="player-status" :class="{ off: !player.presence_online }"><text></text>{{ player.presence_online ? '在线' : '离线' }}</view><text class="player-rating">{{ player.rating_count ? `★ ${player.avg_rating || '0.0'}` : '暂无评分' }}</text></view>
+              <view class="player-crowns" :class="{ 'player-crowns--active': crownedPlayers[player.id] }"><PatronageCrowns compact :player-id="player.id" @active-change="crownedPlayers[player.id] = $event" /></view>
               <view class="player-actions">
                 <button class="player-patronage" @tap.stop="openPlayerPatronage(player)">冠名/包天</button>
                 <view class="player-gift"><GiftHost compact persistent-entry :recipient-id="player.id" :recipient-name="player.name" /></view>
@@ -123,6 +130,7 @@ const steamGame = computed(() => games.value.find(game => /steam|小游戏/i.tes
 const failedGameIcons = ref<Record<number, boolean>>({})
 const players = ref<OnlinePlayer[]>([]), playersLoading = ref(false), playersLoadFailed = ref(false)
 const failedAvatars = ref<Record<number, boolean>>({})
+const crownedPlayers = ref<Record<number, boolean>>({})
 const activePlayerType = ref('全部')
 const playerFilters = computed(() => ['全部', ...['技术陪', '娱乐陪'].filter(type => players.value.some(player => player.type_name === type))])
 const featuredPlayers = computed(() => players.value.filter(player => hasUserAvatar(player) && (activePlayerType.value === '全部' || player.type_name === activePlayerType.value)).slice(0, 4))
@@ -185,11 +193,11 @@ async function fetchHomeData() {
   const current = () => visible && ticket === generation
   await Promise.all([
     (async () => { try { const result = await getCatalogNavigation(); if (current()) games.value = result.games || [] } catch { if (current()) { games.value = []; catalogLoadFailed.value = true } } finally { if (current()) catalogLoading.value = false } })(),
-    (async () => { try { const result = await getPlayerList(); if (current()) { players.value = (result || []).map(normalizePlayer); if (!playerFilters.value.includes(activePlayerType.value)) activePlayerType.value = '全部' } } catch { if (current()) { players.value = []; playersLoadFailed.value = true } } finally { if (current()) playersLoading.value = false } })(),
+    (async () => { try { const result = await getPlayerList(); if (current()) { players.value = (result || []).map(normalizePlayer); if (!playerFilters.value.includes(activePlayerType.value)) activePlayerType.value = '全部' } } catch { if (current()) { players.value = []; crownedPlayers.value = {}; playersLoadFailed.value = true } } finally { if (current()) playersLoading.value = false } })(),
     loadWallet()
   ])
 }
-function hide() { visible = false; announcementsActive.value = false; generation++; clearWallet() }
+function hide() { visible = false; announcementsActive.value = false; crownedPlayers.value = {}; generation++; clearWallet() }
 onShow(() => { visible = true; announcementsActive.value = true; return fetchHomeData() })
 onHide(hide)
 uni.$on(SESSION_EXPIRED_EVENT, expire)
@@ -262,22 +270,29 @@ onScopeDispose(() => uni.$off('player-presence-updated', applyOwnPresence))
 .player-filter { display: flex; align-items: center; justify-content: center; min-width: 110rpx; min-height: 58rpx; margin: 0; padding: 10rpx 24rpx; border-radius: 30rpx; color: var(--ui-muted, #778273); background: var(--ui-soft, #eaece3); font-size: 23rpx; line-height: 1.4; box-sizing: border-box; }
 .player-filter.active { background: var(--ui-gradient); color: #ffffff; font-weight: 700; }
 .player-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18rpx; }
-.player-card { min-width: 0; padding: 22rpx 18rpx; border: 1rpx solid var(--ui-line, #e5ebe2); border-radius: 24rpx; background: var(--ui-surface, #ffffff); box-sizing: border-box; }
-.player-card-head { display: flex; align-items: center; gap: 14rpx; min-width: 0; }
-.player-avatar { width: 82rpx; height: 82rpx; flex-shrink: 0; border-radius: 50%; background: var(--ui-soft, #edf3e8); }
+.player-card { --gift-entry-compact-min-height: 88rpx; min-width: 0; padding: 22rpx 18rpx; border: 1rpx solid var(--ui-line, #e5ebe2); border-radius: 24rpx; background: var(--ui-surface, #ffffff); box-sizing: border-box; }
+.player-card--crowned { border-color: var(--ui-gold, #94651e); }
+.player-card-head { display: flex; align-items: center; gap: 10rpx; min-width: 0; }
+.player-avatar-shell { position: relative; flex-shrink: 0; width: 82rpx; height: 82rpx; padding: 2rpx; border: 2rpx solid transparent; border-radius: 50%; box-sizing: border-box; }
+.player-card--crowned .player-avatar-shell { border-color: var(--ui-gold, #94651e); }
+.player-avatar { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--ui-soft, #edf3e8); }
 .player-avatar--fallback { display: flex; align-items: center; justify-content: center; color: var(--ui-accent, #1f7c4b); font-size: 32rpx; font-weight: 700; }
+.player-avatar-crown { position: absolute; top: -18rpx; left: 50%; width: 34rpx; height: 26rpx; transform: translateX(-50%); }
 .player-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 9rpx; }
-.player-name { color: var(--ui-text, #2b3b2e); font-size: 27rpx; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.player-type { color: var(--ui-muted, #88907e); font-size: 21rpx; }
-.player-meta { display: flex; align-items: center; justify-content: space-between; gap: 6rpx; margin-top: 20rpx; margin-bottom: 18rpx; }
-.player-status { display: flex; align-items: center; gap: 7rpx; color: var(--ui-accent, #1f7c4b); font-size: 20rpx; }
-.player-status text { width: 9rpx; height: 9rpx; border-radius: 50%; background: var(--ui-primary, #4ca467); }
+.player-name { color: var(--ui-text, #2b3b2e); font-size: 25rpx; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-type { color: var(--ui-muted, #88907e); font-size: 20rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-indicators { display: flex; flex-shrink: 0; flex-direction: column; align-items: flex-end; gap: 9rpx; max-width: 74rpx; }
+.player-status { display: flex; align-items: center; gap: 5rpx; color: var(--ui-accent, #1f7c4b); font-size: 19rpx; line-height: 1.4; white-space: nowrap; }
+.player-status text { flex-shrink: 0; width: 8rpx; height: 8rpx; border-radius: 50%; background: var(--ui-primary, #4ca467); }
 .player-status.off { color: var(--ui-muted, #999f91); }
 .player-status.off text { background: var(--ui-soft, #afb4a6); }
-.player-rating { color: var(--ui-muted, #8b8e78); font-size: 20rpx; }
-.player-actions { display: flex; align-items: center; gap: 10rpx; }
+.player-rating { max-width: 74rpx; color: var(--ui-muted, #8b8e78); font-size: 19rpx; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-crowns { min-width: 0; }
+.player-crowns--active { margin-top: 14rpx; }
+.player-actions { display: flex; align-items: center; gap: 10rpx; margin-top: 16rpx; }
 .player-patronage, .player-gift { flex: 1; min-width: 0; }
-.player-patronage { display: flex; align-items: center; justify-content: center; min-height: 68rpx; margin: 0; padding: 12rpx 4rpx; border: 1rpx solid var(--ui-line, #cad9c8); border-radius: 18rpx; background: var(--ui-surface, #ffffff); color: var(--ui-accent, #1f7c4b); font-size: 22rpx; line-height: 1.4; white-space: nowrap; box-sizing: border-box; }
+.player-patronage { display: flex; align-items: center; justify-content: center; min-height: 88rpx; margin: 0; padding: 12rpx 4rpx; border: 1rpx solid var(--ui-line, #cad9c8); border-radius: 18rpx; background: var(--ui-surface, #ffffff); color: var(--ui-accent, #1f7c4b); font-size: 22rpx; line-height: 1.4; white-space: nowrap; box-sizing: border-box; }
+.player-card--crowned .player-patronage { border-color: var(--ui-gold, #94651e); background: var(--ui-gold, #94651e); color: var(--ui-surface, #ffffff); }
 .player-patronage::after { border: 0; }
 .section-empty { padding: 38rpx 20rpx; border: 1rpx solid var(--ui-line, #e5ebe2); border-radius: 22rpx; background: var(--ui-surface, #ffffff); color: var(--ui-muted, #929985); font-size: 24rpx; text-align: center; }
 </style>

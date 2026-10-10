@@ -13,7 +13,12 @@ assert.match(wxml,/赠送一周冠名（7天），按同一规则累加/)
 assert.match(read('pages/client/patronage/index.wxss'),/\.purchase-button[^}]*width:100%/)
 assert.match(read('pages/client/patronage/index.wxss'),/safe-area-inset-bottom/)
 for(const host of ['pages/player/list/index','pages/boss/home/index']){assert.match(read(host+'.wxml'),/<patronage-crowns/);assert.ok(JSON.parse(read(host+'.json')).usingComponents['patronage-crowns'])}
-assert.match(read('pages/player/service-management/index.wxml'),/<patronage-service-duration-settings/);assert.match(read('components/PatronageServiceDurationSettings.wxml'),/0.5小时/);assert.match(read('components/PatronageCrowns.wxss'),/flex-wrap:wrap/)
+assert.match(read('pages/player/service-management/index.wxml'),/<patronage-service-duration-settings/);assert.match(read('components/PatronageServiceDurationSettings.wxml'),/0.5小时/)
+const crownsWxml=read('components/PatronageCrowns.wxml'),crownsStyles=read('components/PatronageCrowns.wxss')
+const compactSwiper=crownsWxml.match(/<swiper\b[^>]*class="crown-swiper\b[^>]*>/)?.[0]
+assert.ok(compactSwiper,'compact crowns must compile to a native swiper')
+assert.match(compactSwiper,/\bvertical(?:\s|=)/);assert.match(compactSwiper,/\bcircular(?:\s|=)/);assert.match(compactSwiper,/\bautoplay="{{\w+}}"/)
+for(const selector of ['crown-plaque','crown-swiper'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
 assert.match(read('pages/player/detail/index.wxml'),/<patronage-crowns/);assert.match(read('pages/player/detail/index.wxml'),/<gift-host/)
 assert.match(read('pages/client/profile/index.wxml'),/冠名 \/ 包天记录/)
 assert.ok(fs.existsSync(path.join(root,'utils/patronagePaymentIntent.js')),'real controller must be in the purchase dependency graph')
