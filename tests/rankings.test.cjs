@@ -61,25 +61,18 @@ test('ranking tabs discard stale responses and preserve selected board and perio
     p.requests[4].resolve({ available: false }); await tick(); assert.ok(p.action('unavailable')); assert.doesNotMatch(p.text(), /本周陪玩/)
   } finally { p.close() }
 })
-test('ranking rules explain refund attribution, successful acceptance and exclusive Beijing periods', async () => {
+test('ranking pages keep real row data without explanatory small print on either board', async () => {
   const p = page()
   try {
     p.h.hooks.show[0](); p.requests[0].resolve(response()); await tick()
-    assert.match(p.text(), /成功退款扣回原消费期/)
-    assert.match(p.text(), /冠名线下退款暂不自动同步/)
-    assert.match(p.text(), /充值不计入/)
-    assert.match(p.text(), /北京时间/)
-    assert.match(p.text(), /周一/)
-    assert.match(p.text(), /结束时刻不含/)
-    assert.match(p.text(), /2026/)
-    assert.match(p.text(), /同分并列/)
+    assert.match(p.text(), /公开昵称/); assert.match(p.text(), /1,200/); assert.match(p.text(), /钻石/)
+    assert.equal(p.action('ranking-rules'), undefined)
+    assert.doesNotMatch(p.text(), /消费钻石合计|充值不计入|成功退款|北京时间|同分并列|统计时间|更新于|最多展示/)
     p.action('board-player').props.onTap()
-    assert.match(p.text(), /成功接单时间/)
-    assert.match(p.text(), /同人同单只计一次/)
-    assert.match(p.text(), /仅统计最终成功完成的订单/)
-    assert.match(p.text(), /未完成、老板取消、陪玩退出不计/)
-    assert.doesNotMatch(p.text(), /后续取消不扣减/)
-    assert.doesNotMatch(p.text(), /成功退款扣回原消费期/)
+    p.requests[1].resolve(response('player', 'day', [row('真实陪玩')])); await tick()
+    assert.match(p.text(), /真实陪玩/); assert.match(p.text(), /1,200/); assert.match(p.text(), /接单量/)
+    assert.equal(p.action('ranking-rules'), undefined)
+    assert.doesNotMatch(p.text(), /成功接单时间|同人同单|最终成功完成|老板取消|北京时间|同分并列|统计时间|更新于|最多展示/)
   } finally { p.close() }
 })
 

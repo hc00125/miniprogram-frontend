@@ -13,8 +13,6 @@
       <view class="period-tabs">
         <button v-for="tab in periods" :key="tab.value" class="period-tab" :class="{ active: period === tab.value }" :aria-pressed="period === tab.value" :data-action="`period-${tab.value}`" @tap="selectPeriod(tab.value)">{{ tab.label }}</button>
       </view>
-      <text class="ranking-description">{{ board === 'boss' ? '点单、礼物与冠名消费钻石合计' : '按成功接单时间统计，同人同单只计一次' }}</text>
-      <view class="ranking-footnote" data-action="ranking-rules"><text>{{ board === 'boss' ? '充值不计入，点单与礼物成功退款扣回原消费期；冠名线下退款暂不自动同步' : '仅统计最终成功完成的订单；未完成、老板取消、陪玩退出不计' }}</text><text>北京时间自然日、周一开始的自然周、自然月 · 同分并列</text></view>
       <view v-if="status === 'loading'" class="state" data-action="loading"><view class="state-mark">榜</view><text class="state-title">榜单加载中</text></view>
       <view v-else-if="status === 'error'" class="state" data-action="error"><view class="state-mark">榜</view><text class="state-title">暂时没能加载榜单</text><button class="retry-button" data-action="retry" @tap="load">重新加载</button></view>
       <view v-else-if="status === 'unavailable'" class="state" data-action="unavailable"><view class="state-mark">榜</view><text class="state-title">榜单暂未开放</text></view>
@@ -28,7 +26,6 @@
           <text class="ranking-name">{{ item.name }}</text><view class="ranking-value"><text class="value-number">{{ formatValue(item.value) }}</text><text class="value-unit">{{ board === 'boss' ? '钻石' : '单' }}</text></view>
         </view>
       </view>
-      <view v-if="result?.available && status === 'ready'" class="ranking-footnote"><text>{{ periodCaption }}</text><text>更新于 {{ displayTime(result.updated_at) }} · 最多展示 50 位</text></view>
     </view>
   </view>
 </template>
@@ -44,8 +41,6 @@ const status = ref<'loading' | 'error' | 'unavailable' | 'ready'>('loading'), re
 const failedImages = ref<Record<string, boolean>>({})
 const items = computed(() => result.value?.available ? result.value.results : [])
 let visible = false, generation = 0
-function displayTime(value: string) { const date = new Date(Date.parse(value) + 8 * 60 * 60 * 1000); const pad = (v: number) => String(v).padStart(2, '0'); return `${date.getUTCFullYear()}/${date.getUTCMonth() + 1}/${date.getUTCDate()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}` }
-const periodCaption = computed(() => result.value?.available ? `统计时间：${displayTime(result.value.period_start)} — ${displayTime(result.value.period_end)}（北京时间，结束时刻不含）` : '')
 function formatValue(value: number) { return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',') }
 async function load() {
   if (!visible) return
@@ -80,7 +75,6 @@ onHide(hide); onUnload(hide); onBeforeUnmount(hide)
 .period-tabs { display: flex; gap: 8rpx; padding: 6rpx; border-radius: 18rpx; background: var(--ui-soft, #f0f2e9); }
 .period-tab { flex: 1; min-width: 0; margin: 0; padding: 16rpx 8rpx; border-radius: 14rpx; background: transparent; color: var(--ui-muted, #6c7c68); font-size: 26rpx; line-height: 1.4; }
 .period-tab.active { background: var(--ui-surface, #fffefa); color: var(--ui-accent, #1f7c4b); box-shadow: 0 3rpx 12rpx #24442e0a; font-weight: 800; }
-.ranking-description { display: block; padding: 22rpx 6rpx 10rpx; color: var(--ui-muted, #7b8875); font-size: 22rpx; line-height: 1.6; text-align: center; }
 .state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 65rpx 10rpx 90rpx; min-height: 260rpx; }
 .state-mark { display: flex; justify-content: center; align-items: center; width: 100rpx; height: 100rpx; background: var(--ui-soft, #edf4e8); border: 9rpx solid var(--ui-line, #f6f8f0); border-radius: 30rpx; color: var(--ui-muted, #77a77b); font-size: 42rpx; font-weight: 800; transform: rotate(-6deg); }
 .state-title { margin-top: 28rpx; color: var(--ui-muted, #486046); font-size: 29rpx; font-weight: 700; }
@@ -90,5 +84,4 @@ onHide(hide); onUnload(hide); onBeforeUnmount(hide)
 .rank-number { width: 46rpx; flex-shrink: 0; font-size: 28rpx; color: var(--ui-muted, #8f9a85); font-weight: 800; font-style: italic; }.rank-1 { color: var(--ui-gold, #bf923a); }.rank-2 { color: var(--ui-muted, #78919a); }.rank-3 { color: var(--ui-gold, #a58260); }
 .ranking-avatar { width: 76rpx; height: 76rpx; border-radius: 50%; flex-shrink: 0; background: var(--ui-soft, #eef4e8); }.avatar-fallback { display: flex; align-items: center; justify-content: center; color: var(--ui-muted, #528654); font-size: 30rpx; font-weight: 700; }
 .ranking-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 27rpx; font-weight: 700; }.ranking-value { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; max-width: 210rpx; }.value-number { color: var(--ui-accent, #1f7c4b); font-size: 28rpx; font-weight: 800; overflow-wrap: anywhere; }.value-unit { margin-top: 4rpx; color: var(--ui-muted, #8a9681); font-size: 20rpx; }
-.ranking-footnote { display: flex; flex-direction: column; gap: 8rpx; padding: 26rpx 4rpx 18rpx; color: var(--ui-muted, #929c8b); font-size: 19rpx; line-height: 1.6; text-align: center; }
 </style>

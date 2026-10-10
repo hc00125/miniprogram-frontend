@@ -1,4 +1,4 @@
-// Replay real isolated Django HTTP JSON through the real TS API and Vue SFC.
+// Replay captured Django HTTP JSON through the real TS API and Vue SFC.
 // Usage: node tests/rankings-backend.integration.cjs <captured-responses.json>
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict')
 const ts = require('typescript'), vue = require('vue')
@@ -38,12 +38,15 @@ const tick = () => new Promise(setImmediate)
         assert.deepEqual(mod.exports.parseRankings(expected, board, period).results, expected.results)
         assert.ok(action('ranking-row')); assert.ok(!action('error')); assert.ok(!action('empty'))
         assert.ok(!action('unavailable')); assert.ok(!action('loading'))
-        assert.match(text(), board === 'boss' ? /联调老板/ : /公开陪玩/)
-        assert.match(text(), board === 'boss' ? /123\.5/ : /1/)
-        assert.match(text(), board === 'boss' ? /冠名线下退款暂不自动同步/ : /仅统计最终成功完成/)
+        assert.equal(tree().filter(n => n.props?.['data-action'] === 'ranking-row').length, expected.results.length)
+        for (const row of expected.results) {
+          assert.ok(text().includes(row.name))
+          assert.ok(text().includes(String(row.value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')))
+        }
+        assert.equal(action('ranking-rules'), undefined)
       }
     }
     assert.ok(requests.length >= 6)
-    console.log('PASS: both boards × day/week/month: real PostgreSQL Django JSON -> actual TS API/parser -> actual Vue SFC; anonymous GET only. Synthetic isolated DB fixtures, no production traffic.')
+    console.log('PASS: both boards × day/week/month: captured HTTP JSON -> actual TS API/parser -> actual Vue SFC; all rows match, anonymous GET replay, no network during replay.')
   } finally { scope.stop() }
 })().catch(error => { console.error(error); process.exitCode = 1 })
