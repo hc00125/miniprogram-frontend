@@ -41,6 +41,8 @@
       </view>
     </view>
 
+    <VipSummaryCard v-if="isLoggedIn && profile" :profile="profile" />
+
     <view v-if="!isLoggedIn" class="guest-card">
       <view class="guest-icon"><image class="entry-icon" :src="uiIcons.guest" mode="aspectFit" /></view>
       <view class="guest-main">
@@ -120,6 +122,7 @@ import { updatePlayerOnlineStatus } from '@/api/player'
 import { getWalletOverview, type WalletOverview } from '@/api/wallet'
 import MainBottomTabs from '@/components/MainBottomTabs.vue'
 import ThemePicker from '@/components/ThemePicker.vue'
+import VipSummaryCard from '@/components/VipSummaryCard.vue'
 import { uiIcons } from '@/utils/uiIcons'
 import { getAccountRestrictionView, showAccountRestrictionModal } from '@/utils/accountRestriction'
 import { getClientProfile, normalizeAvatarUrl, setPlayerOnlineStatus, syncClientProfile, type ClientProfile } from '@/utils/client'

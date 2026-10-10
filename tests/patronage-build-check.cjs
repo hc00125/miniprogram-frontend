@@ -15,16 +15,21 @@ assert.match(read('pages/client/patronage/index.wxss'),/safe-area-inset-bottom/)
 for(const host of ['pages/player/list/index','pages/boss/home/index']){assert.match(read(host+'.wxml'),/<patronage-crowns/);assert.ok(JSON.parse(read(host+'.json')).usingComponents['patronage-crowns'])}
 assert.match(read('pages/player/service-management/index.wxml'),/<patronage-service-duration-settings/);assert.match(read('components/PatronageServiceDurationSettings.wxml'),/0.5小时/)
 const crownsWxml=read('components/PatronageCrowns.wxml'),crownsStyles=read('components/PatronageCrowns.wxss')
-const compactSwiper=crownsWxml.match(/<swiper\b[^>]*class="crown-swiper\b[^>]*>/)?.[0]
-assert.ok(compactSwiper,'compact crowns must compile to a native swiper')
-assert.match(compactSwiper,/\bvertical(?:\s|=)/);assert.match(compactSwiper,/\bcircular(?:\s|=)/);assert.match(compactSwiper,/\bautoplay="{{\w+}}"/)
-assert.match(crownsWxml,/class="plaque-message/);assert.match(crownsWxml,/class="[^"]*\bplaque-prefix\b/);assert.match(crownsWxml,/class="[^"]*\bplaque-suffix\b/)
-for(const selector of ['crown-plaque','crown-viewport','crown-swiper'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
-assert.match(crownsWxml,/<view[^>]*class="crown-viewport[^>]*><swiper/,'native swiper needs a regular view with explicit bounds')
+const tickerTag=crownsWxml.match(/<view[^>]*class="crown-track\b[^>]*>/)?.[0]
+assert.ok(tickerTag,'compact crowns must compile to a continuous text track')
+assert.doesNotMatch(crownsWxml,/<swiper\b|<swiper-item\b/,'the subtitle ticker must not switch whole swiper pages')
+assert.match(tickerTag,/aria-hidden="true"/,'cloned visual text must not repeat its full parent label')
+for(const selector of ['crown-plaque','crown-viewport','crown-track'])assert.match(crownsStyles,new RegExp('\\.'+selector+'[^}]*\\bheight:[1-9]\\d*(?:\\.\\d+)?rpx'),'compact crowns need a fixed positive height')
+assert.match(crownsWxml,/<view[^>]*class="crown-viewport[^>]*><view[^>]*class="crown-track/,'continuous track needs a regular clipped view with explicit bounds')
 function rule(selector){const match=crownsStyles.match(new RegExp('\\.'+selector+'(?:\\.[\\w-]+)*\\{([^}]+)\\}'));assert.ok(match,`${selector} must have native styles`);return match[1]}
 const viewportStyle=rule('crown-viewport'),crownStyle=rule('plaque-crown'),rotationStyle=rule('rotation-icon')
 for(const declaration of ['position:absolute','left:40rpx','right:32rpx','height:60rpx','overflow:hidden'])assert.ok(viewportStyle.includes(declaration),`viewport needs ${declaration}`)
-assert.match(rule('crown-swiper'),/width:100%/);assert.match(rule('crown-plaque'),/position:relative/)
+assert.match(rule('crown-plaque'),/position:relative/)
+const trackStyle=rule('crown-track')
+for(const declaration of ['display:inline-flex','flex-wrap:nowrap','width:max-content','white-space:nowrap','animation-name:crown-marquee','animation-timing-function:linear','animation-iteration-count:infinite'])assert.ok(trackStyle.includes(declaration),`the subtitle track needs ${declaration}`)
+assert.match(crownsStyles,/@keyframes crown-marquee[\w-]*\{/);assert.match(crownsStyles,/transform:translate(?:X)?\(-50%(?:,0)?\)/,'two equal copies must move left by exactly one content group')
+assert.match(rule('crown-copy'),/flex-shrink:0/)
+for(const selector of ['plaque-boss','plaque-package']){assert.match(rule(selector),/white-space:nowrap/);assert.doesNotMatch(rule(selector),/ellipsis|max-width/,'full real names/packages must flow through the viewport')}
 for(const [style,side] of [[crownStyle,'left'],[rotationStyle,'right']]){assert.match(style,/position:absolute/);assert.ok(style.includes(`${side}:10rpx`),'crown and pause must keep their own outside bounds')}
 function rpx(style,property){const match=style.match(new RegExp('(?:^|;)'+property+':(\\d+(?:\\.\\d+)?)rpx'));assert.ok(match,`${property} needs an explicit native length`);return Number(match[1])}
 assert.ok(rpx(crownStyle,'left')+rpx(crownStyle,'width')<=rpx(viewportStyle,'left'),'viewport starts after the crown')
@@ -88,25 +93,27 @@ async function run(){
  const records=load('pages/client/patronage/records');await records.hooks.show();assert.match(records.text(),/支付结果待确认/);assert.match(records.text(),/PN-record-key/);records.tap('support');records.events['session:expired']('token');assert.doesNotMatch(records.text(),/PN-record-key/);records.scope.stop()
  const now=Date.now(),crown=(id)=>({id,boss_name:`真实老板${id}`,boss_avatar_url:'https://fixture.invalid/boss.png',package_name:id===1?'年冠':'周冠',starts_at:new Date(now-60000).toISOString(),expires_at:new Date(now+60000).toISOString(),source:'purchase'})
  const crownControl=crownsWxml.match(/<view[^>]*data-action="crowns-toggle"[^>]*>/)[0]
- const tapKey=crownControl.match(/catchtap="{{(\w+)}}"/)[1],ariaKey=crownControl.match(/aria-label="{{(\w+)}}"/)[1],autoplayKey=compactSwiper.match(/autoplay="{{(\w+)}}"/)[1]
- const slidesKey=crownsWxml.match(/<swiper-item[^>]*wx:for="{{(\w+)}}"[^>]*wx:for-item="slide"/)[1]
- const bossKey=crownsWxml.match(/<text[^>]*class="plaque-boss[^>]*>{{slide\.(\w+)}}/)[1],packageKey=crownsWxml.match(/<text[^>]*class="plaque-package[^>]*>{{slide\.(\w+)}}/)[1]
+ const tapKey=crownControl.match(/catchtap="{{(\w+)}}"/)[1],ariaKey=crownControl.match(/aria-label="{{(\w+)}}"/)[1],trackStyleKey=tickerTag.match(/style="{{(\w+)}}"/)[1]
+ const copiesKey=crownsWxml.match(/<view[^>]*wx:for="{{(\w+)}}"[^>]*wx:for-item="copy"/)[1],itemsKey=crownsWxml.match(/<view[^>]*wx:for="{{copy\.(\w+)}}"[^>]*wx:for-item="crown"/)[1]
+ const bossKey=crownsWxml.match(/<text[^>]*class="plaque-boss[^>]*>{{crown\.(\w+)}}/)[1],packageKey=crownsWxml.match(/<text[^>]*class="plaque-package[^>]*>{{crown\.(\w+)}}/)[1]
  const nodeFlatMap=Array.prototype.flatMap
  for(const missingFlatMap of [false,true])for(const rows of [[crown(1)],[crown(1),crown(2)]]){
   const host=load('components/PatronageCrowns',{props:{playerId:7,compact:true},crowns:rows,anonymous:true,missingFlatMap});await host.hooks.show()
   const parsed=await host.crownApi().getPatronageCrowns(7)
   assert.equal(Object.getPrototypeOf(parsed),host.arrayPrototype(),'the actual API parser must return an array from the same isolated JS realm')
   assert.equal(typeof parsed.flatMap,missingFlatMap?'undefined':'function','the legacy regression must exercise a genuinely missing built-in on API results')
-  const data=host.render();assert.equal(data[autoplayKey],true);assert.equal(data[slidesKey].length,rows.length*2)
-  assert.equal(JSON.stringify(data[slidesKey].map(r=>[r[bossKey],r[packageKey]])),JSON.stringify(rows.flatMap(r=>[[r.boss_name,r.package_name],[r.boss_name,r.package_name]])))
+  const data=host.render();assert.match(data[trackStyleKey],/animation-play-state:running/);assert.equal(data[copiesKey].length,2)
+  const expected=rows.map(r=>[r.boss_name,r.package_name])
+  assert.equal(JSON.stringify(data[copiesKey].map(copy=>copy[itemsKey].map(r=>[r[bossKey],r[packageKey]]))),JSON.stringify([expected,expected]))
+  const duration=data[trackStyleKey].match(/animation-duration:([\d.]+s)/)[1]
   for(const name of rows.map(r=>r.boss_name))assert.ok(data[ariaKey].includes(`感谢 ${name} 老板冠名`))
-  assert.match(host.text(),/感谢/);assert.match(host.text(),/冠名支持/);assert.deepEqual(host.emitted.at(-1),['active-change',true])
-  data[tapKey]();assert.equal(host.render()[autoplayKey],false);assert.match(host.render()[ariaKey],/轮播已暂停，点击继续/)
-  host.render()[tapKey]();assert.equal(host.render()[autoplayKey],true);assert.equal(host.calls.length,0)
+  assert.match(host.text(),/感谢/);assert.match(host.text(),/谢谢老板的支持/);assert.match(host.text(),/祝老板玩得开心/);assert.deepEqual(host.emitted.at(-1),['active-change',true])
+  data[tapKey]();assert.match(host.render()[trackStyleKey],/animation-play-state:paused/);assert.match(host.render()[ariaKey],/滚动已暂停，点击继续/)
+  host.render()[tapKey]();assert.match(host.render()[trackStyleKey],/animation-play-state:running/);assert.ok(host.render()[trackStyleKey].includes(`animation-duration:${duration}`),'pause/resume must preserve the same animation rather than restarting a new interval');assert.equal(host.calls.length,0)
   host.hooks.hide();assert.deepEqual(host.emitted.at(-1),['active-change',false]);host.scope.stop()
  }
  assert.equal(Array.prototype.flatMap,nodeFlatMap,'legacy compatibility checks must not mutate the Node process prototype')
  console.log('PASS actual WeChat setup/render + compiled API/controller: enabled confirmation, double tap, POST→GET, explicit new key/archive, timeout original-key recovery, disabled/iOS/count gates, records, support, privacy cleanup, routes/5 tabs/styles. No live network or real funds.')
- console.log('PASS compiled crown plaque in normal and isolated no-flatMap realms: actual API/parser arrays, one/two bosses have two thanks/support slides each, real names/packages, full labels, pause/resume, hide cleanup, and native viewport/swiper/icon bounds.')
+ console.log('PASS compiled subtitle crown ticker in normal and isolated no-flatMap realms: actual API/parser arrays, two complete seamless copies of one/two bosses, full names/packages/thanks, pause/resume, hide cleanup, and native viewport/leftward-keyframe/icon bounds. Native motion still needs user visual review.')
 }
 run().catch(error=>{console.error(error);process.exitCode=1})

@@ -18,10 +18,10 @@
     "expressions": "f617e1dac1a53c2d8636ab2bbcb20dbdbed7ce511cbd47376341d136d5ed6427"
   },
   "src/pages/client/account/index.vue": {
-    "script": "79804d9c32b0d6b5b638001aba3022745bed157c2d1d8f1c1799f795d9d68b14",
-    "bindings": "309914210e8e42f47fa3804f70b156557f95da59d2dfad4c24c5486de7c99029",
+    "script": "e96ae0151214c976b3cbedb6ca76acd6d8d4602d558e07fa97044a355226033f",
+    "bindings": "1e60001e75681ece356fc61439c0b857f94af85a474210a3e5e6f4cdafa5c5a7",
     "buttons": "6a5a07c75d363cf70aaa2ae35b46537f6c956d8c71abb875b788a3ce97a0fd29",
-    "expressions": "ba973a3ad32a383c4f001d025f307791b6bfe97f3828d4e1b2b2f8a86b780c24"
+    "expressions": "6ddbb89ccc9cbf49f079aebc4a1d8051bf87e5eb08535a2beb8c21afd9928200"
   },
   "src/pages/client/complaints/index.vue": {
     "script": "7c9202ebcb4bf0ec17136df421eaa28bdd3aaa5e875f741b244e7ce82c5c87be",

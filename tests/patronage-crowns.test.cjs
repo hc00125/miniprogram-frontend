@@ -2,7 +2,8 @@ const {test}=require('node:test'), assert=require('node:assert/strict'), vue=req
 const {setup,tick}=require('./patronage-harness.cjs')
 const file='src/components/PatronageCrowns.vue'
 const crown=(id=1)=>({id,boss_name:`老板${id}`,boss_avatar_url:'',package_name:id===1?'日冠':'周冠',starts_at:'2026-10-01T00:00:00Z',expires_at:'2026-11-01T00:00:00Z',source:'purchase'})
-const swiper=p=>p.tree().find(n=>n.type==='swiper')
+const track=p=>p.tree().find(n=>n.props?.class==='crown-track')
+const styleValue=(p,property)=>{const style=track(p).props.style;return typeof style==='string'?style.match(new RegExp(property+':([^;]+)'))?.[1]:style[property.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase())]}
 const tapEvent=()=>({stopped:false,stopPropagation(){this.stopped=true}})
 
 test('thank-you plaque renders real names and packages when the runtime has no Array.flatMap',async()=>{
@@ -12,22 +13,23 @@ test('thank-you plaque renders real names and packages when the runtime has no A
  try{
   await p.life.show[0]()
   assert.match(p.text(),/企鹅/);assert.match(p.text(),/年冠/)
-  assert.match(p.text(),/感谢/);assert.match(p.text(),/冠名支持/)
-  assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,2)
-  assert.equal(swiper(p).props.autoplay,true)
+  assert.match(p.text(),/感谢/);assert.match(p.text(),/谢谢老板的支持/)
+  assert.equal(p.tree().filter(n=>n.props?.class==='crown-copy').length,2)
+  assert.equal(styleValue(p,'animation-play-state'),'running')
+  assert.equal(p.tree().some(n=>['swiper','swiper-item'].includes(n.type)),false)
  }finally{p.scope.stop()}
 })
 
-test('a single real crown rotates thanks and support copy with its package and can pause',async()=>{
+test('a single real crown continuously scrolls complete thanks copy with its package and pauses at its current position',async()=>{
  const row={...crown(),boss_avatar_url:'https://example.test/boss.png'}
  const p=setup(file,{getPatronageCrowns:async()=>[row]},{playerId:7,compact:true})
  await p.life.show[0]()
- assert.equal(swiper(p).props.autoplay,true)
- assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,2)
- assert.match(p.action('crowns-toggle').props['aria-label'],/老板1，日冠/)
+ assert.equal(styleValue(p,'animation-play-state'),'running')
+ assert.equal(p.tree().filter(n=>n.props?.class==='crown-copy').length,2)
+ assert.match(p.action('crowns-toggle').props['aria-label'],/日冠/)
  assert.match(p.action('crowns-toggle').props['aria-label'],/感谢 老板1 老板冠名/)
  assert.equal(p.action('crowns-toggle').props.role,'button')
- assert.match(p.text(),/感谢/);assert.match(p.text(),/冠名支持/)
+ assert.match(p.text(),/感谢/);assert.match(p.text(),/谢谢老板的支持/);assert.match(p.text(),/祝老板玩得开心/)
  assert.equal(p.tree().filter(n=>n.props?.class==='plaque-boss').length,2)
  assert.equal(p.tree().filter(n=>n.props?.class==='plaque-package').length,2)
  assert.deepEqual(p.emitted.at(-1),['active-change',true])
@@ -37,29 +39,32 @@ test('a single real crown rotates thanks and support copy with its package and c
  assert.match(p.text(),/老/)
  assert.ok(p.tree().some(n=>n.props?.src==='/icons/patronage/pause-gold.png'))
  const event=tapEvent();p.action('crowns-toggle').props.onTap(event)
- assert.equal(event.stopped,true);assert.deepEqual(p.calls,[]);assert.equal(swiper(p).props.autoplay,false)
- assert.match(p.action('crowns-toggle').props['aria-label'],/轮播已暂停，点击继续/)
+ const duration=styleValue(p,'animation-duration')
+ assert.equal(event.stopped,true);assert.deepEqual(p.calls,[]);assert.equal(styleValue(p,'animation-play-state'),'paused')
+ assert.match(p.action('crowns-toggle').props['aria-label'],/滚动已暂停，点击继续/)
  p.action('crowns-toggle').props.onTap(tapEvent())
- assert.equal(swiper(p).props.autoplay,true)
+ assert.equal(styleValue(p,'animation-play-state'),'running');assert.equal(styleValue(p,'animation-duration'),duration)
  p.scope.stop()
 })
 
-test('multiple crowns use vertical circular native swiper and tap toggles autoplay without opening player detail',async()=>{
+test('every real boss appears in each seamless marquee copy, and tap pauses without opening player detail',async()=>{
  const p=setup(file,{getPatronageCrowns:async()=>[crown(1),crown(2)]},{playerId:7,compact:true})
  await p.life.show[0]()
- const s=swiper(p);assert.ok(s)
- assert.equal(s.props.vertical,'');assert.equal(s.props.circular,'')
- assert.equal(s.props.autoplay,true);assert.equal(s.props.interval,3600);assert.equal(s.props.duration,400)
- assert.equal(p.tree().filter(n=>n.type==='swiper-item').length,4)
- for(const name of ['老板1，日冠','老板2，周冠'])assert.ok(p.action('crowns-toggle').props['aria-label'].includes(name))
- assert.match(p.action('crowns-toggle').props['aria-label'],/轮播中，点击暂停/)
+ assert.ok(track(p));assert.equal(p.tree().some(n=>['swiper','swiper-item'].includes(n.type)),false)
+ assert.equal(styleValue(p,'animation-play-state'),'running')
+ assert.equal(p.tree().filter(n=>n.props?.class==='plaque-line').length,4)
+ for(const name of ['老板1','日冠','老板2','周冠'])assert.ok(p.action('crowns-toggle').props['aria-label'].includes(name))
+ const copies=p.tree().filter(n=>n.props?.class==='crown-copy')
+ assert.equal(copies.length,2);assert.deepEqual(copies[0].children,copies[1].children)
+ assert.equal(track(p).props['aria-hidden'],'true','the full plaque label should be announced once rather than repeating cloned copy')
+ assert.match(p.action('crowns-toggle').props['aria-label'],/滚动中，点击暂停/)
  assert.ok(p.tree().some(n=>n.props?.src==='/icons/patronage/pause-gold.png'))
  const event=tapEvent();p.action('crowns-toggle').props.onTap(event)
- assert.equal(event.stopped,true);assert.equal(swiper(p).props.autoplay,false)
- assert.match(p.action('crowns-toggle').props['aria-label'],/轮播已暂停，点击继续/)
+ assert.equal(event.stopped,true);assert.equal(styleValue(p,'animation-play-state'),'paused')
+ assert.match(p.action('crowns-toggle').props['aria-label'],/滚动已暂停，点击继续/)
  assert.ok(p.tree().some(n=>n.props?.src==='/icons/patronage/play-gold.png'))
  p.action('crowns-toggle').props.onTap(tapEvent())
- assert.equal(swiper(p).props.autoplay,true);assert.deepEqual(p.calls,[])
+ assert.equal(styleValue(p,'animation-play-state'),'running');assert.deepEqual(p.calls,[])
  assert.equal(p.action('patronage-entry'),undefined);p.scope.stop()
 })
 
@@ -67,10 +72,10 @@ test('detail variant keeps complete crown records and its package entry without 
  const row={...crown(),boss_name:'真实完整老板姓名',source:'day_pass_bonus'}
  const p=setup(file,{getPatronageCrowns:async()=>[row]},{playerId:7,compact:false})
  await p.life.show[0]()
- assert.equal(swiper(p),undefined);assert.equal(p.action('crowns-toggle'),undefined)
+ assert.equal(track(p),undefined);assert.equal(p.action('crowns-toggle'),undefined)
  assert.match(p.text(),/真实完整老板姓名/);assert.match(p.text(),/日冠/);assert.match(p.text(),/包天赠送/)
  assert.match(p.text(),/到期 2026-11-01/);assert.doesNotMatch(p.text(),/感谢/)
- assert.equal(p.tree().some(n=>n.props?.class==='plaque-message'),false)
+ assert.equal(p.tree().some(n=>n.props?.class==='crown-copy'),false)
  p.action('patronage-entry').props.onTap()
  assert.deepEqual(p.calls,[['/pages/client/patronage/index',{playerId:7}]])
  p.scope.stop()
@@ -112,7 +117,7 @@ for(const hook of ['hide','unload','unmount'])test(`${hook} clears crown decorat
  let hold=false,resolve
  const p=setup(file,{getPatronageCrowns:()=>hold?new Promise(r=>resolve=r):Promise.resolve([crown(1),crown(2)])},{playerId:7,compact:true})
  await p.life.show[0]();p.action('crowns-toggle').props.onTap(tapEvent())
- assert.equal(swiper(p).props.autoplay,false)
+ assert.equal(styleValue(p,'animation-play-state'),'paused')
  hold=true;const loading=p.life.show[0]();p.life[hook][0]()
  const afterHide=p.emitted.length
  assert.equal(p.action('crowns-toggle'),undefined);assert.deepEqual(p.emitted.at(-1),['active-change',false])
@@ -120,7 +125,7 @@ for(const hook of ['hide','unload','unmount'])test(`${hook} clears crown decorat
  assert.equal(p.action('crowns-toggle'),undefined);assert.equal(p.emitted.length,afterHide)
  if(hook==='hide'){
   hold=false;await p.life.show[0]()
-  assert.equal(swiper(p).props.autoplay,true);assert.deepEqual(p.emitted.at(-1),['active-change',true])
+  assert.equal(styleValue(p,'animation-play-state'),'running');assert.deepEqual(p.emitted.at(-1),['active-change',true])
  }
  p.scope.stop()
 })

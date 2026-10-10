@@ -60,6 +60,9 @@ test('phase2 approved scripts, directives, button text and monetary interpolatio
  // real API/SFC behavior is guarded by order-balance-payment*.test.cjs.
  // Fixtures include approved copy removal and real-description visibility gates;
  // payment/checkout scripts and every button hash remain unchanged by that cleanup.
+ // Account hashes also reflect the approved VIP summary move to the profile page.
+ // Its data, guest/session gates and record action are covered by vip-summary-ui.test.cjs
+ // and vip-summary-build-check.cjs; account KOOK, wallet and editing remain guarded here.
  for(const p of files){
    let source=read(p).replace(' :style="$appThemeStyle"', '').replace("import OrderSurchargeHost from '@/components/orders/OrderSurchargeHost.vue'\n",'')
      .replace('    <OrderSurchargeHost v-if="orderNo" :order-no="orderNo" />\n','')

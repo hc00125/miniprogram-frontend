@@ -3,7 +3,7 @@ const path=require('node:path'),fs=require('node:fs'),ts=require('typescript'),{
 const root=path.join(__dirname,'..'),cfg=ts.readConfigFile(path.join(root,'tsconfig.json'),ts.sys.readFile),parsed=ts.parseJsonConfigFileContent(cfg.config,ts.sys,root)
 const key=name=>{const normalized=path.resolve(name).replace(/\\/g,'/');return ts.sys.useCaseSensitiveFileNames?normalized:normalized.toLowerCase()}
 const virtual=new Map()
-const sfcFiles=['src/pages/client/patronage/index.vue','src/pages/client/patronage/records.vue','src/components/PatronageCrowns.vue','src/pages/boss/home/index.vue','src/pages/player/list/index.vue','src/components/gifts/GiftHost.vue','src/pages/client/patronage-wall/index.vue','src/pages/client/rankings/index.vue','src/pages/client/patronage-announcements/index.vue']
+const sfcFiles=['src/pages/client/patronage/index.vue','src/pages/client/patronage/records.vue','src/components/PatronageCrowns.vue','src/pages/boss/home/index.vue','src/pages/player/list/index.vue','src/components/gifts/GiftHost.vue','src/pages/client/patronage-wall/index.vue','src/pages/client/rankings/index.vue','src/pages/client/patronage-announcements/index.vue','src/components/VipSummaryCard.vue','src/pages/client/profile/index.vue','src/pages/client/account/index.vue']
 for(const file of sfcFiles){
  const name=path.join(root,file+'.ts'),descriptor=parse(fs.readFileSync(path.join(root,file),'utf8')).descriptor
  virtual.set(key(name),compileScript(descriptor,{id:file}).content)
