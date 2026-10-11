@@ -41,16 +41,17 @@ function load(file,props={}){
   if(name==='api/rankings.js')return {getRankings:async(...args)=>{rankingRequests.push(args);return {available:true,results:[]}}}
   if(name==='api/announcements.js')return {getAnnouncements:async()=>({count:0,results:[]})}
   const exports={};cache[name]=exports
-  vm.runInNewContext(read(name),{exports,require:other=>module(path.posix.normalize(path.posix.join(path.posix.dirname(name),other))),wx:{createPage:c=>C=c,createComponent:c=>C=c},console},{filename:name})
+  vm.runInNewContext(read(name),{exports,require:other=>module(path.posix.normalize(path.posix.join(path.posix.dirname(name),other))),wx:{createPage:c=>C=c,createComponent:c=>C=c},console,Date,setTimeout,clearTimeout},{filename:name})
   return exports
  }
  module(file+'.js');const scope=vue.effectScope(),render=scope.run(()=>C.setup(props,{expose(){}})),theme='--ui-gold:#94651e;--ui-primary:#316eb8;'
  const draw=()=>render({$appThemeStyle:theme},{})
  return {hooks,calls,requests,rankingRequests,scope,theme,draw,text:()=>JSON.stringify(draw(),(_,v)=>typeof v==='function'?'[event]':v)}
 }
+const activeWindow=()=>({starts_at:new Date(Date.now()-60000).toISOString(),expires_at:new Date(Date.now()+3600000).toISOString()})
 const fixtures=[
- {player:{id:12,name:'第一位陪玩',type_name:'技术陪',avatar_url:'https://fixture.invalid/player-12.png'},crowns:[{id:101,boss_name:'年冠老板',package_name:'年冠',boss_avatar_url:'https://fixture.invalid/boss-101.png'}]},
- {player:{id:34,name:'第二位陪玩',type_name:'娱乐陪',avatar_url:''},crowns:[{id:102,boss_name:'甲老板',package_name:'季冠',boss_avatar_url:''},{id:103,boss_name:'乙老板',package_name:'月冠',boss_avatar_url:''}]}
+ {player:{id:12,name:'第一位陪玩',type_name:'技术陪',avatar_url:'https://fixture.invalid/player-12.png'},crowns:[{id:101,boss_name:'年冠老板',package_name:'年冠',boss_avatar_url:'https://fixture.invalid/boss-101.png',...activeWindow()}]},
+ {player:{id:34,name:'第二位陪玩',type_name:'娱乐陪',avatar_url:''},crowns:[{id:102,boss_name:'甲老板',package_name:'季冠',boss_avatar_url:'',...activeWindow()},{id:103,boss_name:'乙老板',package_name:'月冠',boss_avatar_url:'',...activeWindow()}]}
 ]
 async function checkRanking(){
  const page=load(ranking),source=read(ranking+'.wxml'),panelTag=source.match(/<patronage-wall-panel\b[^>]*>/)[0]
@@ -124,8 +125,43 @@ async function checkPanel(embedded){
   }
  }finally{page.scope.stop()}
 }
+async function checkExpiry(){
+ const real={now:Date.now,setTimeout:global.setTimeout,clearTimeout:global.clearTimeout},timers=new Map()
+ let now=Date.parse('2026-10-11T04:00:00Z'),id=0,page
+ const starts_at=new Date(now-1000).toISOString(),expires=ms=>new Date(now+ms).toISOString()
+ Date.now=()=>now
+ global.setTimeout=(fn,delay)=>{const key=++id;timers.set(key,{fn,at:now+delay});return key}
+ global.clearTimeout=key=>timers.delete(key)
+ async function advance(ms){
+  const target=now+ms
+  for(let runs=0;;runs++){
+   const due=[...timers].filter(([,v])=>v.at<=target).sort((a,b)=>a[1].at-b[1].at)[0]
+   if(!due)break
+   assert.ok(runs<10,'shipped wall must not busy-poll')
+   now=due[1].at;timers.delete(due[0]);due[1].fn();await tick()
+  }
+  now=target;await tick()
+ }
+ try{
+  page=load(panel,{embedded:true});page.hooks.mount[0]()
+  const rights=fixtures.map((entry,index)=>({...entry,crowns:entry.crowns.map((crown,j)=>({...crown,starts_at,expires_at:expires(index===0?1000:j===0?2000:3000)}))}))
+  page.requests[0].resolve(rights);await tick();assert.equal(page.draw()[loopKey].length,2)
+  await advance(1000);assert.equal(page.draw()[loopKey].length,1);assert.ok(!page.text().includes('年冠老板'))
+  page.draw()[loopKey][0][serviceKey]();assert.equal(JSON.stringify(page.calls.at(-1)),JSON.stringify(['/pages/player/detail/index',{playerId:34}]))
+  await advance(1000);assert.ok(!page.text().includes('甲老板'));assert.match(page.text(),/乙老板/)
+  await advance(1000);assert.equal(page.draw()[emptyKey],true);assert.equal(page.draw()[loopKey],undefined)
+  assert.equal(page.requests.length,1,'compiled expiry must not perform another API read');assert.equal(timers.size,0)
+  page.hooks.hide[0]();const reload=page.hooks.show[0]();page.requests.at(-1).resolve(rights.map(entry=>({...entry,crowns:entry.crowns.map(crown=>({...crown,expires_at:new Date(now+1000).toISOString()}))})));await reload
+  assert.equal(timers.size,1);page.hooks.hide[0]();assert.equal(timers.size,0)
+ }finally{
+  if(page){page.hooks.unmount[0]();page.scope.stop()}
+  Date.now=real.now;global.setTimeout=real.setTimeout;global.clearTimeout=real.clearTimeout
+ }
+ console.log('PASS compiled wall expiry: per-boss boundaries, player/count/empty removal, correct remaining service ID, one local timer, no extra API read, hide cleanup.')
+}
 async function main(){
  await checkRanking()
+ await checkExpiry()
  for(const embedded of [false,true])await checkPanel(embedded)
  const mounted=load(panel,{embedded:true})
  try{

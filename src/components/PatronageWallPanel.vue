@@ -44,22 +44,43 @@ const status = ref<'loading' | 'error' | 'ready'>('loading')
 const progress = ref({ completed: 0, total: 0 })
 const failedImages = ref<Record<string, boolean>>({})
 let visible = true, generation = 0, started = false, hasShown = false
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
+function updateEntries(nextEntries: PatronageWallEntry[]) {
+  if (expiryTimer !== undefined) clearTimeout(expiryTimer)
+  expiryTimer = undefined
+  const now = Date.now()
+  let nextExpiry = Infinity
+  entries.value = nextEntries.map(entry => ({ ...entry, crowns: entry.crowns.filter(crown => {
+    const expires = Date.parse(crown.expires_at)
+    if (!(Date.parse(crown.starts_at) <= now && expires > now)) return false
+    nextExpiry = Math.min(nextExpiry, expires)
+    return true
+  }) })).filter(entry => entry.crowns.length)
+  if (visible && Number.isFinite(nextExpiry)) {
+    const ticket = generation
+    // Long-term rights exceed the signed 32-bit timeout limit; wake locally
+    // at the limit, recheck wall time, then arm the remaining duration.
+    expiryTimer = setTimeout(() => {
+      if (visible && ticket === generation) updateEntries(entries.value)
+    }, Math.min(nextExpiry - now, 2_147_483_647))
+  }
+}
 async function load(forceRefresh = false) {
   if (!visible) return
   const ticket = ++generation
   const isCurrent = () => visible && ticket === generation
-  entries.value = []; status.value = 'loading'; progress.value = { completed: 0, total: 0 }; failedImages.value = {}
+  updateEntries([]); status.value = 'loading'; progress.value = { completed: 0, total: 0 }; failedImages.value = {}
   try {
     const result = await loadPatronageWall({
       isCurrent, forceRefresh,
       onProgress: (completed, total) => { if (isCurrent()) progress.value = { completed, total } },
       onUpdate: (partial, meta) => {
         if (!isCurrent()) return
-        entries.value = partial
+        updateEntries(partial)
         progress.value = { completed: meta.completed, total: meta.total }
       }
     })
-    if (isCurrent()) { entries.value = result; status.value = 'ready' }
+    if (isCurrent()) { updateEntries(result); status.value = 'ready' }
   } catch { if (isCurrent()) status.value = 'error' }
 }
 function refresh() { return load(true) }
@@ -71,7 +92,7 @@ function show() {
 }
 function openService(entry: PatronageWallEntry) { go('/pages/player/detail/index', { playerId: entry.player.id }) }
 function openPatronage(entry: PatronageWallEntry) { go('/pages/client/patronage/index', { playerId: entry.player.id }) }
-function hide() { visible = false; generation++; entries.value = []; failedImages.value = {}; progress.value = { completed: 0, total: 0 } }
+function hide() { visible = false; generation++; updateEntries([]); failedImages.value = {}; progress.value = { completed: 0, total: 0 } }
 // Conditional ranking tabs may mount this component after the page's onShow.
 // Mount must start its load; when onShow ran first it must not duplicate work.
 onMounted(() => { if (!started) { started = true; void load() } })

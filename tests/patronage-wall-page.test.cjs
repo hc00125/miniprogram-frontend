@@ -1,7 +1,8 @@
 const { test } = require('node:test'), assert = require('node:assert/strict'), vue = require('vue')
 const { harness, nodes } = require('./commerce-sfc-harness.cjs')
 const tick = () => new Promise(setImmediate)
-const entry = (id, name) => ({ player: { id, name, avatar_url: `https://fixture.invalid/player-${id}.png`, type_name: '技术陪', is_online: false, can_be_designated: false }, crowns: [{ id: 1, boss_name: `老板${id}`, boss_avatar_url: `https://fixture.invalid/boss-${id}.png`, package_name: '年冠' }, { id: 2, boss_name: `另一位老板${id}`, boss_avatar_url: '', package_name: '周冠' }] })
+const activeWindow = () => ({ starts_at: new Date(Date.now() - 60000).toISOString(), expires_at: new Date(Date.now() + 3600000).toISOString() })
+const entry = (id, name) => ({ player: { id, name, avatar_url: `https://fixture.invalid/player-${id}.png`, type_name: '技术陪', is_online: false, can_be_designated: false }, crowns: [{ id: 1, boss_name: `老板${id}`, boss_avatar_url: `https://fixture.invalid/boss-${id}.png`, package_name: '年冠', ...activeWindow() }, { id: 2, boss_name: `另一位老板${id}`, boss_avatar_url: '', package_name: '周冠', ...activeWindow() }] })
 function page() {
   const requests = [], calls = [], unmount = [], mounted = []
   const h = harness({ vue: { ...vue, onMounted: f => mounted.push(f), onBeforeUnmount: f => unmount.push(f) }, '@/api/patronageWall': { loadPatronageWall: options => new Promise((resolve, reject) => requests.push({ options, resolve, reject })) }, '@/utils/nav': { go: (...args) => calls.push(args) } })
