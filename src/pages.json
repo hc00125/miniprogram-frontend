@@ -46,7 +46,18 @@
     {"path":"pages/player/grab/index","style":{"navigationBarTitleText":"抢单大厅"}},
     {"path":"pages/player/my-orders/index","style":{"navigationBarTitleText":"我的订单"}},
     {"path":"pages/player/earnings/index","style":{"navigationBarTitleText":"鱼干收益中心","navigationBarBackgroundColor":"#f7f9fc","navigationBarTextStyle":"black"}},
-    {"path":"pages/player/order-detail/index","style":{"navigationBarTitleText":"订单详情"}}
+    {"path":"pages/player/order-detail/index","style":{"navigationBarTitleText":"订单详情"}},
+    {"path":"pages/client/help/boss-notice","style":{"navigationBarTitleText":"老板须知"}},
+    {"path":"pages/client/help/player-rules","style":{"navigationBarTitleText":"陪玩守则"}},
+    {"path":"pages/client/help/index","style":{"navigationBarTitleText":"帮助与规则"}},
+    {"path":"pages/client/help/player-guide","style":{"navigationBarTitleText":"陪玩操作手册"}},
+    {"path":"pages/client/help/user-guide","style":{"navigationBarTitleText":"用户操作手册"}},
+    {"path":"pages/client/help/conduct","style":{"navigationBarTitleText":"平台守则"}},
+    {"path":"pages/client/help/usage","style":{"navigationBarTitleText":"使用规范"}},
+    {"path":"pages/client/help/order-violations","style":{"navigationBarTitleText":"违规订单认定与处置"}},
+    {"path":"pages/client/help/aftercare","style":{"navigationBarTitleText":"售后介入规范"}},
+    {"path":"pages/client/help/recharge-refund","style":{"navigationBarTitleText":"退款规则"}},
+    {"path":"pages/client/help/player-agreement","style":{"navigationBarTitleText":"陪玩服务约定"}}
   ],
   "tabBar": {
     "color": "#536C88",

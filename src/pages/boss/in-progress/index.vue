@@ -25,7 +25,7 @@
     </view>
 
     <view v-if="orderInfo" class="card">
-      <view class="card-head"><view><text class="card-title">服务阵容与入房状态</text><text class="card-sub">陪玩接单后需在10分钟内进入老板房间并确认</text></view><button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button></view>
+      <view class="card-head"><view><text class="card-title">服务阵容与入房状态</text><text class="card-sub">陪玩接单后10分钟内实际入房，按订单提示确认</text></view><button class="mini-btn" :loading="refreshing" :disabled="refreshing" @tap="handleManualRefresh">{{ refreshing ? '刷新中' : '刷新' }}</button></view>
       <scroll-view scroll-x class="player-track" show-scrollbar="false"><view v-for="player in orderInfo.players" :key="player.id" class="player-card"><image v-if="player.avatar_url" class="player-avatar" :src="player.avatar_url" mode="aspectFill" /><view v-else class="player-avatar player-avatar--empty">{{ player.name?.[0] || '陪' }}</view><view class="player-main"><text>{{ player.name }}</text><text>{{ player.type_name || '陪玩' }}</text><text class="entry-text" :class="`entry-${player.room_join_status || 'pending'}`">{{ playerRoomText(player) }}</text></view></view><view v-for="slot in missingSlots" :key="`missing-${slot}`" class="player-card player-card--missing"><view class="player-avatar player-avatar--empty">+</view><view class="player-main"><text>补位中</text><text>{{ replacementActive ? '等待新陪玩' : '等待接单' }}</text></view></view></scroll-view>
       <view v-if="overduePlayers.length" class="entry-alert"><text>{{ overduePlayers.length }}位陪玩存在入房超时记录</text><text>该记录由管理员结合实际情况核实。</text></view>
     </view>

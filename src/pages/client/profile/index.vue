@@ -1,5 +1,5 @@
 <template>
-  <view :style="$appThemeStyle" class="club-page profile-page">
+  <view :style="appThemeStyle" class="club-page profile-page">
     <view class="profile-hero" @tap="handleHeroTap">
       <view class="hero-glow hero-glow--left"></view>
       <view class="hero-glow hero-glow--right"></view>
@@ -105,6 +105,9 @@
       <view v-if="isLoggedIn" class="list-item" @tap="go('/pages/client/patronage/records')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.query" mode="aspectFit" /></view><text class="list-label">冠名 / 包天记录</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view v-if="isLoggedIn" class="list-item" @tap="go('/pages/client/gifts/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.query" mode="aspectFit" /></view><text class="list-label">我的礼物</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view v-if="isLoggedIn && profile?.player_status === 'approved'" class="list-item" @tap="go('/pages/player/kook-binding/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.notification" mode="aspectFit" /></view><text class="list-label">接单通知</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" data-action="boss-notice" @tap="go('/pages/client/help/boss-notice')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.order" mode="aspectFit" /></view><text class="list-label">老板须知</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" data-action="player-rules" @tap="go('/pages/client/help/player-rules')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.shield" mode="aspectFit" /></view><text class="list-label">陪玩守则</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
+      <view class="list-item" data-action="help-rules" @tap="go('/pages/client/help/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.terms" mode="aspectFit" /></view><text class="list-label">帮助与规则</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view class="list-item" @tap="handleService"><view class="list-icon"><image class="entry-icon" :src="uiIcons.terms" mode="aspectFit" /></view><text class="list-label">服务条款</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view class="list-item" @tap="go('/pages/client/customer-service/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.support" mode="aspectFit" /></view><text class="list-label">联系客服</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
       <view class="list-item" @tap="go('/pages/client/complaints/index')"><view class="list-icon"><image class="entry-icon" :src="uiIcons.feedback" mode="aspectFit" /></view><text class="list-label">投诉与反馈</text><image class="chevron" :src="uiIcons.chevron" mode="aspectFit" /></view>
@@ -131,6 +134,7 @@ import { getErrorMessage, success, toast } from '@/utils/feedback'
 import { go, goMain as switchMainTab, type MainTab } from '@/utils/nav'
 import { getStorage } from '@/utils/storage'
 import { SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
+import { appThemeStyle } from '@/utils/theme'
 
 const profile = ref<ClientProfile | null>(null)
 const isLoggedIn = ref(false)

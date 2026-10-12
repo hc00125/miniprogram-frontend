@@ -25,9 +25,10 @@ function page() {
     '@/utils/diamonds': { formatDiamonds: String },
     '@/utils/feedback': { toast: x => calls.push(['toast', x]) },
     '@/utils/nav': { go: x => calls.push(['go', x]), goMain: x => calls.push(['tab', x]) },
-    '@/utils/storage': {}, '@/utils/sessionExpiry': { SESSION_EXPIRED_EVENT: 'expired' }
+    '@/utils/storage': {}, '@/utils/sessionExpiry': { SESSION_EXPIRED_EVENT: 'expired' },
+    '@/utils/theme': { appThemeStyle: vue.ref('--ui-surface:#FFFFFF;--ui-text:#243E5D') }
   }
-  const names = 'profile,isLoggedIn,onlineUpdating,refreshing,walletOverview,walletLoadFailed,displayAvatarUrl,displayName,displayInitial,profileIdText,accountRestriction,walletBalance,canAcceptOrders,isPlayerOnline,playerRatingText,statusText,statusClass,playerActionTitle,playerActionStatus,playerCenterTitle,playerEmptyTitle,handleHeroTap,retryWalletOverview,goRecharge,goWallet,openLogin,switchMainTab,togglePlayerOnline,handlePlayerAction,handlePlayerCenterAction,handleManualRefresh,handleService,handleSettings,handleMainTabSelect,go'
+  const names = 'profile,isLoggedIn,onlineUpdating,refreshing,walletOverview,walletLoadFailed,displayAvatarUrl,displayName,displayInitial,profileIdText,accountRestriction,walletBalance,canAcceptOrders,isPlayerOnline,playerRatingText,statusText,statusClass,playerActionTitle,playerActionStatus,playerCenterTitle,playerEmptyTitle,handleHeroTap,retryWalletOverview,goRecharge,goWallet,openLogin,switchMainTab,togglePlayerOnline,handlePlayerAction,handlePlayerCenterAction,handleManualRefresh,handleService,handleSettings,handleMainTabSelect,go,appThemeStyle'
   const module = { exports: {} }
   vm.runInNewContext(ts.transpileModule(descriptor().scriptSetup.content + '\nmodule.exports = {' + names + '}', { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { module, exports: module.exports, require: n => mocks[n], uni: { $on() {}, $off() {} } })
   return { state: { ...module.exports, uiIcons: mocks['@/utils/uiIcons'].uiIcons }, calls }
@@ -73,13 +74,29 @@ test('real profile handlers retain login gates, pending/rejected/paused behavior
   p.profile.value = { player_status: 'approved', player: { can_accept_orders: false } }; p.handlePlayerAction(); assert.equal(calls.at(-1)[1], '/pages/client/settings/index')
   p.profile.value.player.can_accept_orders = true; p.handlePlayerAction(); assert.equal(calls.at(-1)[1], '/pages/player/grab/index')
   p.handlePlayerCenterAction(); assert.equal(calls.at(-1)[1], '/pages/player/my-orders/index')
-  p.handleService(); assert.equal(calls.at(-1)[1], '/pages/legal/privacy/index')
   p.handleSettings(); assert.equal(calls.at(-1)[1], '/pages/client/settings/index')
+  p.handleService(); assert.equal(calls.at(-1)[1], '/pages/legal/privacy/index')
   p.switchMainTab('order'); assert.deepEqual(calls.at(-1), ['tab', 'order'])
   const template = descriptor().template.content
   assert.match(template, /v-if="isLoggedIn && profile\?\.player_status === 'approved'" class="list-item" @tap="go\('\/pages\/player\/kook-binding\/index'\)"/)
   assert.match(template, /@tap="go\('\/pages\/client\/customer-service\/index'\)"/)
   assert.match(template, /@tap="go\('\/pages\/client\/complaints\/index'\)"/)
+  p.isLoggedIn.value = false; p.profile.value = null
+  const render = new Function('Vue', compile(template, { mode: 'function', prefixIdentifiers: true, isCustomElement: t => ['view','text','image'].includes(t) }).code)(vue)
+  const tree = render(new Proxy(p, { get: (target, key) => vue.unref(target[key]) }))
+  function findAction(node, action) {
+    if (!node || typeof node !== 'object') return
+    if (node.props?.['data-action'] === action) return node
+    for (const child of Array.isArray(node.children) ? node.children : []) {
+      const found = findAction(child, action)
+      if (found) return found
+    }
+  }
+  for (const [action, url] of [['boss-notice','/pages/client/help/boss-notice'], ['player-rules','/pages/client/help/player-rules'], ['help-rules','/pages/client/help/index']]) {
+    const entry = findAction(tree, action)
+    assert.ok(entry, action + ' remains available to guests')
+    entry.props.onTap(); assert.deepEqual(calls.at(-1), ['go', url])
+  }
 })
 async function renderProfile(state) {
   const render = new Function('Vue', compile(descriptor().template.content, { mode: 'function', prefixIdentifiers: true, isCustomElement: t => ['view','text','image'].includes(t) }).code)(vue)
@@ -94,6 +111,7 @@ test('profile real SFC renders local pictograms across guest, application and ap
     state.isLoggedIn.value = status !== 'guest'
     state.profile.value = status === 'guest' ? null : { player_status: approved ? 'approved' : status, player: approved ? { can_accept_orders: status !== 'paused' } : null }
     const html = await renderProfile(state)
+    for (const label of ['老板须知','陪玩守则','帮助与规则']) assert.ok(html.includes(label), label + ' is visible in every profile state')
     assert.ok(html.includes('/icons/themes/mist/order.png'), 'order pictogram must replace character tile')
     for (const name of ['query','grab','terms','support','feedback','settings']) assert.ok(html.includes((/-light|-red/.test(name) ? '/icons/duotone/' : '/icons/themes/mist/') + name + '.png'), name)
     assert.equal(html.includes('/icons/themes/mist/reviews.png'), approved)
