@@ -71,6 +71,10 @@ const searchFocused = ref(false)
 const refreshing = ref(false)
 let searchTimer: ReturnType<typeof setTimeout> | undefined
 let fetchSequence = 0
+let disposed = false
+let shuffleCounter = 0
+function createShuffleKey() { return `${Date.now().toString(36)}-${(++shuffleCounter).toString(36)}-${Math.random().toString(36).slice(2, 14)}` }
+let shuffleKey = createShuffleKey()
 
 const visiblePlayers = computed(() => players.value)
 const filteredPlayers = computed(() => {
@@ -81,15 +85,15 @@ const filteredPlayers = computed(() => {
 const normalizedSearchKeyword = computed(() => searchKeyword.value.trim())
 const searchSummary = computed(() => normalizedSearchKeyword.value ? `找到 ${filteredPlayers.value.length} 位相关陪玩` : activeFilter.value !== '全部' ? `当前分类 ${filteredPlayers.value.length} 位陪玩` : `共 ${visiblePlayers.value.length} 位陪玩`)
 const emptyText = computed(() => normalizedSearchKeyword.value ? `没有找到“${normalizedSearchKeyword.value}”相关陪玩` : '暂无符合条件的陪玩')
-// Discovery rules will be connected separately; this selector currently controls the UI only.
-function selectDiscoveryMode(mode: 'random' | 'quality') { discoveryMode.value = mode }
+function selectDiscoveryMode(mode: 'random' | 'quality') { if (discoveryMode.value === mode) return; discoveryMode.value = mode; void fetchPlayers() }
 function normalizeOnlineValue(value: unknown) { return value === true || value === 1 || value === '1' || value === 'true' }
 
 async function fetchPlayers() {
+  if (disposed) return false
   const sequence = ++fetchSequence
   try {
     const keyword = normalizedSearchKeyword.value
-    const list = await getPlayerList(keyword ? { search: keyword } : {})
+    const list = await getPlayerList({ discovery: discoveryMode.value, ...(discoveryMode.value === 'random' ? { shuffle_key: shuffleKey } : {}), ...(keyword ? { search: keyword } : {}) })
     if (sequence !== fetchSequence) return false
     players.value = (list || []).map(player => ({ ...player, type_name: player.player_type?.name || player.type_name || '优质陪玩', is_online: normalizeOnlineValue(player.is_online), status: player.status || (normalizeOnlineValue(player.is_online) ? '在线' : '离线') }))
     return true
@@ -98,11 +102,11 @@ async function fetchPlayers() {
     return false
   } finally { if (sequence === fetchSequence) loaded.value = true }
 }
-async function handleManualRefresh() { if (refreshing.value) return; refreshing.value = true; try { if (await fetchPlayers()) success('刷新成功') } finally { refreshing.value = false } }
+async function handleManualRefresh() { if (disposed || refreshing.value) return; refreshing.value = true; if (discoveryMode.value === 'random') shuffleKey = createShuffleKey(); try { if (await fetchPlayers()) success('刷新成功') } finally { if (!disposed) refreshing.value = false } }
 function clearSearch() { searchKeyword.value = '' }
-watch(searchKeyword, () => { if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(fetchPlayers, 300) })
+watch(searchKeyword, () => { ++fetchSequence; if (searchTimer) clearTimeout(searchTimer); searchTimer = setTimeout(fetchPlayers, 300) }, { flush: 'sync' })
 onShow(fetchPlayers)
-onUnmounted(() => { if (searchTimer) clearTimeout(searchTimer) })
+onUnmounted(() => { disposed = true; ++fetchSequence; if (searchTimer) clearTimeout(searchTimer); searchTimer = undefined })
 function openPlayerDetail(player: OnlinePlayer) { if (player.can_be_designated === false) return toast('该陪玩当前不接受指定'); go('/pages/player/detail/index', { playerId: player.id }) }
 function openPlayerPatronage(player: OnlinePlayer) { go('/pages/client/patronage/index', { playerId: player.id }) }
 function handleMainTabSelect(tab: MainTab) { if (tab === 'home' || tab === 'order') { relaunch('/pages/boss/home/index', { tab }); return }; if (tab === 'players') return; navigateToTab(tab as 'query' | 'profile') }

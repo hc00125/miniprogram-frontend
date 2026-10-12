@@ -107,6 +107,8 @@ export interface PlayerListParams {
   is_online?: boolean
   search?: string
   ordering?: string
+  discovery?: 'random' | 'quality'
+  shuffle_key?: string
 }
 
 export interface PackageGroup {
