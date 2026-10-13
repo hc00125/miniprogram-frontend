@@ -37,6 +37,7 @@ export interface BossPackage {
   is_custom: boolean
   group_id: number | null
   group_name: string | null
+  game_service_name?: string | null
   package_family_id?: number | null
   package_family_code?: string | null
   package_family_name?: string | null
@@ -217,12 +218,23 @@ export const guaranteeSpecs: BossPackageSpec[] = [
   { id: 'tv-10001', name: '电视台保底 10001w', price: 688, guarantee_amount: '10001w', sort_order: 9 }
 ]
 
+const legacyHourlyServiceNames = new Map([
+  ['娱乐mini', '娱乐陪'], ['技术mini', '技术陪'], ['娱乐pro', '情绪陪'],
+  ['技术pro', '银牌'], ['明星', '魔王']
+])
+
 function normalizePackageFromApi(pkg: BossPackage): BossPackage {
+  const name = pkg.game_service_name === '暗区突围' && pkg.group_name === '大神包时'
+    && pkg.selling_mode === 'public' && pkg.product_type === 'normal'
+    ? legacyHourlyServiceNames.get(pkg.name) : undefined
+  const renameCopy = (copy?: string) => copy?.split(`${pkg.name}陪玩`)
+    .join(`${name?.endsWith('陪') ? name.slice(0, -1) : name}陪玩`).split(pkg.name).join(name || pkg.name)
   const specs = [...(pkg.specs || [])]
     .filter(spec => spec.is_active !== false)
     .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
   return {
     ...pkg,
+    ...(name ? { name, description: renameCopy(pkg.description), detail_text: renameCopy(pkg.detail_text) } : {}),
     specs,
     player_count: Math.max(1, Number(pkg.player_count || 1)),
     base_price: Math.max(0, Number(pkg.base_price ?? pkg.price ?? 0))

@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-const POSTER_URL = '/images/notices/boss-notice.jpg'
+const POSTER_URL = '/images/notices/boss-notice.png'
 
 function previewPoster() {
   uni.previewImage({ current: POSTER_URL, urls: [POSTER_URL] })

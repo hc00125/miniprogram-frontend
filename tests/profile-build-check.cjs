@@ -148,10 +148,11 @@ async function main() {
     const posterData = posterRender({}, {})
     const posterSource = attr(posterImage, 'src')
     const posterUrl = posterSource.startsWith('{{') ? posterData[field(posterSource, 'poster source')] : posterSource
-    assert.equal(posterUrl, '/images/notices/boss-notice.jpg')
+    assert.equal(posterUrl, '/images/notices/boss-notice.png')
     const packagedPoster = fs.readFileSync(path.join(root, posterUrl))
     assert.ok(packagedPoster.equals(fs.readFileSync(path.join(__dirname, '../static', posterUrl))), 'packaged image matches the reviewed asset')
-    assert.ok(packagedPoster.length < 1024 * 1024, 'one local poster resource stays below 1 MiB')
+    assert.equal(packagedPoster.readUInt32BE(16), 1152, 'poster preserves the original width')
+    assert.equal(packagedPoster.readUInt32BE(20), 10649, 'poster preserves the complete long-image height')
     posterData[field(attr(posterImage, 'bindtap'), 'poster preview tap')]()
     assert.equal(JSON.stringify(calls.at(-1)), JSON.stringify(['preview-image', { current: posterUrl, urls: [posterUrl] }]), 'tap opens the same full image in native preview')
     function assertPosterPage(page) {

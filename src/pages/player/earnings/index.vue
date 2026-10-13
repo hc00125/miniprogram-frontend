@@ -4,14 +4,12 @@
       <view class="hero-top">
         <view>
           <text class="hero-title">鱼干收益中心</text>
-          <text class="hero-sub">订单完成后进入{{ overview?.review_days || 3 }}天审核期，无异常即可提现</text>
         </view>
         <button class="refresh-btn" @tap="loadAll">刷新</button>
       </view>
       <view class="available-block">
         <text>可提现鱼干</text>
         <view><text class="currency">鱼干</text><text>{{ fish(overview?.available_balance) }}</text></view>
-        <text>10鱼干可兑换1元；钱包接口与提现表单统一使用鱼干，实际到账以财务打款为准</text>
       </view>
     </view>
 
@@ -34,19 +32,10 @@
       <text>!</text><text>{{ overview.withdrawal_block_reason }}</text>
     </view>
 
-    <view class="card stats-card">
-      <view><text>{{ overview?.accepted_orders || 0 }}</text><text>累计接单</text></view>
-      <view><text>{{ overview?.completed_orders || 0 }}</text><text>已结算订单</text></view>
-      <view><text>{{ fish(overview?.withdrawn_total) }}</text><text>累计已提鱼干</text></view>
-      <view><text>{{ overview ? Number(overview.default_commission_rate).toFixed(0) : '--' }}%</text><text>默认抽成</text></view>
-    </view>
-
-    <view v-if="overview?.commission_policy === 'standard25-mini16-v1'" class="card">默认抽成25%；仅娱乐mini、技术mini的普通陪玩订单享16%优惠，冠名、礼物、加价、包天不自动享受。明确例外与历史订单以原记录为准。</view>
     <view class="card withdrawal-card">
       <view class="card-head">
         <view>
           <text class="card-title">申请提现</text>
-          <text class="card-sub">提现可随时申请，平台通常于每周一集中人工审核及处理</text>
         </view>
         <text class="available-chip">可提 {{ fish(overview?.available_balance) }} 鱼干</text>
       </view>
@@ -81,7 +70,6 @@
         {{ submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请') }}
       </button>
       <text v-if="withdrawalBlockReason" class="withdraw-tip" style="color: #c0392b;" role="alert">{{ withdrawalBlockReason }}</text>
-      <text class="withdraw-tip">最低提现 {{ minWithdrawalFish }} 鱼干（折合人民币 ¥{{ money(fishToYuan(minWithdrawalFishValue)) }}）；所有提现均由管理员人工审核，其他日期也可处理。</text>
     </view>
 
     <view class="tabs">
@@ -313,10 +301,9 @@ onShow(async () => {
 .hero-card { padding: 30rpx; color: #fff; background: var(--ui-gradient); }
 .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
 .hero-top > view { flex: 1; min-width: 0; }
-.hero-title, .hero-sub { display: block; }
+.hero-title { display: block; }
 
 .hero-title { font-size: 40rpx; font-weight: 900; }
-.hero-sub { margin-top: 8rpx; color: rgba(255,255,255,.72); font-size: 22rpx; line-height: 1.5; }
 .refresh-btn { min-width: 110rpx; height: 58rpx; margin: 0; padding: 0 20rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; font-weight: 900; background: rgba(255,255,255,.14); }
 .refresh-btn::after, .withdraw-btn::after { border: none; }
 .available-block { margin-top: 28rpx; padding: 24rpx; border-radius: 24rpx; background: rgba(255,255,255,.12); }
@@ -325,7 +312,6 @@ onShow(async () => {
 .available-block > view { display: flex; align-items: baseline; gap: 10rpx; margin-top: 8rpx; }
 .available-block > view text:last-child { font-size: 60rpx; line-height: 1; font-weight: 900; }
 .currency { font-size: 22rpx; font-weight: 900; }
-.available-block > text:last-child { margin-top: 10rpx; color: rgba(255,255,255,.64); font-size: 20rpx; line-height: 1.5; }
 .balance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rpx; margin-top: 20rpx; overflow: hidden; }
 .balance-item { padding: 24rpx 8rpx; text-align: center; background: var(--ui-surface, #fff); }
 .balance-item.debt { background: var(--ui-surface, #fff0ed); }
@@ -336,16 +322,10 @@ onShow(async () => {
 .wallet-warning { display: flex; align-items: flex-start; gap: 12rpx; margin-top: 18rpx; padding: 18rpx 20rpx; border-radius: 18rpx; color: var(--ui-danger, #8f3d32); background: var(--ui-surface, #fff0ed); font-size: 22rpx; line-height: 1.5; }
 .wallet-warning text:first-child { width: 34rpx; height: 34rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: #fff; background: var(--ui-danger-fill, #a13d35); font-weight: 900; }
 .card { margin-top: 20rpx; padding: 26rpx; }
-.stats-card { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8rpx; }
-.stats-card view { text-align: center; }
-.stats-card text { display: block; }
-.stats-card text:first-child { color: var(--ui-accent, #1f7c4b); font-size: 29rpx; font-weight: 900; }
-.stats-card text:last-child { margin-top: 5rpx; color: var(--ui-muted, #879083); font-size: 19rpx; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16rpx; }
 .card-head > view { flex: 1; min-width: 0; }
-.card-title, .card-sub { display: block; }
+.card-title { display: block; }
 .card-title { font-size: 30rpx; font-weight: 900; }
-.card-sub { margin-top: 6rpx; color: var(--ui-muted, #7d877a); font-size: 21rpx; line-height: 1.45; }
 .available-chip { padding: 7rpx 13rpx; border-radius: 999rpx; color: var(--ui-accent, #1f7c4b); font-size: 20rpx; font-weight: 900; background: var(--ui-soft, #eef8f1); }
 .amount-input-wrap { display: flex; align-items: center; gap: 14rpx; margin-top: 22rpx; padding: 18rpx 20rpx; border-radius: 18rpx; background: var(--ui-soft, #f7faf4); }
 .amount-input-wrap > text:first-child { color: var(--ui-gold, #a87520); font-size: 22rpx; font-weight: 900; }
