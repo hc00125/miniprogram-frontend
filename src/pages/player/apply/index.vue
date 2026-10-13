@@ -93,7 +93,7 @@
         <scroll-view scroll-y class="rule-body">
           <text class="rule-line">1. 陪玩师需通过平台审核，资料真实有效。</text>
           <text class="rule-line">2. 真实姓名仅用于平台身份审核，不作为公开陪玩资料展示。</text>
-          <text class="rule-line">3. 接到订单后须按约定时间上线服务；入房超时会生成待核实记录，由管理员结合实际情况处理。</text>
+          <text class="rule-line">3. 接单后10分钟内进入老板的游戏或KOOK房间，等待付款时保留到场记录，付款后完成系统入房确认；迟到或无法入房应说明原因，由管理员结合记录核实。</text>
           <text class="rule-line">4. 服务过程中应保持专业态度，遵守平台行为规范。</text>
           <text class="rule-line">5. 收益按订单结算，平台保留对违规行为进行核实、调整或终止合作的权利。</text>
         </scroll-view>
