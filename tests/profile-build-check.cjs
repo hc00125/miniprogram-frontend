@@ -148,10 +148,11 @@ async function main() {
     const posterData = posterRender({}, {})
     const posterSource = attr(posterImage, 'src')
     const posterUrl = posterSource.startsWith('{{') ? posterData[field(posterSource, 'poster source')] : posterSource
-    assert.equal(posterUrl, '/images/notices/boss-notice.jpg')
-    const packagedPoster = fs.readFileSync(path.join(root, posterUrl))
-    assert.ok(packagedPoster.equals(fs.readFileSync(path.join(__dirname, '../static', posterUrl))), 'packaged image matches the reviewed asset')
-    assert.ok(packagedPoster.length < 1024 * 1024, 'one local poster resource stays below 1 MiB')
+    assert.equal(posterUrl, 'https://api.huc125.cn/media/notices/boss-notice-20261014-q50.webp')
+    assert.equal(fs.existsSync(path.join(root, 'images/notices/boss-notice.jpg')), false, 'remote poster is not duplicated in the mini-program package')
+    assert.equal(fs.existsSync(path.join(root, 'images/notices/boss-notice.png')), false, 'large original PNG is not included in the mini-program package')
+    assert.equal(fs.existsSync(path.join(root, 'images/notices/boss-notice-20261014-q50.webp')), false, 'selected WebP is hosted rather than packed')
+    assert.match(posterUrl, /^https:\/\/api\.huc125\.cn\/media\//, 'poster uses the approved backend media domain')
     posterData[field(attr(posterImage, 'bindtap'), 'poster preview tap')]()
     assert.equal(JSON.stringify(calls.at(-1)), JSON.stringify(['preview-image', { current: posterUrl, urls: [posterUrl] }]), 'tap opens the same full image in native preview')
     function assertPosterPage(page) {

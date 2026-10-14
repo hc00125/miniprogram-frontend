@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-const POSTER_URL = '/images/notices/boss-notice.jpg'
+const POSTER_URL = 'https://api.huc125.cn/media/notices/boss-notice-20261014-q50.webp'
 
 function previewPoster() {
   uni.previewImage({ current: POSTER_URL, urls: [POSTER_URL] })

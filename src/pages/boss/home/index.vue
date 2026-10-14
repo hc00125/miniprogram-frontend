@@ -193,7 +193,7 @@ async function fetchHomeData() {
   const current = () => visible && ticket === generation
   await Promise.all([
     (async () => { try { const result = await getCatalogNavigation(); if (current()) games.value = result.games || [] } catch { if (current()) { games.value = []; catalogLoadFailed.value = true } } finally { if (current()) catalogLoading.value = false } })(),
-    (async () => { try { const result = await getPlayerList(); if (current()) { players.value = (result || []).map(normalizePlayer); if (!playerFilters.value.includes(activePlayerType.value)) activePlayerType.value = '全部' } } catch { if (current()) { players.value = []; crownedPlayers.value = {}; playersLoadFailed.value = true } } finally { if (current()) playersLoading.value = false } })(),
+    (async () => { try { const result = await getPlayerList({ discovery: 'quality' }); if (current()) { players.value = (result || []).map(normalizePlayer); if (!playerFilters.value.includes(activePlayerType.value)) activePlayerType.value = '全部' } } catch { if (current()) { players.value = []; crownedPlayers.value = {}; playersLoadFailed.value = true } } finally { if (current()) playersLoading.value = false } })(),
     loadWallet()
   ])
 }
