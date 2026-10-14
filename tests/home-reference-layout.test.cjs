@@ -25,6 +25,14 @@ test('homepage recommendation filters keep true recipient identities and a four-
  h.state.openPlayerDetail(players[1]);assert.equal(h.calls.at(-1)[0],'/pages/player/detail/index');assert.equal(h.calls.at(-1)[1].playerId,92)
  h.state.openPlayerDetail({...players[1],can_be_designated:false});assert.equal(h.calls.at(-1)[0],'toast')
 })
+
+test('homepage requests Commercial Recognition V2 quality order and keeps its first four rows',async t=>{
+ const rows=Array.from({length:6},(_,i)=>({...players[i%2],id:201+i,name:'推荐位'+(i+1)}))
+ const h=homeHarness({players:rows,games});t.after(()=>h.scope.stop());await h.load()
+ assert.equal(h.playerRequests.length,1)
+ assert.equal(h.playerRequests[0].discovery,'quality')
+ assert.deepEqual(Array.from(h.state.featuredPlayers.value,player=>player.id),[201,202,203,204])
+})
 test('guest homepage does not fetch private balance or invent zero and recharge goes to login',async t=>{
  const h=homeHarness({guest:true,games});t.after(()=>h.scope.stop());await h.load();const html=await h.html()
  assert.match(html,/登录后查看余额/);assert.equal(h.calls.filter(c=>c[0]==='wallet-read').length,0)
