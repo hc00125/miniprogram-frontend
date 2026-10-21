@@ -42,10 +42,14 @@
 
       <view class="amount-input-wrap">
         <text>鱼干</text>
-        <input v-model="form.amount" type="digit" placeholder="请输入鱼干数量" />
+        <input v-model="form.amount" :disabled="!!pendingDiamond" type="digit" placeholder="请输入鱼干数量" />
         <text class="all-link" @tap="fillAll">全部</text>
       </view>
-      <text v-if="withdrawalYuan > 0" class="exchange-preview">预计折合人民币 ¥{{ money(withdrawalYuan) }}</text>
+      <block v-if="isDiamond">
+        <text class="withdraw-tip">1鱼干＝1钻石，最低1鱼干，仅支持整数；全部兑换余数留在鱼干钱包。到账本人钻石钱包，无需财务审核。</text>
+        <text v-if="diamondAmount" class="exchange-preview">扣{{ diamondAmount }}鱼干，到账{{ diamondAmount }}钻石</text>
+      </block>
+      <text v-else-if="withdrawalYuan > 0" class="exchange-preview">预计折合人民币 ¥{{ money(withdrawalYuan) }}</text>
 
       <picker :range="methodLabels" :value="methodIndex" @change="handleMethodChange">
         <view class="form-row">
@@ -53,11 +57,11 @@
           <text>{{ methodLabels[methodIndex] }} ›</text>
         </view>
       </picker>
-      <view class="form-row input-row">
+      <view v-if="!isDiamond" class="form-row input-row">
         <text>收款人</text>
         <input v-model="form.account_name" maxlength="80" placeholder="填写实名收款人" />
       </view>
-      <view class="form-row input-row">
+      <view v-if="!isDiamond" class="form-row input-row">
         <text>收款账号</text>
         <input v-model="form.account_no" maxlength="150" :placeholder="accountPlaceholder" />
       </view>
@@ -67,8 +71,9 @@
       </view>
 
       <button class="withdraw-btn" :disabled="submitting || !canSubmit" @tap="submitWithdrawal">
-        {{ submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请') }}
+        {{ isDiamond ? (submitting ? '兑换中' : (pendingDiamond ? '恢复原兑换请求' : '确认兑换')) : (submitting ? '正在提交...' : (overview?.can_withdraw === false ? '当前暂不能提现' : '提交提现申请')) }}
       </button>
+      <text v-if="pendingDiamond" class="withdraw-tip">原兑换{{ pendingDiamond.amount }}鱼干结果待确认，请恢复原兑换请求；不会新建请求。</text>
       <text v-if="withdrawalBlockReason" class="withdraw-tip" style="color: #c0392b;" role="alert">{{ withdrawalBlockReason }}</text>
     </view>
 
@@ -110,17 +115,23 @@
       <view v-for="item in withdrawals" :key="item.withdrawal_no" class="card record-card">
         <view class="record-head">
           <view>
-            <text class="record-title">提现 {{ fish(item.amount) }} 鱼干</text>
+            <text class="record-title">{{ item.payment_method === 'diamonds' ? `兑换${item.diamond_amount}钻石` : `提现 ${fish(item.amount)} 鱼干` }}</text>
             <text class="record-no">{{ item.withdrawal_no }}</text>
           </view>
           <text class="status-chip" :class="withdrawalStatusClass(item.status)">{{ item.status_text }}</text>
         </view>
         <view class="withdrawal-info">
-          <view><text>折合人民币</text><text>¥{{ money(fishToYuan(item.amount)) }}</text></view>
+          <view v-if="item.payment_method === 'diamonds'"><text>扣除鱼干</text><text>{{ fish(item.amount) }} 鱼干</text></view>
+          <view v-else><text>折合人民币</text><text>¥{{ money(fishToYuan(item.amount)) }}</text></view>
           <view><text>收款方式</text><text>{{ item.payment_method_text }}</text></view>
-          <view><text>收款账号</text><text>{{ item.account_name }} · {{ item.account_no_masked }}</text></view>
+          <block v-if="item.payment_method === 'diamonds'">
+            <view><text>到账钱包</text><text>本人钻石钱包</text></view>
+            <view><text>钻石到账数</text><text>{{ item.diamond_amount }} 钻石</text></view>
+            <view v-if="item.diamond_balance_after != null"><text>兑换后余额（交易时）</text><text>{{ item.diamond_balance_after }} 钻石</text></view>
+          </block>
+          <view v-else><text>收款账号</text><text>{{ item.account_name }} · {{ item.account_no_masked }}</text></view>
           <view><text>申请时间</text><text>{{ dateTime(item.created_at) }}</text></view>
-          <view v-if="item.transfer_no"><text>转账流水</text><text>{{ item.transfer_no }}</text></view>
+          <view v-if="item.payment_method !== 'diamonds' && item.transfer_no"><text>转账流水</text><text>{{ item.transfer_no }}</text></view>
           <view v-if="item.reject_reason"><text>处理说明</text><text class="reject-text">{{ item.reject_reason }}</text></view>
         </view>
       </view>
@@ -133,12 +144,13 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import {
   createWithdrawal,
   getEarningSettlements,
   getEarningsOverview,
   getWithdrawals,
+  getDiamondWithdrawal,
   type EarningsOverview,
   type PlayerEarningItem,
   type WithdrawalItem
@@ -146,6 +158,11 @@ import {
 import { confirm, getErrorMessage, success, toast } from '@/utils/feedback'
 import { isApprovedPlayer } from '@/utils/client'
 import { replace } from '@/utils/nav'
+import { getClientProfileApi } from '@/api/client'
+import { saveClientProfile } from '@/utils/client'
+import { SESSION_CHANGED_EVENT } from '@/utils/storage'
+import { getClientSessionGeneration, SESSION_EXPIRED_EVENT } from '@/utils/sessionExpiry'
+import { completeDiamondWithdrawal, createDiamondRequestId, diamondPayload, persistDiamondWithdrawal, readDiamondWithdrawal, type PendingDiamondWithdrawal } from '@/utils/diamondWithdrawal'
 
 const FISH_PER_YUAN = 10
 const overview = ref<EarningsOverview | null>(null)
@@ -154,16 +171,63 @@ const withdrawals = ref<WithdrawalItem[]>([])
 const activeTab = ref<'earnings' | 'withdrawals'>('earnings')
 const loading = ref(true)
 const submitting = ref(false)
+const pendingDiamond = ref<PendingDiamondWithdrawal | null>(null)
+let loadedToken = ''
+let pageEpoch = 0
+let pageActive = true
+let loadSequence = 0
+function approvalSession() { return JSON.stringify([uni.getStorageSync('token') || '', getClientSessionGeneration(), pageEpoch]) }
+function sessionToken() {
+  const profile = uni.getStorageSync('client_profile')
+  return JSON.stringify([uni.getStorageSync('token') || '', profile?.id, profile?.player?.id, getClientSessionGeneration(), pageEpoch])
+}
+function resetSessionView() {
+  pageEpoch++
+  loadedToken = ''
+  overview.value = null
+  settlements.value = []
+  withdrawals.value = []
+  pendingDiamond.value = null
+  form.amount = ''
+  form.account_name = ''
+  form.account_no = ''
+  form.request_note = ''
+  methodIndex.value = 0
+  submitting.value = false
+  loading.value = true
+}
+uni.$on(SESSION_CHANGED_EVENT, resetSessionView)
+uni.$on(SESSION_EXPIRED_EVENT, resetSessionView)
+onHide(() => { pageActive = false; resetSessionView() })
+onUnload(() => {
+  pageActive = false
+  pageEpoch++
+  uni.$off(SESSION_CHANGED_EVENT, resetSessionView)
+  uni.$off(SESSION_EXPIRED_EVENT, resetSessionView)
+})
+function currentActor() {
+  const profile = uni.getStorageSync('client_profile')
+  const playerId = overview.value?.player_id
+  if (!pageActive || !uni.getStorageSync('token') || !loadedToken || loadedToken !== sessionToken() || !playerId || !profile?.id || profile.player?.id !== playerId) throw new Error('登录身份已变化，请刷新收益后重试')
+  return { player_id: playerId, profile_id: Number(profile.id) }
+}
+function actorIsCurrent(actor: { player_id: number; profile_id: number }, token: string) {
+  const profile = uni.getStorageSync('client_profile')
+  return pageActive && token === sessionToken() && profile?.id === actor.profile_id && profile?.player?.id === actor.player_id
+}
 
 const methods = [
   { label: '微信', value: 'wechat' as const },
   { label: '支付宝', value: 'alipay' as const },
   { label: '银行卡', value: 'bank' as const },
-  { label: '其他', value: 'other' as const }
+  { label: '其他', value: 'other' as const },
+  { label: '提现为钻石', value: 'diamonds' as const }
 ]
 const methodLabels = methods.map(item => item.label)
 const methodIndex = ref(0)
+const isDiamond = computed(() => methods[methodIndex.value].value === 'diamonds')
 const form = reactive({ amount: '', account_name: '', account_no: '', request_note: '' })
+const diamondAmount = computed(() => /^[1-9]\d*$/.test(form.amount) && Number.isSafeInteger(Number(form.amount)) ? form.amount : '')
 
 const availableFish = computed(() => Number(overview.value?.available_balance || 0))
 const debtFish = computed(() => Number(overview.value?.debt_balance || 0))
@@ -182,9 +246,15 @@ const accountPlaceholder = computed(() => {
 })
 const withdrawalBlockReason = computed(() => {
   if (loading.value) return '收益数据加载中，请稍候'
+  if (pendingDiamond.value) return isDiamond.value ? '' : '请先选择提现为钻石，恢复原兑换请求'
   if (!overview.value) return '收益数据加载失败，请刷新后重试'
   if (overview.value.can_withdraw === false) return overview.value.withdrawal_block_reason || '当前账号暂不能提现，请联系管理员'
   if (debtFish.value > 0) return '当前有未抵扣欠款，暂不能提现'
+  if (isDiamond.value) {
+    if (!diamondAmount.value) return '兑换鱼干须为整数，最低兑换1鱼干'
+    if (Number(diamondAmount.value) > availableFish.value) return '兑换金额超过可提现余额'
+    return ''
+  }
   if (!form.amount || !Number.isFinite(withdrawalFish.value)) return '请输入有效的提现鱼干数量'
   if (withdrawalFish.value < minWithdrawalFishValue.value) return `最低提现 ${minWithdrawalFish.value} 鱼干`
   if (withdrawalFish.value > availableFish.value) return '提现金额超过可提现余额'
@@ -219,15 +289,25 @@ function withdrawalStatusClass(status: string) {
 }
 function handleMethodChange(event: any) { methodIndex.value = Number(event?.detail?.value || 0) }
 function fillAll() {
+  if (pendingDiamond.value) return
   if (overview.value?.can_withdraw === false || debtFish.value > 0) {
     toast(overview.value?.withdrawal_block_reason || '当前暂不能提现')
     return
   }
   // 按十进制字符串截断到一位小数，不四舍五入，也不扣除钱包余数。
+  if (isDiamond.value) {
+    const balance = String(overview.value?.available_balance || '0')
+    form.amount = /^\d+(\.\d+)?$/.test(balance) ? balance.split('.')[0].replace(/^0+(?=\d)/, '') : ''
+    if (!diamondAmount.value) toast('可提现余额不足1鱼干，无法兑换钻石；余数保留在鱼干钱包')
+    return
+  }
   form.amount = String(availableFish.value).replace(/(\.\d)\d+$/, '$1').replace(/\.0$/, '')
 }
 
 async function loadAll() {
+  if (loadedToken && loadedToken !== sessionToken()) resetSessionView()
+  const token = sessionToken()
+  const sequence = ++loadSequence
   loading.value = true
   try {
     const [overviewResult, settlementResult, withdrawalResult] = await Promise.all([
@@ -235,18 +315,106 @@ async function loadAll() {
       getEarningSettlements(),
       getWithdrawals()
     ])
+    if (!pageActive || token !== sessionToken() || sequence !== loadSequence) return
+    loadedToken = token
     overview.value = overviewResult
     settlements.value = settlementResult.results || []
     withdrawals.value = withdrawalResult.results || []
   } catch (error) {
-    toast(getErrorMessage(error, '收益数据加载失败'))
+    if (token === sessionToken() && sequence === loadSequence) toast(getErrorMessage(error, '收益数据加载失败'))
   } finally {
-    loading.value = false
+    if (token === sessionToken() && sequence === loadSequence) loading.value = false
+  }
+}
+
+async function submitDiamondWithdrawal() {
+  if (pendingDiamond.value) return recoverDiamondWithdrawal(true)
+  if (!canSubmit.value) return toast(withdrawalBlockReason.value)
+  submitting.value = true
+  const token = sessionToken()
+  try {
+    const actor = currentActor()
+    const existing = readDiamondWithdrawal(actor)
+    if (existing) {
+      pendingDiamond.value = existing
+      form.amount = existing.amount
+      return
+    }
+    const amount = diamondAmount.value
+    const note = form.request_note.trim()
+    const ok = await confirm(`确认扣${amount}鱼干，到账${amount}钻石至本人钻石钱包？兑换完成后无需财务审核。`, '确认兑换')
+    if (!ok || !actorIsCurrent(actor, token)) return
+    const requestId = await createDiamondRequestId()
+    if (!actorIsCurrent(actor, token)) return
+    // Another page can have persisted a request while this confirmation was open.
+    // This synchronous re-read + write has no await gap and never replaces it.
+    const saved = readDiamondWithdrawal(actor)
+    if (saved) {
+      pendingDiamond.value = saved
+      form.amount = saved.amount
+      return
+    }
+    const pending: PendingDiamondWithdrawal = { ...actor, request_id: requestId, amount, request_note: note, state: 'pending' }
+    persistDiamondWithdrawal(pending)
+    pendingDiamond.value = pending
+    const result = await postDiamondWithdrawal(pending, token)
+    await finishDiamondWithdrawal(pending, result, token)
+  } catch (error) {
+    if (token === sessionToken()) toast(getErrorMessage(error, '兑换结果待确认，请恢复原兑换请求'))
+  } finally {
+    if (token === sessionToken()) submitting.value = false
+  }
+}
+
+async function postDiamondWithdrawal(pending: PendingDiamondWithdrawal, token: string) {
+  if (!actorIsCurrent(pending, token)) throw new Error('登录身份已变化，请刷新后恢复原兑换请求')
+  // A rejected retry does not resolve another same-key transaction. Only a
+  // matching completed receipt can release the persisted original request.
+  return createWithdrawal(diamondPayload(pending))
+}
+
+async function finishDiamondWithdrawal(pending: PendingDiamondWithdrawal, result: WithdrawalItem, token: string) {
+  if (!actorIsCurrent(pending, token)) return
+  const receipt = completeDiamondWithdrawal(pending, result)
+  pendingDiamond.value = readDiamondWithdrawal(pending)
+  form.amount = pendingDiamond.value?.amount || ''
+  form.request_note = pendingDiamond.value?.request_note || ''
+  success(`已到账${receipt.diamond_amount}钻石`)
+  activeTab.value = 'withdrawals'
+  await Promise.all([loadAll(), (async () => {
+    const profile = await getClientProfileApi()
+    if (actorIsCurrent(pending, token) && profile.id === pending.profile_id) saveClientProfile(profile)
+  })()])
+}
+
+async function recoverDiamondWithdrawal(retry: boolean) {
+  if (submitting.value) return
+  submitting.value = true
+  const token = sessionToken()
+  try {
+    const actor = currentActor()
+    const pending = readDiamondWithdrawal(actor)
+    if (!pending) return
+    pendingDiamond.value = pending
+    let result: WithdrawalItem
+    try {
+      result = await getDiamondWithdrawal(pending.request_id)
+    } catch (error: any) {
+      if (error?.statusCode !== 404 || !retry) throw error
+      if (!actorIsCurrent(actor, token)) return
+      result = await postDiamondWithdrawal(pending, token)
+    }
+    await finishDiamondWithdrawal(pending, result, token)
+  } catch (error) {
+    if (token === sessionToken()) toast(getErrorMessage(error, '原兑换结果待确认，请重试恢复'))
+  } finally {
+    if (token === sessionToken()) submitting.value = false
   }
 }
 
 async function submitWithdrawal() {
   if (submitting.value) return
+  if (isDiamond.value) return submitDiamondWithdrawal()
   if (overview.value?.can_withdraw === false || debtFish.value > 0) {
     toast(overview.value?.withdrawal_block_reason || '当前暂不能提现')
     return
@@ -258,40 +426,59 @@ async function submitWithdrawal() {
   const fishAmount = withdrawalFish.value
   const yuanAmount = withdrawalYuan.value
   const method = methods[methodIndex.value]
-  const ok = await confirm(
-    `确认申请提现${fishAmount.toFixed(1)}鱼干（折合人民币¥${money(yuanAmount)}）到${method.label}账号 ${form.account_no.trim()} 吗？`,
-    '确认提现'
-  )
-  if (!ok) return
-
+  if (method.value === 'diamonds') return
+  const token = sessionToken()
+  const payload = {
+    amount: fishAmount,
+    payment_method: method.value,
+    account_name: form.account_name.trim(),
+    account_no: form.account_no.trim(),
+    request_note: form.request_note.trim()
+  }
   submitting.value = true
   try {
-    await createWithdrawal({
-      amount: fishAmount,
-      payment_method: method.value,
-      account_name: form.account_name.trim(),
-      account_no: form.account_no.trim(),
-      request_note: form.request_note.trim()
-    })
+    const ok = await confirm(
+      `确认申请提现${fishAmount.toFixed(1)}鱼干（折合人民币¥${money(yuanAmount)}）到${method.label}账号 ${payload.account_no} 吗？`,
+      '确认提现'
+    )
+    if (!ok || !pageActive || token !== sessionToken()) return
+    await createWithdrawal(payload)
+    if (!pageActive || token !== sessionToken()) return
     form.amount = ''
     form.request_note = ''
     success('提现申请已提交，等待财务审核')
     activeTab.value = 'withdrawals'
     await loadAll()
   } catch (error) {
-    toast(getErrorMessage(error, '提现申请失败'))
+    if (token === sessionToken()) toast(getErrorMessage(error, '提现申请失败'))
   } finally {
-    submitting.value = false
+    if (token === sessionToken()) submitting.value = false
   }
 }
 
 onShow(async () => {
-  if (!(await isApprovedPlayer())) {
+  pageActive = true
+  if (loadedToken && loadedToken !== sessionToken()) resetSessionView()
+  const approval = approvalSession()
+  const approved = await isApprovedPlayer()
+  if (!pageActive || approval !== approvalSession()) return
+  if (!approved) {
     toast('请先成为已通过审核的陪玩师')
     replace('/pages/player/apply/index')
     return
   }
   await loadAll()
+  if (!pageActive || approval !== approvalSession()) return
+  try {
+    pendingDiamond.value = readDiamondWithdrawal(currentActor())
+    if (pendingDiamond.value) {
+      methodIndex.value = methods.findIndex(item => item.value === 'diamonds')
+      form.amount = pendingDiamond.value.amount
+      await recoverDiamondWithdrawal(false)
+    }
+  } catch (error) {
+    toast(getErrorMessage(error, '原兑换请求恢复失败'))
+  }
 })
 </script>
 

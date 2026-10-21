@@ -1,18 +1,21 @@
 const {test}=require('node:test'),assert=require('node:assert/strict')
 const {setup,tick,catalog,quote}=require('./patronage-harness.cjs')
-test('v3 approved duration, renewal, half-yuan rate and manual support copy render without enabling purchase',async()=>{
+const {helpSection}=require('./help-content-harness.cjs')
+test('v3 duration and real prices stay visible; renewal and support rules live in help without enabling purchase',async()=>{
  const c=catalog();c.purchase_enabled=true;c.packages.push({code:'year',kind:'naming',name:'年冠',duration_days:365,amount_yuan:'9999.00',amount_diamonds:'99990.0',available:true,blockers:[]})
  const p=setup(purchase,{getPatronageCatalog:async()=>c,getPatronageQuote:async(id,code)=>({...quote(),package_code:code,can_submit:true,blockers:[]})})
  p.life.load[0]({playerId:'7'});await p.life.show[0]();await p.action('package-year').props.onTap()
- assert.match(p.text(),/365天/);assert.match(p.text(),/付款成功后生效/);assert.match(p.text(),/同老板同陪玩续购累加/)
- assert.match(p.text(),/未到期从原到期日延长/);assert.match(p.text(),/已到期从本次付款起算/)
- await p.action('package-day_pass').props.onTap();assert.match(p.text(),/时薪 × 7小时/);assert.match(p.text(),/赠送一周冠名（7天），按同一规则累加/)
- assert.match(p.text(),/暂不提供自助退款/);assert.match(p.text(),/客服人工核实处理/)
+ const rules=helpSection('user-guide','patronage'),refund=helpSection('recharge-refund','patronage-refund')
+ assert.match(p.text(),/365天/);assert.match(rules,/付款成功后生效/);assert.match(rules,/同老板同陪玩续购累加/)
+ assert.match(rules,/未到期从原到期日延长/);assert.match(rules,/已到期从本次付款起算/)
+ await p.action('package-day_pass').props.onTap();assert.match(rules,/时薪 × 7小时/);assert.match(rules,/赠送一周冠名（7天），按同一规则累加/)
+ assert.match(refund,/暂不提供自助退款/);assert.match(refund,/客服人工核实处理/)
+ assert.doesNotMatch(p.text(),/同老板同陪玩续购累加|暂不提供自助退款/)
  p.action('support').props.onTap();assert.deepEqual(p.calls[0],['/pages/client/customer-service/index'])
  assert.equal(p.action('purchase').props.disabled,true);assert.equal(typeof p.action('purchase').props.onTap,'function')
  assert.doesNotMatch(p.text(),/规则待确认|YEAR_DURATION_UNCONFIRMED|不予退款/);p.scope.stop()
  const r=setup('src/pages/client/patronage/records.vue',{getPatronageRecords:async()=>({count:0,next:null,previous:null,results:[]})});await r.life.show[0]()
- assert.match(r.text(),/暂不提供自助退款/);r.action('support').props.onTap();assert.deepEqual(r.calls[0],['/pages/client/customer-service/index']);r.scope.stop()
+ assert.doesNotMatch(r.text(),/暂不提供自助退款/);assert.match(refund,/暂不提供自助退款/);r.action('support').props.onTap();assert.deepEqual(r.calls[0],['/pages/client/customer-service/index']);r.scope.stop()
 })
 test('failed/missing capability or unverified pending never enable purchase; guest never POSTs quote',async()=>{
  for(const mode of ['failed','true','missing','guest','unconfigured']){
@@ -79,6 +82,6 @@ const purchase='src/pages/client/patronage/index.vue'
 test('closed purchase SFC loads catalog and quotes but disables its integrated payment event',async()=>{
  const calls=[],p=setup(purchase,{getPatronageCatalog:async id=>{calls.push(['catalog',id]);return catalog()},getPatronageQuote:async(id,code)=>{calls.push(['quote',id,code]);return {...quote(),package_code:code,amount_diamonds:code==='day_pass'?'3400.0':'1880.0'}}})
  p.life.load[0]({playerId:'7'});await p.life.show[0]();await tick();assert.deepEqual(calls[0],['catalog',7]);assert.match(p.text(),/陪玩甲/);assert.match(p.text(),/1880.0/);assert.match(p.text(),/尚未开放/)
- await p.action('package-day_pass').props.onTap();assert.match(p.text(),/3400.0/);assert.match(p.text(),/赠送一周冠名/);assert.match(p.text(),/计价/)
+ await p.action('package-day_pass').props.onTap();assert.match(p.text(),/3400.0/);assert.match(p.text(),/赠送一周冠名/);assert.match(helpSection('user-guide','patronage'),/7小时仅为计价说明/)
  const submit=p.action('purchase');assert.equal(submit.props.disabled,true);assert.equal(typeof submit.props.onTap,'function');assert.ok(calls.every(c=>['catalog','quote'].includes(c[0])));p.scope.stop()
 })

@@ -1,7 +1,7 @@
 <template>
   <view class="announcements" data-section="announcements">
     <view v-for="card in cards" :key="card.kind" class="announcement-card" :class="card.kind" :data-action="`open-${card.kind}`" role="button" :aria-label="`${card.title}，查看全部记录`" @tap="open(card.kind)">
-      <view class="announcement-heading"><text class="announcement-title">{{ card.title }}</text><text class="announcement-live-dot" /></view>
+      <view class="announcement-heading"><text class="announcement-title">{{ card.title }}</text></view>
       <swiper v-if="feeds[card.kind].items.length && !feeds[card.kind].error" class="announcement-swiper" vertical circular :autoplay="active && feeds[card.kind].items.length > 1" :interval="4500" :duration="400">
         <swiper-item v-for="item in feeds[card.kind].items" :key="item.id">
           <view class="announcement-line" :aria-label="item.text">
@@ -69,13 +69,11 @@ onBeforeUnmount(stop)
 
 <style scoped>
 .announcements { display: flex; flex-direction: column; gap: 28rpx; margin-top: 34rpx; }
-.announcement-card { position: relative; min-width: 0; padding: 28rpx 38rpx 12rpx 18rpx; border: 1rpx solid var(--ui-line, #d6e8d8); border-radius: 20rpx; background: var(--ui-notice-gradient); box-sizing: border-box; border-color: var(--ui-accent-line); }
-.announcement-card.patronage { border-color: var(--ui-gold-line); background: var(--ui-gold-soft); }
-.announcement-card::after { content: ''; position: absolute; right: 82rpx; top: 32rpx; width: 62rpx; height: 62rpx; border: 10rpx solid var(--ui-line, rgba(255,255,255,.35)); border-radius: 18rpx; transform: rotate(28deg); pointer-events: none; }
-.announcement-heading { position: absolute; z-index: 1; top: -14rpx; left: 16rpx; display: flex; align-items: center; gap: 10rpx; padding: 5rpx 14rpx; border-radius: 9rpx 9rpx 9rpx 2rpx; background: var(--ui-gradient); color: #fff; transform: rotate(-3deg); }
-.patronage .announcement-heading { background: #89611E; color: #FFFFFF; }
+.announcement-card { position: relative; min-width: 0; padding: 20rpx 38rpx 12rpx 18rpx; border: 1rpx solid var(--ui-line); border-radius: 20rpx; background: var(--ui-surface); box-sizing: border-box; }
+.announcement-card.patronage { border-color: var(--ui-line); background: var(--ui-surface); }
+.announcement-heading { position: static; display: flex; align-items: center; margin-bottom: 8rpx; background: transparent; color: var(--ui-text); }
+.patronage .announcement-heading { color: var(--ui-gold); }
 .announcement-title { font-size: 24rpx; font-weight: 800; line-height: 1.3; letter-spacing: 1rpx; }
-.announcement-live-dot { width: 7rpx; height: 7rpx; border-radius: 50%; background: var(--ui-surface, rgba(255,255,255,.8)); }
 .announcement-arrow { position: absolute; right: 13rpx; top: 50%; color: var(--ui-muted, #548067); font-size: 34rpx; line-height: 1; transform: translateY(-20%); }
 .patronage .announcement-arrow { color: var(--ui-gold, #956b28); }
 .announcement-swiper { position: relative; z-index: 1; height: 94rpx; }

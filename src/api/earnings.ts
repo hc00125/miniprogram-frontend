@@ -49,6 +49,11 @@ export interface PlayerEarningItem {
 }
 
 export interface WithdrawalItem {
+  request_id: string | null
+  diamond_amount: number | null
+  diamond_balance_after: number | null
+  target_profile_id: number | null
+  actor_user_id: number | null
   withdrawal_no: string
   amount: number
   status: string
@@ -67,13 +72,21 @@ export interface WithdrawalItem {
   created_at: string
 }
 
-export interface WithdrawalCreatePayload {
+export interface CashWithdrawalCreatePayload {
   amount: number
   payment_method: 'wechat' | 'alipay' | 'bank' | 'other'
   account_name: string
   account_no: string
   request_note?: string
 }
+
+export interface DiamondWithdrawalCreatePayload {
+  payment_method: 'diamonds'
+  amount: string
+  request_id: string
+  request_note?: string
+}
+export type WithdrawalCreatePayload = CashWithdrawalCreatePayload | DiamondWithdrawalCreatePayload
 
 export function getEarningsOverview() {
   return api.get<EarningsOverview>('/player/earnings/overview')
@@ -89,4 +102,8 @@ export function getWithdrawals() {
 
 export function createWithdrawal(payload: WithdrawalCreatePayload) {
   return api.post<WithdrawalItem>('/player/earnings/withdrawals', payload)
+}
+
+export function getDiamondWithdrawal(requestId: string) {
+  return api.get<WithdrawalItem>(`/player/earnings/withdrawals/diamond/${requestId}`)
 }

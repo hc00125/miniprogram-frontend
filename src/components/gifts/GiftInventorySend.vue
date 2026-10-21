@@ -1,7 +1,7 @@
 <template>
   <view class="mask" @tap="close"><view class="sheet" @tap.stop>
     <view class="heading"><text>背包赠送 · {{ recipient.name }}</text><button @tap="close">返回</button></view>
-    <text class="note">使用已有礼物，不扣钻石；收到的礼物不会进入可转赠背包。</text>
+
     <text v-if="loading" class="note">正在读取背包…</text>
     <text v-if="error" class="warning">{{ error }}</text>
     <text v-if="message" class="note">{{ message }}</text>

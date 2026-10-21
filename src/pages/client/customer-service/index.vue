@@ -62,7 +62,6 @@
       </view>
 
       <view class="support-tip">
-        <text>提示</text>
         <text>复制微信号后，请返回微信首页搜索并添加客服。平台客服不会主动索要支付密码或验证码。</text>
       </view>
     </template>
@@ -120,8 +119,8 @@ onShow(loadSupportCenter)
 </script>
 
 <style lang="scss" scoped>
-.support-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.13)), transparent 32%), radial-gradient(circle at 88% 12%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
-.support-hero { padding: 34rpx 30rpx; border-radius: 30rpx; color: #fff; background: var(--ui-gradient); box-shadow: 0 18rpx 42rpx var(--ui-shadow, rgba(23,52,38,.18)); }
+.support-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: var(--ui-bg, #f7f3ea); }
+.support-hero { padding: 12rpx 4rpx 20rpx; color: var(--ui-text, #172116); background: transparent; }
 .support-title { display: block; }
 .support-title { font-size: 44rpx; font-weight: 900; }
 .feedback-entry { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 20rpx; padding: 18rpx 26rpx; border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); border-radius: 24rpx; background: var(--ui-surface, rgba(255,255,255,.92)); }
@@ -163,9 +162,8 @@ onShow(loadSupportCenter)
 .retry-button { width: 220rpx; height: 68rpx; margin-top: 20rpx; border-radius: 999rpx; color: #fff; font-size: 23rpx; font-weight: 900; line-height: 68rpx; background: var(--ui-primary, #1f7c4b); }
 .retry-button::after { border: none; }
 .empty-card { margin-top: 16rpx; }
-.support-tip { margin-top: 24rpx; display: flex; align-items: flex-start; gap: 12rpx; padding: 20rpx; border-radius: 20rpx; color: var(--ui-muted, #687665); background: var(--ui-surface, rgba(255,255,255,.72)); }
-.support-tip text:first-child { flex-shrink: 0; color: var(--ui-gold, #a87520); font-size: 21rpx; font-weight: 900; }
-.support-tip text:last-child { font-size: 20rpx; line-height: 1.55; }
+.support-tip { margin-top: 24rpx; padding: 8rpx 4rpx; color: var(--ui-muted, #687665); background: transparent; }
+.support-tip text { font-size: 24rpx; line-height: 1.55; }
 .channel-icon--manual { background: transparent; }
 .support-pictogram { width: 52rpx; height: 52rpx; display: block; }
 </style>

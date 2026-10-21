@@ -2,9 +2,7 @@
   <view :style="appThemeStyle" class="help-page">
     <view class="help-shell">
       <view class="help-hero">
-        <text class="help-eyebrow">偷吃电竞</text>
         <text class="help-title">帮助与规则</text>
-        <text class="help-summary">操作手册、服务规范和异常处理，按需要查阅。</text>
       </view>
       <view class="help-card">
         <button class="help-row" data-action="player-guide" hover-class="help-pressed" @tap="go('/pages/client/help/player-guide')">

@@ -1,6 +1,6 @@
 <template>
   <view :style="$appThemeStyle" class="profile-settings-page">
-    <view class="hero-card"><text class="hero-title">陪玩资料设置</text><text class="hero-sub">简介和语音修改提交审核，审核通过后才替换公开资料</text></view>
+    <view class="hero-card"><text class="hero-title">陪玩资料设置</text></view>
     <view v-if="settings?.pending_update" class="review-card review-pending"><text>资料审核中</text><text>提交时间：{{ dateTime(settings.pending_update.submitted_at) }}</text><text>审核期间，老板端仍然展示你当前已通过的资料。</text></view>
     <view v-else-if="settings?.latest_update?.status === 'rejected'" class="review-card review-rejected"><text>上次修改未通过</text><text>{{ settings.latest_update.reject_reason || '请修改后重新提交' }}</text></view>
 
@@ -96,13 +96,12 @@ onBeforeUnmount(() => { if (audioContext) { audioContext.stop(); audioContext.de
 </script>
 
 <style lang="scss" scoped>
-.profile-settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: radial-gradient(circle at 12% 0%, var(--ui-accent-soft, rgba(47,155,99,.12)), transparent 30%), radial-gradient(circle at 88% 10%, rgba(216,161,68,.12), transparent 28%), var(--ui-soft, #f7f3ea); }
+.profile-settings-page { min-height: 100vh; padding: 24rpx 24rpx 80rpx; box-sizing: border-box; color: var(--ui-text, #172116); background: var(--ui-bg, #f7f3ea); }
 .hero-card, .card, .review-card { margin-bottom: 20rpx; padding: 28rpx; border-radius: 28rpx; background: var(--ui-surface, rgba(255,255,255,.97)); border: 1rpx solid var(--ui-accent-line, rgba(39,61,42,.08)); box-shadow: 0 14rpx 34rpx var(--ui-shadow, rgba(39,61,42,.06)); }
-.hero-card { color: #fff; background: var(--ui-gradient); }
+.hero-card { padding: 12rpx 4rpx 20rpx; border: 0; border-radius: 0; box-shadow: none; color: var(--ui-text, #172116); background: transparent; }
 .hero-title, .hero-sub { display: block; }
 
 .hero-title { font-size: 40rpx; font-weight: 900; }
-.hero-sub { margin-top: 10rpx; color: rgba(255,255,255,.74); font-size: 22rpx; line-height: 1.5; }
 .review-card text { display: block; }
 .review-card text:first-child { font-size: 28rpx; font-weight: 900; }
 .review-card text:not(:first-child) { margin-top: 7rpx; font-size: 21rpx; line-height: 1.5; }

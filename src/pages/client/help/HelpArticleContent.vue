@@ -7,7 +7,6 @@
     </view>
 
     <view class="help-section-tools">
-      <text class="help-row-copy">点开标题查看说明</text>
       <button class="help-text-action" data-action="toggle-all" hover-class="help-pressed" @tap="toggleAll">{{ allOpen ? '全部收起' : '全部展开' }}</button>
     </view>
 

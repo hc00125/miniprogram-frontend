@@ -1,24 +1,18 @@
-const {test}=require('node:test');
-const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const vm=require('node:vm');
-const src=fs.readFileSync(require('node:path').join(__dirname,'../src/pages/player/earnings/index.vue'),'utf8');
-function reason(overrides={}) {
- const match=src.match(/const withdrawalBlockReason = computed\(\(\) => \{([\s\S]*?)\n\}\)/);
- assert.ok(match, '应有统一的不可提交原因');
- const ctx={loading:{value:false},submitting:{value:false},overview:{value:{can_withdraw:true}},debtFish:{value:0},withdrawalFish:{value:0.1},minWithdrawalFishValue:{value:0.1},minWithdrawalFish:{value:'0.10'},availableFish:{value:100},hasValidFishPrecision:{value:true},form:{amount:'0.1',account_name:'测试',account_no:'test'},...overrides};
- return vm.runInNewContext(`(function(){${match[1]}})()`,ctx);
-}
-test('0.1鱼干可提交，各项失败均有明确原因',()=>{
- assert.equal(reason(),'');
- assert.match(reason({form:{amount:'0.1',account_name:'',account_no:'test'}}),/收款人/);
- assert.match(reason({form:{amount:'0.1',account_name:'测试',account_no:''}}),/收款账号/);
- assert.match(reason({withdrawalFish:{value:0.09}}),/最低/);
- assert.match(reason({withdrawalFish:{value:101}}),/余额/);
- assert.match(reason({hasValidFishPrecision:{value:false}}),/小数/);
- assert.match(reason({debtFish:{value:1}}),/欠款/);
- assert.match(reason({overview:{value:{can_withdraw:false,withdrawal_block_reason:'账号受限'}}}),/账号受限/);
- assert.match(reason({loading:{value:true}}),/加载/);
- assert.match(reason({overview:{value:null}}),/加载/);
- assert.match(src,/v-if="withdrawalBlockReason"/);
-});
+const {test}=require('node:test')
+const assert=require('node:assert/strict')
+const {setup}=require('./diamond-withdrawal-harness.cjs')
+test('0.1鱼干可提交，各项失败均有明确原因',async t=>{
+ const f=await setup(t,{balance:100})
+ f.input(0,'0.1');assert.match(f.text(),/收款人/)
+ f.input(1,'测试');assert.match(f.text(),/收款账号/)
+ f.input(2,'test');assert.equal(f.button().props.disabled,false)
+ for(const [amount,reason] of [['0.09',/最低/],['101',/余额/],['1.11',/小数/],['Infinity',/有效/]]) {
+  f.input(0,amount);assert.equal(f.button().props.disabled,true);assert.match(f.text(),reason)
+ }
+ const debt=await setup(t,{debt:1});debt.input(0,'0.1');assert.match(debt.text(),/欠款/)
+ const restricted=await setup(t,{allowed:false});restricted.input(0,'0.1');assert.match(restricted.text(),/暂不能提现/)
+ f.input(0,'0.1');await f.tap()
+ assert.deepEqual(f.calls.request.find(c=>c.method==='POST').data,{amount:0.1,payment_method:'wechat',account_name:'测试',account_no:'test',request_note:''})
+ assert.deepEqual(f.calls.success,['提现申请已提交，等待财务审核'])
+ assert.match(f.calls.confirm[0][0],/折合人民币¥0.01/)
+})

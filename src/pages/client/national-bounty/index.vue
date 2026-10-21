@@ -7,7 +7,6 @@
           <text class="activity-status">{{ NATIONAL_BOUNTY_STATUS }}</text>
         </view>
         <text class="activity-title">{{ NATIONAL_BOUNTY_TITLE }}</text>
-        <text class="activity-subtitle">圆满收官</text>
       </view>
 
       <view class="result-card">
@@ -72,7 +71,6 @@ function contactService() {
 .activity-status, .reward-status { flex-shrink: 0; padding: 8rpx 18rpx; border-radius: 999rpx; background: var(--ui-accent-soft); color: var(--ui-accent); font-size: 26rpx; font-weight: 700; line-height: 1.5; }
 .activity-title, .activity-subtitle, .section-title, .activity-copy, .result-congratulations { display: block; }
 .activity-title { font-size: 42rpx; font-weight: 800; line-height: 1.35; }
-.activity-subtitle { margin-top: 10rpx; color: var(--ui-gold); font-size: 32rpx; font-weight: 700; line-height: 1.5; }
 .result-card, .reward-card { padding: 26rpx; border: 1rpx solid var(--ui-line); border-radius: 24rpx; background: var(--ui-surface); }
 .section-title { font-size: 34rpx; font-weight: 700; line-height: 1.5; }
 .result-header, .result-row { display: flex; align-items: center; gap: 12rpx; }

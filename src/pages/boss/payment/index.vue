@@ -17,7 +17,7 @@
       <text v-if="showRenewalSummary" class="amount-breakdown">
         主订单 💎{{ diamond(mainOrderAmount) }} · 续单 💎{{ diamond(renewalPaidAmount) }}
       </text>
-      <view class="secure-tip"><image class="diamond-unit" :src="uiIcons.diamond" mode="aspectFit" /><text>人民币1元对应10钻石</text></view>
+
     </view>
 
     <view v-if="showPaymentWindow" class="card virtual-pay-card">
@@ -30,7 +30,7 @@
       </view>
       <view class="virtual-notice">
         <text></text>
-        <text>{{ paymentWindowNotice }}</text>
+        <text>{{ serverConfirming ? '正在核验付款，请勿重复支付' : '请在倒计时内完成付款' }}</text>
       </view>
       <view class="info-row total-row">
         <text>{{ serverConfirming ? '微信核验剩余' : '支付剩余时间' }}</text>
@@ -211,7 +211,7 @@
       <button v-else class="cancel-renewal-button" :disabled="paying || cancelling" @tap="cancelMainOrder">
         {{ cancelling ? '正在取消订单...' : '取消订单' }}
       </button>
-      <text class="pay-help">微信即时支付和已有钻石支付均保留；未支付订单可取消，支付成功后按原渠道退款规则处理。</text>
+
     </view>
 
     <view v-if="isPaid" class="card completed-card">

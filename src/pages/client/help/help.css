@@ -30,12 +30,13 @@
 .help-actions { display: flex; flex-wrap: wrap; gap: 20rpx; margin-top: 20rpx; }
 .help-action { display: flex; flex: 1; align-items: center; justify-content: center; min-width: 220rpx; min-height: 96rpx; padding: 20rpx 16rpx; border: 1rpx solid var(--ui-accent-line, #dce8f7); border-radius: 20rpx; color: var(--ui-accent, #2d66ac); background: var(--ui-soft, #edf4fd); font-size: 30rpx; font-weight: 700; }
 .help-action--primary { color: var(--ui-on-accent, #fff); background: var(--ui-primary, #2d66ac); border-color: transparent; }
-.help-section-tools { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; margin-bottom: 16rpx; }
+.help-section-tools { display: flex; align-items: center; justify-content: flex-end; gap: 16rpx; margin-bottom: 8rpx; }
 .help-section-tools .help-row-copy { margin-top: 0; }
 .help-text-action { display: flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 96rpx; padding: 16rpx; color: var(--ui-accent, #2d66ac); background: transparent; font-size: 28rpx; }
-.help-section + .help-section { margin-top: 16rpx; }
+.help-section { border: 0; border-bottom: 1rpx solid var(--ui-line, #dce8f7); border-radius: 0; background: transparent; }
+.help-section + .help-section { margin-top: 0; }
 .help-section-toggle { display: flex; align-items: center; gap: 16rpx; width: 100%; min-height: 104rpx; padding: 24rpx; color: var(--ui-text, #243f60); background: transparent; }
-.help-section-number { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 48rpx; height: 48rpx; border-radius: 14rpx; color: var(--ui-accent, #2d66ac); background: var(--ui-accent-soft, #edf4fd); font-size: 26rpx; font-weight: 700; }
+.help-section-number { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 48rpx; height: 48rpx; color: var(--ui-muted, #536c88); font-size: 26rpx; font-weight: 700; }
 .help-section-title { flex: 1; min-width: 0; }
 .help-section-state { flex-shrink: 0; color: var(--ui-accent, #2d66ac); font-size: 26rpx; }
 .help-section-body { padding: 0 24rpx 24rpx; }

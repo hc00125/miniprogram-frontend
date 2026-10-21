@@ -26,6 +26,6 @@ test('live sheet quotes then explicit confirmation; decimal balance displayed; u
  await tick();tree().find(n=>n.props?.onSelect).props.onSelect({code:'rose',name:'玫瑰',price_diamonds:10});await button('quote').props.onTap();await tick()
  assert.ok(tree().some(n=>typeof n.children==='string'&&n.children.includes('10.50')));assert.equal(calls.length,1)
  await button('pay').props.onTap();await tick();assert.equal(calls[1][0],'pay');assert.equal(button('pay'),undefined)
- await button('recover').props.onTap();assert.equal(calls[2][0],'get');assert.ok(tree().some(n=>typeof n.children==='string'&&n.children.includes('库存专用报价')))
+ await button('recover').props.onTap();assert.equal(calls[2][0],'get');assert.ok(tree().some(n=>typeof n.children==='string'&&n.children.includes('背包暂不可赠送')))
  scope.stop()
 })

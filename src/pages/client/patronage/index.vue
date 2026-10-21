@@ -26,19 +26,8 @@
           </button>
         </view>
       </view>
-      <view v-if="selected" class="card">
-        <text class="section-title">{{ selected.name }}说明</text>
-        <template v-if="selected.code === 'day_pass'">
-          <text class="body-copy">包天按已确认的普通点单时薪 × 7小时计价，以服务端总钻价为准。</text>
-          <text class="body-copy">赠送一周冠名（7天），按同一规则累加。</text>
-          <text class="muted">7小时仅为计价说明，不限制服务时长，不自动计时或完单。</text>
-        </template>
-        <text v-else class="body-copy">冠名展示有效期与包含服务时长独立；日冠有效期24小时，不是自然日，也不代表全天无限服务。服务时长由陪玩自行计时。</text>
-        <text class="body-copy">付款成功后生效；同老板同陪玩续购累加，未到期从原到期日延长，已到期从本次付款起算。</text>
-        <text class="body-copy">支持多位老板同时冠名，不独占、不锁单，不影响其他老板下单或陪玩接单。</text>
-      </view>
       <view class="card quote-card">
-        <text class="section-title">服务端报价</text>
+        <text class="section-title">购买报价</text>
         <text v-if="quoting" class="muted">正在获取报价…</text>
         <text v-else-if="quoteError" class="notice">{{ quoteError }}</text>
         <template v-else-if="quote">
@@ -58,16 +47,15 @@
       <text v-if="intent" class="body-copy">原交易：{{ intent.purchase_no || '尚未取得订单号' }} · {{ intent.payment_status === 'prepared' ? '尚未发送' : patronagePaymentLabel(intent.payment_status) }}</text>
       <button v-if="intent?.dispatch_started" class="secondary" data-action="recover" :disabled="busy" @tap="recover">查询原交易</button>
       <button v-if="intent && (!intent.dispatch_started || intent.confirmed_by_key)" class="secondary" data-action="buy-again" :disabled="busy || !ready" @tap="buy(true)">{{ intent.dispatch_started ? '明确再次购买' : '放弃未发送意图并重新购买' }}</button>
-      <text class="muted">{{ pendingCount === null ? '未决交易尚未核对，暂不能新购' : `服务端未决交易 ${pendingCount} 笔` }}</text>
-      <text v-if="pendingCount" class="notice">存在未决交易，禁止新购。此处仅列首屏；未显示的记录同样阻止购买，请查询原单或联系客服核实。</text>
-      <button class="secondary" data-action="pending" :disabled="busy" @tap="refreshPending">重新查证未决交易</button>
+      <text v-if="pendingCount !== 0" class="muted">{{ pendingCount === null ? '交易尚未核对，暂不能购买' : `有 ${pendingCount} 笔交易待确认，暂不能购买` }}</text>
+      <text v-if="pendingCount" class="notice">请查询原单或联系客服；未列出的待确认交易也需核对。</text>
+      <button class="secondary" data-action="pending" :disabled="busy" @tap="refreshPending">刷新交易状态</button>
       <view v-for="item in pendingRecords" :key="item.idempotency_key">
         <text class="body-copy">{{ item.player_name }} · {{ item.package_name }} · {{ patronagePaymentLabel(item.payment_status) }}</text>
         <button class="secondary" :data-action="`pending-${item.purchase_no}`" :disabled="busy" @tap="recoverPending(item)">查询此原单</button>
       </view>
     </view>
     <view class="card">
-      <text class="muted">暂不提供自助退款，如有问题请找客服人工核实处理。</text>
       <button class="secondary" data-action="support" @tap="openSupport">联系客服</button>
     </view>
     <view class="purchase-footer">
@@ -183,7 +171,7 @@ const purchaseReason = computed(() => {
   if (platformBlocked()) return 'iOS端虚拟支付当前未启用'
   if (catalog.value?.purchase_enabled !== true) return '购买尚未开放'
   if (intent.value?.dispatch_started) return intent.value.confirmed_by_key ? '原交易已核实，再购请点击明确再次购买' : '原交易待确认，只能查询原交易'
-  if (pendingCount.value !== 0) return pendingCount.value === null ? '请先核对服务端未决交易' : '服务端存在未决交易，禁止新购'
+  if (pendingCount.value !== 0) return pendingCount.value === null ? '请先刷新交易状态' : '有交易待确认，暂不能购买'
   return quote.value?.blockers.length ? quote.value.blockers.map(blockerLabel).join('；') : !ready.value ? '请获取可购买报价' : '点击后需再次确认；不会自动充值'
 })
 async function checkPending(ticket: number, owner: string) {
@@ -264,5 +252,5 @@ async function recoverPending(item: PatronageRecord) {
 </script>
 
 <style scoped>
-.patronage-page{min-height:100vh;box-sizing:border-box;padding:24rpx 24rpx calc(260rpx + env(safe-area-inset-bottom));background:var(--ui-soft, #f7f3ea);color:var(--ui-text, #172116)}.intro-card,.card{padding:28rpx;margin-bottom:22rpx;border-radius:28rpx;background:var(--ui-surface, #fff);box-shadow:0 12rpx 28rpx var(--ui-shadow, rgba(39,61,42,.06))}.intro-card{background:linear-gradient(135deg,var(--ui-surface, #fff),var(--ui-soft, #eef8e7))}.eyebrow{display:block;color:var(--ui-accent, #1f7c4b);font-size:23rpx;font-weight:700}.player-row{display:flex;align-items:center;gap:20rpx;margin-top:16rpx}.avatar{width:96rpx;height:96rpx;border-radius:24rpx}.title{display:block;font-size:38rpx;font-weight:800}.section-title{display:block;margin-bottom:20rpx;font-size:29rpx;font-weight:800}.muted{display:block;color:var(--ui-muted, #687665);font-size:23rpx;line-height:1.6}.notice{display:block;margin-top:16rpx;color:var(--ui-gold, #8f6535);font-size:24rpx;line-height:1.6}.body-copy{display:block;margin:14rpx 0;font-size:25rpx;line-height:1.7}.package-grid{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}.package-option{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;min-height:184rpx;box-sizing:border-box;margin:0;padding:22rpx 18rpx;border:2rpx solid var(--ui-line, #edf0e7);border-radius:22rpx;background:var(--ui-soft, #fafbf7);text-align:left;line-height:1.6}.package-option.selected{border-color:var(--ui-accent-line, #2f9b63);background:var(--ui-soft, #eef8e7)}.package-option[disabled]{opacity:.65;color:var(--ui-muted, #687665)}.package-name{font-size:28rpx;font-weight:800}.price{color:var(--ui-accent, #1f7c4b);font-size:29rpx;font-weight:800;word-break:break-all}.blocker{font-size:22rpx;color:var(--ui-gold, #8f6535)}.quote-row{display:flex;align-items:center;justify-content:space-between;gap:20rpx;margin:14rpx 0}.secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:76rpx;box-sizing:border-box;margin:20rpx 0 0;padding:16rpx 24rpx;border-radius:20rpx;background:var(--ui-soft, #eef8e7);color:var(--ui-accent, #1f7c4b);font-size:25rpx}.purchase-footer{position:fixed;left:0;right:0;bottom:0;padding:16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));background:var(--ui-surface, #fffaf2);border-top:1rpx solid var(--ui-line, #e7eadf);text-align:center}.purchase-button{background:var(--ui-primary, #1f7c4b);color:#fff;display:flex;align-items:center;justify-content:center;width:100%;min-height:84rpx;box-sizing:border-box;margin:10rpx 0;padding:20rpx;border-radius:24rpx;font-size:28rpx;font-weight:800}.purchase-button[disabled]{background:var(--ui-soft, #e2e9df);color:var(--ui-muted, #71816e)}.records-link{display:block;width:100%;margin:0;padding:8rpx;color:var(--ui-accent, #1f7c4b);background:transparent;font-size:23rpx}button::after{border:0}
+.patronage-page{min-height:100vh;box-sizing:border-box;padding:24rpx 24rpx calc(260rpx + env(safe-area-inset-bottom));background:var(--ui-soft, #f7f3ea);color:var(--ui-text, #172116)}.intro-card,.card{padding:28rpx;margin-bottom:22rpx;border-radius:28rpx;background:var(--ui-surface, #fff);box-shadow:0 12rpx 28rpx var(--ui-shadow, rgba(39,61,42,.06))}.intro-card{background:var(--ui-surface, #fff);box-shadow:none}.card{box-shadow:none}.eyebrow{display:block;color:var(--ui-accent, #1f7c4b);font-size:23rpx;font-weight:700}.player-row{display:flex;align-items:center;gap:20rpx;margin-top:16rpx}.avatar{width:96rpx;height:96rpx;border-radius:24rpx}.title{display:block;font-size:38rpx;font-weight:800}.section-title{display:block;margin-bottom:20rpx;font-size:29rpx;font-weight:800}.muted{display:block;color:var(--ui-muted, #687665);font-size:23rpx;line-height:1.6}.notice{display:block;margin-top:16rpx;color:var(--ui-gold, #8f6535);font-size:24rpx;line-height:1.6}.body-copy{display:block;margin:14rpx 0;font-size:25rpx;line-height:1.7}.package-grid{display:grid;grid-template-columns:1fr 1fr;gap:16rpx}.package-option{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;min-height:184rpx;box-sizing:border-box;margin:0;padding:22rpx 18rpx;border:2rpx solid var(--ui-line, #edf0e7);border-radius:22rpx;background:var(--ui-soft, #fafbf7);text-align:left;line-height:1.6}.package-option.selected{border-color:var(--ui-accent-line, #2f9b63);background:var(--ui-soft, #eef8e7)}.package-option[disabled]{opacity:.65;color:var(--ui-muted, #687665)}.package-name{font-size:28rpx;font-weight:800}.price{color:var(--ui-accent, #1f7c4b);font-size:29rpx;font-weight:800;word-break:break-all}.blocker{font-size:22rpx;color:var(--ui-gold, #8f6535)}.quote-row{display:flex;align-items:center;justify-content:space-between;gap:20rpx;margin:14rpx 0}.secondary{display:flex;align-items:center;justify-content:center;width:100%;min-height:76rpx;box-sizing:border-box;margin:20rpx 0 0;padding:16rpx 24rpx;border-radius:20rpx;background:var(--ui-soft, #eef8e7);color:var(--ui-accent, #1f7c4b);font-size:25rpx}.purchase-footer{position:fixed;left:0;right:0;bottom:0;padding:16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));background:var(--ui-surface, #fffaf2);border-top:1rpx solid var(--ui-line, #e7eadf);text-align:center}.purchase-button{background:var(--ui-primary, #1f7c4b);color:#fff;display:flex;align-items:center;justify-content:center;width:100%;min-height:84rpx;box-sizing:border-box;margin:10rpx 0;padding:20rpx;border-radius:24rpx;font-size:28rpx;font-weight:800}.purchase-button[disabled]{background:var(--ui-soft, #e2e9df);color:var(--ui-muted, #71816e)}.records-link{display:block;width:100%;margin:0;padding:8rpx;color:var(--ui-accent, #1f7c4b);background:transparent;font-size:23rpx}button::after{border:0}
 </style>

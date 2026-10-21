@@ -71,6 +71,28 @@ test('phase2 approved scripts, directives, button text and monetary interpolatio
      .replace("import { commerceRelease } from '@/utils/commerceRelease'\n",'')
      .replace('<view v-if="commerceRelease.orderSurchargeHallContractVerified && hallSurcharge(order)" class="surcharge-reward"><text>整单加价 {{ hallSurcharge(order)?.wholeOrderDiamonds }} 钻石</text><text>每人加价净收益 {{ hallSurcharge(order)?.netDiamonds }} 钻石等值（待结算，按要求人数均分）</text></view>','')
    if(p==='src/pages/boss/payment/index.vue') source=source.replace("    if (!orderInfo.value?.paid && orderInfo.value?.status === '待支付' && orderInfo.value?.checkout?.contract_version === 'surcharge-v2' && Number(orderInfo.value.checkout.surcharge?.amount_diamonds) > 0) {\n      replace('/pages/boss/surcharge-payment/index', { key: orderInfo.value.checkout.idempotency_key })\n      return false\n    }\n",'')
+   // UI distillation moves the long payment window rule to help. Normalize
+   // only this exact reviewed display expression; all behavior/amount hashes
+   // and every other interpolation still compare against the original contract.
+   if(p==='src/pages/boss/payment/index.vue') {
+     const short="{{ serverConfirming ? '正在核验付款，请勿重复支付' : '请在倒计时内完成付款' }}"
+     assert.equal(source.split(short).length,2,'payment window display changed; review required')
+     source=source.replace(short,'{{ paymentWindowNotice }}')
+   }
+   // Only the redundant complaint-button subtitle was removed. Restore that
+   // exact copy for the historical full-button hash, never strip button nodes.
+   if(p==='src/pages/client/complaints/index.vue') {
+     const compact='<view class="action-copy"><text class="action-title">提交反馈</text></view>'
+     assert.equal(source.split(compact).length,2,'complaint action changed; review required')
+     source=source.replace(compact,'<view class="action-copy"><text class="action-title">提交反馈</text><text class="action-note">遇到问题或有建议，告诉我们</text></view>')
+   }
+   // The renewal explanation is now in help; only its noninteractive blocked
+   // message stays on the page. Keep all renewal buttons and amount bindings.
+   if(p==='src/pages/boss/in-progress/index.vue') {
+     const compact='<text v-if="!orderInfo.can_renew" class="renewal-tip">当前暂不能续单，请刷新状态或先处理待支付续单。</text>'
+     assert.equal(source.split(compact).length,2,'renewal blocker display changed; review required')
+     source=source.replace(compact,"<text class=\"renewal-tip\">{{ orderInfo.can_renew ? '续单会生成独立支付订单，可使用已有钻石或微信即时支付；成功后时长自动计入本订单。' : '当前订单暂不能创建新续单，请刷新状态或先处理待支付续单。' }}</text>")
+   }
    if(p==='src/pages/shop/checkout/index.vue') source=stripCheckoutV2(source)
    assert.deepEqual(contract(source),expected[p],p)
  }

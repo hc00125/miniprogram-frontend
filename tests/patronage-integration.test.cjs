@@ -52,7 +52,7 @@ test('closed gates and server total including unseen pages block all purchase ev
 })
 test('cross-device pending is recovered by original server key only and count continues to block',async()=>{
  const p=livePage({pending:{count:21,next:'https://evil.invalid',previous:null,results:[record()]}});await p.life.show[0]()
- assert.match(p.text(),/未决交易 21 笔/);await p.action('pending-PN-fixture').props.onTap()
+ assert.match(p.text(),/有 21 笔交易待确认，暂不能购买/);await p.action('pending-PN-fixture').props.onTap()
  const reads=p.requests.filter(o=>o.url.endsWith('/by-key/'));assert.equal(reads.length,1);assert.equal(reads[0].data.idempotency_key,key);assert.equal(p.requests.some(o=>o.url.endsWith('/purchases/')),false);assert.equal(p.action('purchase').props.disabled,true);assert.equal(p.modals.length,0);p.scope.stop()
  assert.equal(p.wallInvalidations(),1)
 })
@@ -110,7 +110,7 @@ test('catalog withdrawal during confirmation overrides a still-ready quote and c
 test('day-pass actual selection confirms backend 3400 diamonds and original-key fulfilment with seven bonus days',async()=>{
  const q={...quote(),package_code:'day_pass',amount_yuan:'340.00',amount_diamonds:'3400.0',platform_amount_yuan:'85.00',player_amount_yuan:'255.00',available_diamonds:'4000.0',can_submit:true,blockers:[]}
  const p=livePage({request:(o,end)=>{if(end==='quotes/'&&o.data.package_code==='day_pass'){o.success({statusCode:200,data:q});return true}if(end==='purchases/'||end==='purchases/by-key/'){o.success({statusCode:200,data:record('paid',{idempotency_key:o.data.idempotency_key,package_code:'day_pass',package_name:'包天',amount_yuan:'340.00',amount_diamonds:'3400.0',bonus_naming_days:7,expires_at:'2026-10-06T00:01:00Z'})});return true}}})
- await p.life.show[0]();await p.action('package-day_pass').props.onTap();assert.equal(p.action('purchase').props.disabled,false);assert.match(p.text(),/不限制服务时长/)
+ await p.life.show[0]();await p.action('package-day_pass').props.onTap();assert.equal(p.action('purchase').props.disabled,false);assert.match(require('./help-content-harness.cjs').helpSection('user-guide','patronage'),/不限制服务时长/)
  const task=p.action('purchase').props.onTap();await tick();assert.match(p.modals[0].content,/包天.*3400.0 钻/);p.modals[0].success({confirm:true});await task
  assert.equal(p.requests.find(o=>o.url.endsWith('/purchases/')).data.package_code,'day_pass');assert.match(p.text(),/购买成功/);p.scope.stop()
 })

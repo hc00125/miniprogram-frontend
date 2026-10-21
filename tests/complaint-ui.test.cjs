@@ -6,7 +6,7 @@ const { parse } = require('@vue/compiler-sfc')
 const postcss = require('postcss')
 const dir = path.join(__dirname, '../src/pages/client/complaints')
 function source(name) { return fs.readFileSync(path.join(dir, name + '.vue'), 'utf8') }
-test('首页保持平台身份、紧凑入口、数量与图形空态，不再展示大段声明', () => {
+test('首页保持平台身份、紧凑入口、数量与简洁空态，不再展示大段声明和纯装饰', () => {
   const template = parse(source('index')).descriptor.template.content
   assert.match(template, /偷吃电竞/)
   assert.doesNotMatch(template, /提交至偷吃电竞平台|非微信官方投诉渠道|class="title">投诉与反馈/)
@@ -15,7 +15,9 @@ test('首页保持平台身份、紧凑入口、数量与图形空态，不再�
   assert.match(template, /class="action-icon"/)
   assert.match(template, /class="feedback-count"/)
   assert.match(template, /items.length/)
-  assert.match(template, /class="empty-art"/)
+  assert.doesNotMatch(template, /class="empty-art"/)
+  assert.match(template, /v-if="!loading && !error && !items.length" class="card state-card empty-state"/)
+  assert.match(template, /还没有反馈记录/)
   assert.match(source('create'), /文字、联系方式及图片仅用于平台核实投诉/)
 })
 function declarations(name, selector) {

@@ -6,7 +6,6 @@
 
     <view class="form-card">
       <view class="form-head">
-        <text class="form-num">1</text>
         <text class="form-eyebrow">申请信息</text>
       </view>
 
@@ -57,7 +56,6 @@
 
     <view class="form-card audio-card">
       <view class="form-head">
-        <text class="form-num">2</text>
         <view><text class="form-eyebrow">音频自我介绍</text><text class="form-hint">可选，上传后审核通过会展示在陪玩详情页</text></view>
       </view>
       <view v-if="form.audio_intro_url" class="audio-info">
@@ -70,7 +68,7 @@
     </view>
 
     <view class="form-card form-card--notice">
-      <view class="notice-banner"><view class="notice-icon">i</view><view class="notice-text"><text class="notice-title">审核说明</text><text class="notice-sub">真实姓名仅供平台内部审核；公开资料可能展示陪玩师名称、头像、类型、简介、语音、接单数、评分与公开评价。</text></view></view>
+      <view class="notice-banner"><view class="notice-text"><text class="notice-title">审核说明</text><text class="notice-sub">真实姓名仅供平台内部审核；公开资料可能展示陪玩师名称、头像、类型、简介、语音、接单数、评分与公开评价。</text></view></view>
     </view>
 
     <view class="agree-card" @tap="agree = !agree">
@@ -251,8 +249,8 @@ onShow(loadApplyContext)
 
 
 .form-card { margin-top:22rpx;padding:28rpx; }
+.form-card--notice { padding: 12rpx 4rpx; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .form-head { display:flex;align-items:center;gap:18rpx;margin-bottom:24rpx; }
-.form-num,.notice-icon { width:56rpx;height:56rpx;display:flex;align-items:center;justify-content:center;border-radius:18rpx;color:#fff;background:var(--ui-gradient);font-size:26rpx;font-weight:900;flex-shrink:0; }
 .field { margin-top:24rpx; }.field:first-of-type { margin-top:0; }
 .field-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:12rpx; }
 .field-label { color:var(--ui-text, #172116);font-size:28rpx;font-weight:900; }
